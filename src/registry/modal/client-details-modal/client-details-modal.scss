@@ -1,0 +1,28 @@
+.clientDetailsLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 5px;
+}
+.sectionHeader{
+    display: flex;
+    flex-direction: column;
+    row-gap: 5px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+.sectionContent{
+    display: flex;
+    flex-direction: column;
+    row-gap: 5px;
+}
+.actionSection{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    column-gap: 5px;
+}
+.btnContainer{
+    margin-top: 2px;
+    margin-bottom: 2px;
+}

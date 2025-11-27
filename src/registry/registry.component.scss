@@ -1,0 +1,58 @@
+.registryLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    padding: 2% 2%;
+}
+.registryHeader{
+    display: flex;
+    flex-direction: column;
+    row-gap: 10px;
+    width: 100%;
+}
+.registryContent{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.formRow{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    column-gap: 5px;
+}
+.formControl{
+    width: 30%;
+}
+.hieData{
+    margin-top: 15px;
+    display: flex;
+    flex-direction: column;
+    width: 50%;
+    row-gap: 10px;
+}
+.btnContainer{
+    padding: 5px 5px;
+}
+.selectionHeader{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 5px;
+}
+.patientSelect{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    column-gap: 5px;
+}
+.patientSelectRadio{
+    width: 70%;
+}
+.patientConfirmSelection{
+    display: flex;
+    flex-direction: row;
+    width: 30%;
+    column-gap: 5px;
+}
