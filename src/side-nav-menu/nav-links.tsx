@@ -13,7 +13,7 @@ const NavLinks: React.FC<NavLinksProps> = () => {
       </SideNavMenuItem>
       <SideNavMenuItem href="workflow/registry">Appointments</SideNavMenuItem>
       <SideNavMenuItem href="workflow/registry">Triage</SideNavMenuItem>
-      <SideNavMenuItem href="workflow/registry">workflow</SideNavMenuItem>
+      <SideNavMenuItem href="workflow/registry">Consultation</SideNavMenuItem>
       <SideNavMenuItem href="workflow/registry">Laboratory</SideNavMenuItem>
       <SideNavMenuItem href="workflow/registry">Bookings</SideNavMenuItem>
       <SideNavMenuItem href="workflow/registry">Reports</SideNavMenuItem>
