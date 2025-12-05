@@ -10,9 +10,16 @@ interface ClientDetailsModalProps {
   open: boolean;
   onModalClose: () => void;
   onSubmit: () => void;
+  onSendClientToTriage: (crId: string) => void;
 }
 
-const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, open, onModalClose, onSubmit }) => {
+const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
+  client,
+  open,
+  onModalClose,
+  onSubmit,
+  onSendClientToTriage,
+}) => {
   if (!client) {
     return <>No Client data</>;
   }
@@ -59,10 +66,9 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({ client, open, o
                 <Button kind="secondary">Walk In Orders</Button>
               </div>
               <div className={styles.btnContainer}>
-                <Button kind="tertiary">Send To Triage</Button>
-              </div>
-              <div className={styles.btnContainer}>
-                <Button kind="primary">Send To Consultation</Button>
+                <Button kind="tertiary" onClick={() => onSendClientToTriage(client.id)}>
+                  Send To Triage
+                </Button>
               </div>
             </div>
           </div>

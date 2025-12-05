@@ -17,22 +17,29 @@ import React, { useState } from 'react';
 import styles from './registry.component.scss';
 import { type HieClient, IDENTIFIER_TYPES, type IdentifierType, type RequestCustomOtpDto } from './types';
 import { fetchClientRegistryData } from './registry.resource';
-import { showSnackbar, useSession } from '@openmrs/esm-framework';
+import { type Patient, showSnackbar, useSession } from '@openmrs/esm-framework';
 import OtpVerificationModal from './modal/otp-verification-modal/otp-verification-modal';
 import { maskExceptFirstAndLast, maskValue } from './utils/mask-data';
 import ClientDetailsModal from './modal/client-details-modal/client-details-modal';
+import { searchPatientByCrNumber } from '../resources/patient-search.resource';
+import SendToTriageModal from './modal/send-to-triage/send-to-triage.modal';
+import { useNavigate } from 'react-router-dom';
+
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [identifierType, setIdentifierType] = useState<IdentifierType>('National ID');
   const [identifierValue, setIdentifierValue] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [client, setClient] = useState<HieClient>();
+  const [amrsPatients, setAmrsPatient] = useState<Patient[]>();
   const [selectedPatient, setSelectedPatient] = useState<string>('principal');
   const [displayOtpModal, setDisplayOtpModal] = useState<boolean>(false);
   const [displayClientDetailsModal, setDisplayClientDetailsModal] = useState<boolean>(false);
+  const [displaytriageModal, setDisplaytriageModal] = useState<boolean>(false);
   const [requestCustomOtpDto, setRequestCustomOtpDto] = useState<RequestCustomOtpDto>();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
+  const navigate = useNavigate();
 
   const handleSearchPatient = async () => {
     setLoading(true);
@@ -103,10 +110,22 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const handleEmergencyRegistration = () => {
     window.location.href = `${window.spaBase}/patient-registration`;
   };
+  const handleSendClientToTriage = async (crId: string) => {
+    onClientDetailsModalClose();
+    const resp = await searchPatientByCrNumber(crId);
+    if (resp.totalCount > 0) {
+      setAmrsPatient(resp.results);
+      setDisplaytriageModal(true);
+    }
+  };
+  const onSendToTriageModalClose = (modalCloseResp?: { success: boolean }) => {
+    setDisplaytriageModal(false);
+    if (modalCloseResp && modalCloseResp.success) {
+      navigate('/triage');
+    }
+  };
+  const handleSendToTriageModalSubmit = () => {};
   return (
-    /*
-      To be refactored ton use gloab-nav-slot
-    */
     <>
       <div className={styles.registryLayout}>
         <div className={styles.mainContent}>
@@ -268,7 +287,21 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         open={displayClientDetailsModal}
                         onModalClose={onClientDetailsModalClose}
                         onSubmit={handleClientDetailsSubmit}
+                        onSendClientToTriage={handleSendClientToTriage}
                       />{' '}
+                    </>
+                  ) : (
+                    <></>
+                  )}
+
+                  {client && displaytriageModal ? (
+                    <>
+                      <SendToTriageModal
+                        patients={amrsPatients}
+                        open={displaytriageModal}
+                        onModalClose={onSendToTriageModalClose}
+                        onSubmit={handleSendToTriageModalSubmit}
+                      />
                     </>
                   ) : (
                     <></>

@@ -1,3 +1,5 @@
+import { Location, type Patient } from '@openmrs/esm-framework';
+
 export type IdentifierType = 'National ID' | 'Alien ID' | 'Passport' | 'Mandate Number' | 'Refugee ID';
 
 export const IDENTIFIER_TYPES: IdentifierType[] = [
@@ -158,3 +160,64 @@ export interface HieClient {
   is_agent: number;
   agent_id: string;
 }
+
+export type PatientSearchResponse = {
+  results: Patient[];
+  totalCount: number;
+};
+
+export type QueuePriority = {
+  uuid: string;
+  display: string;
+};
+export type QueueStatus = {
+  uuid: string;
+  display: string;
+};
+export type ServiceQueue = {
+  uuid: string;
+  display: string;
+  name: string;
+  description: string;
+  service: {
+    uuid: string;
+    display: string;
+  };
+  allowedPriorities: QueuePriority[];
+  allowedStatuses: QueueStatus[];
+  location: Location;
+};
+
+export type ServiceQueueApiResponse = {
+  results: ServiceQueue[];
+};
+
+export type QueueEntryDto = {
+  visit: {
+    uuid: string;
+  };
+  queueEntry: {
+    status: {
+      uuid: string;
+    };
+    priority: {
+      uuid: string;
+    };
+    queue: {
+      uuid: string;
+    };
+    patient: {
+      uuid: string;
+    };
+    startedAt: string;
+    sortWeight: number;
+  };
+};
+
+export type CreateVisitDto = {
+  visitType: string;
+  location: string;
+  startDatetime: null | string;
+  stopDatetime: null | string;
+  patient: string;
+};

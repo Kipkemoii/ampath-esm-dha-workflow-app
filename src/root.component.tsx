@@ -14,6 +14,7 @@ const Root: React.FC = () => {
         <Routes>
           <Route path="" element={<RegistryComponent />} />
           <Route path="registry" element={<RegistryComponent />} />
+          <Route path="triage" element={<Consultation />} />
           <Route path="consultation" element={<Consultation />} />
           <Route path="*" element={<RegistryComponent />} />
         </Routes>

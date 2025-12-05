@@ -1,3 +1,4 @@
+import { HIE_BASE_URL } from '../shared/constants';
 import {
   type ClientRegistrySearchRequest,
   type RequestCustomOtpDto,
@@ -5,8 +6,6 @@ import {
   type ValidateCustomOtpResponse,
   type ValidateHieCustomOtpDto,
 } from './types';
-
-const HIE_BASE_URL = 'https://staging.ampath.or.ke/hie';
 
 export type ClientRegistrySearchResponse = any[];
 

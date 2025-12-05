@@ -1,0 +1,24 @@
+.formSection{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 5px;
+}
+.formRow{
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   column-gap: 5px;
+}
+.formControl{
+   display: flex;
+   flex-direction: column;
+   width: 40%;
+   row-gap: 5px;
+}
+.actionSection{
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    margin-top: 15px;
+}
