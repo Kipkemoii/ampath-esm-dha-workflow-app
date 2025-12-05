@@ -20,23 +20,57 @@ export const navLinksConfig = [
     title: 'Consultation',
   },
   {
+    to: 'mch',
+    title: 'MCH',
+    children: [
+      {
+        to: 'triage',
+        title: 'Triage',
+      },
+      {
+        to: 'consultation',
+        title: 'Consultation',
+      },
+    ],
+  },
+  {
+    to: 'admissions',
+    title: 'Admissions',
+  },
+  {
+    to: 'procedures',
+    title: 'Procedures',
+  },
+  {
+    to: 'radiology-imaging',
+    title: 'Radiology and Imaging',
+  },
+  {
     to: 'laboratory',
     title: 'Laboratory',
   },
   {
-    to: 'bookings',
-    title: 'Bookings',
+    to: 'pharmacy',
+    title: 'Pharmacy',
   },
   {
-    to: 'reports',
-    title: 'Reports',
+    to: 'mortuary',
+    title: 'Mortuary',
+  },
+  {
+    to: 'accounting',
+    title: 'Accounting',
   },
   {
     to: 'registers',
     title: 'Registers',
   },
   {
-    to: 'pharmacy',
-    title: 'Pharmacy',
+    to: 'reports',
+    title: 'Reports',
+  },
+  {
+    to: 'bookings',
+    title: 'Bookings',
   },
 ];
