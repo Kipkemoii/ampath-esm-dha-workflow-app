@@ -44,18 +44,18 @@ export const navLinks = getAsyncLifecycle(() => import('./side-nav-menu/nav-link
  */
 export const root = getAsyncLifecycle(() => import('./root.component'), options);
 export const registry = getAsyncLifecycle(() => import('./registry/registry.component'), options);
-export const waitingPatientsExtension = getAsyncLifecycle(() => import('./metrics/metrics-cards/waiting-patients.extension'), options);
-export const attendedToPatientsExtension = getAsyncLifecycle(() => import('./metrics/metrics-cards/attended-patients.extension'), options);
+export const waitingPatientsExtension = getAsyncLifecycle(
+  () => import('./metrics/metrics-cards/waiting-patients.extension'),
+  options,
+);
+export const attendedToPatientsExtension = getAsyncLifecycle(
+  () => import('./metrics/metrics-cards/attended-patients.extension'),
+  options,
+);
 
 export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/workflow-registry-link.extension'), {
   featureName: 'workflow-registry-link',
   moduleName,
 });
 
-export const signOffModal = getAsyncLifecycle(
-  () => import('./modals/sign-off-modal'),
-  {
-    featureName: 'sign off',
-    moduleName,
-  },
-);
+export const triage = getAsyncLifecycle(() => import('./triage/triage.component'), options);
