@@ -6,6 +6,9 @@ import RegistryComponent from './registry/registry.component';
 import LeftPanel from './left-panel/left-panel.component';
 import Triage from './triage/triage.component';
 import ServiceQueue from './service-queues/service-queue';
+import LaboratoryComponent from './laboratory/laboratory.component';
+import AppointmentsComponent from './appointments/appointments.component';
+import PharmacyComponent from './pharmacy/pharmacy.component';
 
 const Root: React.FC = () => {
   return (
@@ -15,9 +18,12 @@ const Root: React.FC = () => {
         <Routes>
           <Route path="" element={<RegistryComponent />} />
           <Route path="registry" element={<RegistryComponent />} />
-          <Route path="consultation" element={<ServiceQueue isTriage={false}/>} />
-          <Route path="*" element={<RegistryComponent />} />
+          <Route path="consultation" element={<ServiceQueue isTriage={false} />} />
           <Route path="triage" element={<Triage />} />
+          <Route path="laboratory" element={<LaboratoryComponent />} />
+          <Route path="pharmacy" element={<PharmacyComponent />} />
+          <Route path="appointments" element={<AppointmentsComponent />} />
+          <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />
