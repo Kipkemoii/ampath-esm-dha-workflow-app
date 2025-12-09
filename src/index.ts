@@ -52,10 +52,16 @@ export const attendedToPatientsExtension = getAsyncLifecycle(
   () => import('./service-queues/metrics/metrics-cards/attended-patients.extension'),
   options,
 );
+export const triageWaitingPatientsExtension = getAsyncLifecycle(
+  () => import('./triage/metrics/waiting-patients.extension'),
+  options,
+);
+export const triageAttendedToPatientsExtension = getAsyncLifecycle(
+  () => import('./triage/metrics/attended-patients.extension'),
+  options,
+);
 
 export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/workflow-registry-link.extension'), {
   featureName: 'workflow-registry-link',
   moduleName,
 });
-
-export const triage = getAsyncLifecycle(() => import('./triage/triage.component'), options);
