@@ -35,6 +35,18 @@
       "component": "attendedToPatientsExtension",
       "slot": "clinic-metrics-slot",
       "order": 2
+    },
+      {
+      "name": "metrics-card-patients-in-waiting",
+      "component": "triageWaitingPatientsExtension",
+      "slot": "triage-metrics-slot",
+      "order": 1
+    },
+    {
+      "name": "metrics-card-patients-attended-to",
+      "component": "triageAttendedToPatientsExtension",
+      "slot": "triage-metrics-slot",
+      "order": 2
     }
   ],
   "modals": [

@@ -9,6 +9,7 @@ import LaboratoryComponent from './laboratory/laboratory.component';
 import AppointmentsComponent from './appointments/appointments.component';
 import PharmacyComponent from './pharmacy/pharmacy.component';
 import Consultation from './service-queues/consultation/consultation.component';
+import Dashboard from './dashboard/dashboard.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -22,7 +23,7 @@ const Root: React.FC = () => {
       <LeftPanel />
       <main className={styles.container}>
         <Routes>
-          <Route path="" element={<RegistryComponent />} />
+          <Route path="dashboard" element={<Dashboard />} />
           <Route path="registry" element={<RegistryComponent />} />
           <Route path="consultation" element={<Consultation />} />
           <Route path="triage" element={<Triage />} />
