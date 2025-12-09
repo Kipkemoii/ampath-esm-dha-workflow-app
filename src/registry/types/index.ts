@@ -279,3 +279,23 @@ export type CreatePatientDto = {
   person: CreatePersonDto;
   identifiers?: any;
 };
+
+export type QueueEntryResult = {
+  name: string;
+  queue_entry_id: number;
+  queue_entry_uuid: string;
+  service_uuid: string;
+  location_id: number;
+  location: string;
+  service: number;
+  queue_id: number;
+  queue_room: string;
+  priority: string;
+  patient_id: number;
+  visit_id: number;
+  patient_uuid: string;
+  family_name: string;
+  given_name: string;
+  middle_name: string;
+  status: string;
+};

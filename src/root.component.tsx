@@ -9,6 +9,7 @@ import ServiceQueue from './service-queues/service-queue';
 import LaboratoryComponent from './laboratory/laboratory.component';
 import AppointmentsComponent from './appointments/appointments.component';
 import PharmacyComponent from './pharmacy/pharmacy.component';
+import Consultation from './service-queues/consultation/consultation.component';
 
 const Root: React.FC = () => {
   return (
@@ -18,7 +19,7 @@ const Root: React.FC = () => {
         <Routes>
           <Route path="" element={<RegistryComponent />} />
           <Route path="registry" element={<RegistryComponent />} />
-          <Route path="consultation" element={<ServiceQueue isTriage={false} />} />
+          <Route path="consultation" element={<Consultation />} />
           <Route path="triage" element={<Triage />} />
           <Route path="laboratory" element={<LaboratoryComponent />} />
           <Route path="pharmacy" element={<PharmacyComponent />} />

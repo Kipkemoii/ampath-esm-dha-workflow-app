@@ -1,4 +1,11 @@
-import { type Visit, type Concept, type Patient, type OpenmrsResource, type Obs, type FetchResponse } from "@openmrs/esm-framework";
+import {
+  type Visit,
+  type Concept,
+  type Patient,
+  type OpenmrsResource,
+  type Obs,
+  type FetchResponse,
+} from '@openmrs/esm-framework';
 
 export interface QueueEntry {
   uuid: string;
@@ -98,3 +105,11 @@ export type QueueEntryResponse = FetchResponse<{
   }>;
   totalCount: number;
 }>;
+
+export type TransitionQueueEntryDto = {
+  queueEntryToTransition: string;
+  newQueue?: string;
+  newStatus?: string;
+  newPriority?: string;
+  newPriorityComment?: string;
+};

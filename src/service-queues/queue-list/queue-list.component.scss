@@ -1,0 +1,19 @@
+.queueListLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 15px;
+    padding: 5px 5px;
+}
+.actionHeader{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+}
+.tableSection{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+}
