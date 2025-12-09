@@ -135,9 +135,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   };
   const onSendToTriageModalClose = (modalCloseResp?: { success: boolean }) => {
     setDisplaytriageModal(false);
-    if (modalCloseResp && modalCloseResp.success) {
-      navigate('/triage');
-    }
   };
   const handleSendToTriageModalSubmit = () => {};
   const getPatient = (): HieClient => {
