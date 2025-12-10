@@ -24,7 +24,7 @@ const TransitionPatientModal: React.FC<TransitionPatientModalProps> = ({ open, o
     const payload = getTransitionQueueEntryPayload();
     try {
       await transitionQueueEntry(payload);
-      showAlert('success', 'Cleint succesfully Transitioned', '');
+      showAlert('success', 'Client succesfully Transitioned', '');
       onModalClose();
     } catch (e) {
       showAlert('error', e.message, '');

@@ -229,6 +229,10 @@ export type CreateVisitDto = {
   patient: string;
 };
 
+export type EndVisitDto = {
+  stopDatetime: string;
+};
+
 export interface GlobalError {
   code: string;
   message: string;
@@ -298,4 +302,5 @@ export type QueueEntryResult = {
   given_name: string;
   middle_name: string;
   status: string;
+  visit_uuid: string;
 };

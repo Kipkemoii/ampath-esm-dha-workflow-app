@@ -24,7 +24,7 @@ const ServePatientModal: React.FC<ServePatientModal> = ({
     const payload = getServePatientPayload();
     try {
       await transitionQueueEntry(payload);
-      showAlert('success', 'Cleint succesfully served', '');
+      showAlert('success', 'Client succesfully served', '');
       onSuccessfullServe();
     } catch (e) {
       showAlert('error', e.message, '');
@@ -49,6 +49,7 @@ const ServePatientModal: React.FC<ServePatientModal> = ({
   return (
     <>
       <Modal
+        modalHeading="Serve Client"
         open={open}
         size="md"
         onSecondarySubmit={() => onModalClose()}
@@ -59,13 +60,10 @@ const ServePatientModal: React.FC<ServePatientModal> = ({
       >
         <ModalBody>
           <div className={styles.serveModalLayout}>
-            <div className={styles.serveModalSectionHeader}>
-              <h4>Serve Client</h4>
-            </div>
             <div className={styles.serveModalContentSection}>
               <div className={styles.formRow}>
                 <p>
-                  Name: {currentQueueEntry.family_name} {currentQueueEntry.family_name}
+                  Name: {currentQueueEntry.family_name} {currentQueueEntry.middle_name} {currentQueueEntry.given_name}
                 </p>
                 <p>Ticket No: {currentQueueEntry.queue_entry_id}</p>
                 <p>Status: {currentQueueEntry.status}</p>

@@ -1,5 +1,5 @@
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { type CreateVisitDto } from '../registry/types';
+import { EndVisitDto, type CreateVisitDto } from '../registry/types';
 
 export async function createVisit(createVisitDto: CreateVisitDto) {
   const url = `${restBaseUrl}/visit`;
@@ -9,6 +9,24 @@ export async function createVisit(createVisitDto: CreateVisitDto) {
       'content-type': 'application/json',
     },
     body: JSON.stringify(createVisitDto),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+  }
+
+  return response.json();
+}
+
+export async function endVisit(visitUuid: string, endVisitDto: EndVisitDto) {
+  const url = `${restBaseUrl}/visit/${visitUuid}`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(endVisitDto),
   });
 
   if (!response.ok) {

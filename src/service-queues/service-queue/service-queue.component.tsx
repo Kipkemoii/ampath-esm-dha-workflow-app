@@ -8,6 +8,8 @@ import styles from './service-queue.component.scss';
 import MovePatientModal from '../modals/move/move-patient.component';
 import TransitionPatientModal from '../modals/transition/transition-patient.component';
 import ServePatientModal from '../modals/serve/serve-patient.comppnent';
+import StatDetails from './stats/stat-details/stat-details.component';
+import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -17,9 +19,10 @@ interface ServiceQueueComponentProps {
 const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTypeUuid, title }) => {
   const [queueEntries, setQueueEntries] = useState<QueueEntryResult[]>([]);
   const [selectedQueueEntry, setSelectedQueueEntry] = useState<QueueEntryResult>();
-  const [displayMoveModal, setDisplayMoveModal] = useState<boolean>();
-  const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>();
-  const [displayServeModal, setDisplayServeModal] = useState<boolean>();
+  const [displayMoveModal, setDisplayMoveModal] = useState<boolean>(false);
+  const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>(false);
+  const [displayServeModal, setDisplayServeModal] = useState<boolean>(false);
+  const [displaySignOffModal, setDisplaySignOffModal] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
 
@@ -59,6 +62,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
     setDisplayMoveModal(false);
     setDisplayTransitionModal(false);
     setDisplayServeModal(false);
+    getEntryQueues();
   };
 
   const handleTransitionPatient = (queueEntry: QueueEntryResult) => {
@@ -82,6 +86,15 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
     navigateToPatientChart();
   };
 
+  const handleSignOff = (queueEntry: QueueEntryResult) => {
+    setDisplaySignOffModal(true);
+    setSelectedQueueEntry(queueEntry);
+  };
+
+  const onSuccessfullSignOff = () => {
+    setDisplaySignOffModal(false);
+  };
+
   if (!serviceTypeUuid) {
     return <>No service type defined</>;
   }
@@ -92,6 +105,16 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
         <div className={styles.headerSection}>
           <h4>{title}</h4>
         </div>
+        <div>
+          {queueEntries ? (
+            <>
+              <StatDetails queueEntries={queueEntries} />
+            </>
+          ) : (
+            <></>
+          )}
+        </div>
+
         <div className={styles.contentSection}>
           <Tabs>
             <TabList contained>
@@ -111,6 +134,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
                           handleMovePatient={handleMovePatient}
                           handleTransitionPatient={handleTransitionPatient}
                           handleServePatient={handleServePatient}
+                          handleSignOff={handleSignOff}
                         />
                       }
                     </TabPanel>
@@ -153,6 +177,19 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
             onModalClose={handleModalCloes}
             currentQueueEntry={selectedQueueEntry}
             onSuccessfullServe={handleSuccessfullServe}
+          />
+        </>
+      ) : (
+        <></>
+      )}
+
+      {displaySignOffModal ? (
+        <>
+          <SignOffEntryModal
+            open={displaySignOffModal}
+            onModalClose={handleModalCloes}
+            currentQueueEntry={selectedQueueEntry}
+            onSuccessfullSignOff={onSuccessfullSignOff}
           />
         </>
       ) : (

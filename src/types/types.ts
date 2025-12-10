@@ -113,3 +113,16 @@ export type TransitionQueueEntryDto = {
   newPriority?: string;
   newPriorityComment?: string;
 };
+
+export type TagColor = 'green' | 'gray' | 'blue' | 'red';
+
+export enum QueueEntryStatus {
+  Completed = 'COMPLETED',
+  Waiting = 'WAITING',
+  InService = 'IN SERVICE',
+}
+
+export enum QueueEntryPriority {
+  Emergency = 'EMERGENCY',
+  Normal = 'NORMAL',
+}
