@@ -5,3 +5,10 @@
     padding: 15px 15px;
     row-gap: 15px;
 }
+.headerAction{
+    display: flex;
+    flex-direction: row;
+    column-gap: 5px;
+    justify-content: flex-end;
+    padding: 10px 10px;
+}

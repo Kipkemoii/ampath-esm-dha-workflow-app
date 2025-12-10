@@ -1,8 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { type QueueEntryResult } from '../../registry/types';
-import { useSession } from '@openmrs/esm-framework';
-import { getServiceQueueByLocationUuid } from '../service-queues.resource';
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { showSnackbar, useSession } from '@openmrs/esm-framework';
+import { closeQueueEntry, getServiceQueueByLocationUuid } from '../service-queues.resource';
+import { Button, InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import QueueList from '../queue-list/queue-list.component';
 import styles from './service-queue.component.scss';
 import MovePatientModal from '../modals/move/move-patient.component';
@@ -10,6 +10,7 @@ import TransitionPatientModal from '../modals/transition/transition-patient.comp
 import ServePatientModal from '../modals/serve/serve-patient.comppnent';
 import StatDetails from './stats/stat-details/stat-details.component';
 import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
+import { endVisit } from '../../resources/visit.resource';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -23,6 +24,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>(false);
   const [displayServeModal, setDisplayServeModal] = useState<boolean>(false);
   const [displaySignOffModal, setDisplaySignOffModal] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
 
@@ -47,8 +49,10 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   }, []);
 
   const getEntryQueues = async () => {
+    setLoading(true);
     const res = await getServiceQueueByLocationUuid(serviceTypeUuid, locationUuid);
     setQueueEntries(res);
+    setLoading(false);
   };
 
   if (!groupedByRoom) {
@@ -62,7 +66,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
     setDisplayMoveModal(false);
     setDisplayTransitionModal(false);
     setDisplayServeModal(false);
-    getEntryQueues();
+    handleRefresh();
   };
 
   const handleTransitionPatient = (queueEntry: QueueEntryResult) => {
@@ -93,6 +97,37 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
 
   const onSuccessfullSignOff = () => {
     setDisplaySignOffModal(false);
+    handleRefresh();
+  };
+
+  const handleRefresh = () => {
+    getEntryQueues();
+  };
+
+  const handleRemovePatient = async (queueEntryResult: QueueEntryResult) => {
+    try {
+      await closeQueueEntry(queueEntryResult.queue_entry_uuid);
+      showSnackbar({
+        kind: 'success',
+        title: 'Patient removal from queue successfully!',
+        subtitle: '',
+      });
+      await endVisit(queueEntryResult.visit_uuid, {
+        stopDatetime: new Date().toISOString(),
+      });
+      showSnackbar({
+        kind: 'success',
+        title: 'Visit Ended successfully!',
+        subtitle: '',
+      });
+      handleRefresh();
+    } catch (e) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Patient removal from queue failed!',
+        subtitle: e.message ?? '',
+      });
+    }
   };
 
   if (!serviceTypeUuid) {
@@ -113,6 +148,11 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
           ) : (
             <></>
           )}
+        </div>
+        <div className={styles.headerAction}>
+          <Button kind="tertiary" onClick={handleRefresh} disabled={loading}>
+            {loading ? <InlineLoading description="Refreshing..." /> : 'Refresh'}
+          </Button>
         </div>
 
         <div className={styles.contentSection}>
@@ -135,6 +175,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
                           handleTransitionPatient={handleTransitionPatient}
                           handleServePatient={handleServePatient}
                           handleSignOff={handleSignOff}
+                          handleRemovePatient={handleRemovePatient}
                         />
                       }
                     </TabPanel>

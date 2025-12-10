@@ -22,6 +22,7 @@ interface QueueListProps {
   handleTransitionPatient: (queueEntryResult: QueueEntryResult) => void;
   handleServePatient: (queueEntryResult: QueueEntryResult) => void;
   handleSignOff: (queueEntryResult: QueueEntryResult) => void;
+  handleRemovePatient: (queueEntryResult: QueueEntryResult) => void;
 }
 
 const QueueList: React.FC<QueueListProps> = ({
@@ -30,6 +31,7 @@ const QueueList: React.FC<QueueListProps> = ({
   handleTransitionPatient,
   handleServePatient,
   handleSignOff,
+  handleRemovePatient,
 }) => {
   const [checkIn, setCheckIn] = useState<boolean>(false);
   const handleCheckin = () => {
@@ -70,21 +72,21 @@ const QueueList: React.FC<QueueListProps> = ({
     <>
       <div className={styles.queueListLayout}>
         <div className={styles.actionHeader}>
-          {checkIn ? (
-            <>
-              <Button kind="danger" onClick={handleCheckin}>
-                {' '}
-                Check Out
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button kind="primary" onClick={handleCheckin}>
-                {' '}
-                Check In
-              </Button>
-            </>
-          )}
+          <>
+            {checkIn ? (
+              <>
+                <Button kind="danger" onClick={handleCheckin}>
+                  Check Out
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button kind="primary" onClick={handleCheckin}>
+                  Check In
+                </Button>
+              </>
+            )}
+          </>
         </div>
         <div className={styles.tableSection}>
           <Table>
@@ -92,9 +94,11 @@ const QueueList: React.FC<QueueListProps> = ({
               <TableRow>
                 <TableHeader>No</TableHeader>
                 <TableHeader>Name</TableHeader>
+                <TableHeader>Coming From</TableHeader>
                 <TableHeader>Ticket</TableHeader>
                 <TableHeader>Status</TableHeader>
                 <TableHeader>Priority</TableHeader>
+                <TableHeader>Wait Time</TableHeader>
                 <TableHeader>Action</TableHeader>
               </TableRow>
             </TableHead>
@@ -113,6 +117,7 @@ const QueueList: React.FC<QueueListProps> = ({
                       </>
                     )}
                   </TableCell>
+                  <TableCell>{val.queue_coming_from}</TableCell>
                   <TableCell>{val.queue_entry_id}</TableCell>
                   <TableCell>
                     <Tag size="md" type={getTagTypeByStatus(val.status)}>
@@ -124,6 +129,7 @@ const QueueList: React.FC<QueueListProps> = ({
                       {val.priority}
                     </Tag>
                   </TableCell>
+                  <TableCell>{`${val.wait_time_in_min} minute(s)`}</TableCell>
                   <TableCell>
                     {val.status === QueueEntryStatus.Waiting ? (
                       <>
@@ -139,7 +145,7 @@ const QueueList: React.FC<QueueListProps> = ({
                               <OverflowMenuItem itemText="Move" onClick={() => handleMovePatient(val)} />
                               <OverflowMenuItem itemText="Transition" onClick={() => handleTransitionPatient(val)} />
                               <OverflowMenuItem itemText="Sign Off" onClick={() => handleSignOff(val)} />
-                              <OverflowMenuItem itemText="Remove Patient" />
+                              <OverflowMenuItem itemText="Remove Patient" onClick={() => handleRemovePatient(val)} />
                             </OverflowMenu>
                           </>
                         ) : (
