@@ -287,6 +287,8 @@ export type CreatePatientDto = {
 export type QueueEntryResult = {
   name: string;
   queue_entry_id: number;
+  priority_comment: string;
+  wait_time_in_min: number;
   queue_entry_uuid: string;
   service_uuid: string;
   location_id: number;
@@ -303,4 +305,5 @@ export type QueueEntryResult = {
   middle_name: string;
   status: string;
   visit_uuid: string;
+  queue_coming_from: string;
 };

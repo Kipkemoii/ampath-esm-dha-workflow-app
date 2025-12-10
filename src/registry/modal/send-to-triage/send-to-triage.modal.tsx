@@ -252,7 +252,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             <div className={styles.actionSection}>
               {patients.length > 0 ? (
                 <div className={styles.btnContainer}>
-                  <Button kind="secondary" onClick={sendToTriage}>
+                  <Button className={styles.greenBtn} onClick={sendToTriage}>
                     {loading ? <InlineLoading description="Sending To Triage..." /> : 'Send To Triage'}
                   </Button>
                 </div>

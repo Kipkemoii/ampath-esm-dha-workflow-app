@@ -4,6 +4,7 @@ import { type EndVisitDto, type QueueEntryResult } from '../../../registry/types
 import styles from './sign-off.modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { endVisit } from '../../../resources/visit.resource';
+import { closeQueueEntry } from '../../service-queues.resource';
 
 interface SignOffEntryModalProps {
   open: boolean;
@@ -21,6 +22,7 @@ const SignOffEntryModal: React.FC<SignOffEntryModalProps> = ({
   const signOffEntry = async () => {
     const payload = getEndVisitPayload();
     try {
+      await removePatientFromQueue(currentQueueEntry);
       await endVisit(currentQueueEntry.visit_uuid, payload);
       showAlert('success', 'Visit Ended successfully', '');
       onSuccessfullSignOff();
@@ -39,6 +41,14 @@ const SignOffEntryModal: React.FC<SignOffEntryModalProps> = ({
     return {
       stopDatetime: new Date().toISOString(),
     };
+  };
+  const removePatientFromQueue = async (currentQueueEntry: QueueEntryResult) => {
+    try {
+      await closeQueueEntry(currentQueueEntry.queue_entry_uuid);
+      showAlert('success', 'Patient removal from queue successfully!', '');
+    } catch (e) {
+      showAlert('error', 'Patient removal from queue failed!', '');
+    }
   };
   return (
     <>
