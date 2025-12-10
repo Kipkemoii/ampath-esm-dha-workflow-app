@@ -11,6 +11,10 @@ interface OverviewProps {
 }
 
 const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount }) => {
+  const totalPatients: QueueEntryResult[] = [...triageCount, ...consultationCount];
+  const patientsInQueue = totalPatients.filter(
+    (patient) => patient.status === 'WAITING' || patient.status === 'IN SERVICE',
+  ).length;
   const [selected, setSelected] = useState<string | null>(null);
   const triagePatients = triageCount?.length ?? 0;
   const consultationPatients = consultationCount?.length ?? 0;
@@ -57,34 +61,34 @@ const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount }) =
     <>
       <div className={styles.container}>
         <Tile className={styles.card}>
-          <h3>Total Patients Today</h3>
-          <h4>Patients</h4>
-          <h4>{triagePatients + consultationPatients}</h4>
+          <h4>Total Patients Today</h4>
+          <h5>Patients</h5>
+          <h4 className={styles.total}>{triagePatients + consultationPatients}</h4>
         </Tile>
         <Tile className={styles.card}>
-          <h3>Patients in Queue Today</h3>
-          <h4>Patients</h4>
-          <h4>{triagePatients + consultationPatients}</h4>
+          <h4>Patients in Queue Today</h4>
+          <h5>Patients</h5>
+          <h4 className={styles.queue}>{patientsInQueue}</h4>
         </Tile>
         <Tile className={styles.card}>
-          <h3>Patients in Triage </h3>
-          <h4>Patients</h4>
-          <h4>{triagePatients}</h4>
+          <h4>Patients in Triage </h4>
+          <h5>Patients</h5>
+          <h4 className={styles.triage}>{triagePatients}</h4>
         </Tile>
         <Tile className={styles.card}>
-          <h3>Patients in Cosultation </h3>
-          <h4>Patients</h4>
-          <h4>{consultationPatients}</h4>
+          <h4>Patients in Consultation </h4>
+          <h5>Patients</h5>
+          <h4 className={styles.consultation}>{consultationPatients}</h4>
         </Tile>
         <Tile className={styles.card}>
-          <h3>Walk-ins Today </h3>
-          <h4>Patients</h4>
+          <h4>Walk-ins Today </h4>
+          <h5>Patients</h5>
           <h4>0</h4>
         </Tile>
         <Tile className={styles.card}>
-          <h3>Emergencies Today </h3>
-          <h4>Patients</h4>
-          <h4>0</h4>
+          <h4>Emergencies Today </h4>
+          <h5>Patients</h5>
+          <h4 className={styles.emergency}>0</h4>
         </Tile>
       </div>
       <FluidDropdown

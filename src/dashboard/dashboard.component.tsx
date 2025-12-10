@@ -33,12 +33,12 @@ const Dashboard: React.FC<DashboardProps> = () => {
   return (
     <div className={styles.container}>
       <Tabs>
-        <TabList contained fullWidth scrollDebounceWait={200}>
+        <TabList contained scrollDebounceWait={200}>
           <Tab>
             <span className={styles.tabText}>Overview</span>
           </Tab>
           <Tab>
-            <span>Pharmacy</span>
+            <span className={styles.tabText}>Pharmacy</span>
           </Tab>
           <Tab>
             <span className={styles.tabText}>Labs</span>
