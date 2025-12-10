@@ -158,3 +158,19 @@ export async function getServiceQueueByLocationUuid(
   const result = await response.json();
   return result.data;
 }
+
+export async function closeQueueEntry(entryQueueUuid: string): Promise<QueueEntryResult[]> {
+  const queueEntryUrl = `${restBaseUrl}/queue-entry/${entryQueueUuid}`;
+  const params = {
+    endedAt: new Date().toISOString(),
+  };
+  const response = await openmrsFetch(queueEntryUrl, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(params),
+  });
+  const result = await response.json();
+  return result.data;
+}
