@@ -60,13 +60,17 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       const result = await fetchClientRegistryData(payload);
       const patients = Array.isArray(result) ? result : [];
 
-      if (patients.length === 0) throw new Error('No matching patient found in Client Registry.');
+      if (patients.length === 0) {
+        handleCancel();
+        throw new Error('No matching patient found in Client Registry.');
+      }
 
       const patient = patients[0];
       setPrincipal(patient);
       showAlert('success', 'Client Data Loaded', 'Patient fetched successfully');
     } catch (err: any) {
       const errorMessage = err.message || 'Failed to fetch client data';
+      handleCancel();
       showAlert('error', 'Fetch Failed', errorMessage);
     } finally {
       setLoading(false);
@@ -160,9 +164,14 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       }
     }
   };
-  const createAmrsPatient = async (client: HieClient) => {
+  const createAmrsPatient = async () => {
+    const patient = getPatient();
+    if (!patient) {
+      showAlert('error', 'Principal or dependant not selected', '');
+      return;
+    }
     try {
-      const resp = await registerHieClientInAmrs(selectedDependant, locationUuid);
+      const resp = await registerHieClientInAmrs(patient, locationUuid);
       if (resp) {
         showAlert('success', 'Patient created succesfully', '');
         setAmrsPatients([resp]);
@@ -188,10 +197,14 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     setDisplayClientDetailsModal(false);
     setDisplayOtpModal(false);
     setDisplaytriageModal(false);
+    setSelectedPatient('principal');
   };
   const handleOtpSuccessfullVerification = () => {
     setDisplayOtpModal(false);
     setDisplayClientDetailsModal(true);
+  };
+  const registerOnAfyaYangu = () => {
+    window.open('https://afyayangu.go.ke/', '_blank');
   };
   return (
     <>
@@ -237,6 +250,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                   </Button>
                   <Button className={styles.registrySearchBtn} kind="secondary" onClick={handleEmergencyRegistration}>
                     Emergency Registration
+                  </Button>
+                  <Button className={styles.registrySearchBtn} kind="tertiary" onClick={registerOnAfyaYangu}>
+                    Register on Afya Yangu
                   </Button>
                 </div>
               </div>
