@@ -13,7 +13,7 @@ const DailyBookingsFilter: React.FC<DailyBookingsFilterProps> = ({ filterSelecte
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const handleDateChange = (dateSelected: Date[]) => {
-    dateRef.current = new Date(dateSelected[0]).toISOString().split('T')[0];
+    dateRef.current = new Date(dateSelected[0]).toLocaleDateString('en-CA');
   };
   const handleDepartmentChange = (selectedDept: OnChangeData<{ text: string }>) => {
     departmentRef.current = selectedDept.selectedItem.text;
