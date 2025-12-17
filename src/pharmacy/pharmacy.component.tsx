@@ -5,7 +5,7 @@ const PharmacyComponent: React.FC = () => {
   
   return (
     <div>
-      <ExtensionSlot name="poc-pharmacy-dashboard-slot" />
+      <ExtensionSlot name="dispensing-dashboard-slot" />
     </div>
   );
 };
