@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Button,
   Checkbox,
+  ComboBox,
   InlineLoading,
   Modal,
   ModalBody,
@@ -15,7 +16,7 @@ import {
   TableRow,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import { type Patient, useVisitTypes, useSession, showSnackbar } from '@openmrs/esm-framework';
+import { type Patient, useVisitTypes, useSession, showSnackbar, type VisitType } from '@openmrs/esm-framework';
 import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue } from '../../types';
 import { createQueueEntry, fetchServiceQueuesByLocationUuid } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
@@ -49,6 +50,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const visitTypes = useVisitTypes();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
+  const visitTypeOptions = useMemo(() => generateVisitTypeOptions(), [visitTypes]);
   useEffect(() => {
     getServiceQueues();
   }, [patients]);
@@ -109,8 +111,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       setServiceQueues(resp.results);
     }
   };
-  const visitTypeChangeHandler = ($event: any) => {
-    const vt = $event.target.value as unknown as string;
+  const visitTypeChangeHandler = (selectedVisitType: { selectedItem: { id: string; text: string } }) => {
+    const vt = selectedVisitType.selectedItem.id;
     setSelectedVisitType(vt);
   };
   const serviceChangeHandler = ($event: any) => {
@@ -168,6 +170,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     });
   };
 
+  function generateVisitTypeOptions() {
+    return visitTypes.map((vt: VisitType) => {
+      return {
+        id: vt.uuid,
+        text: vt.display,
+      };
+    });
+  }
+
   return (
     <>
       <Modal
@@ -184,7 +195,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             <div className={styles.sectionHeader}>
               <h4 className={styles.sectionTitle}>Send To Triage</h4>
             </div>
-            {patients.length > 0 ? (
+            {patients.length === 0 ? (
               <div className={styles.sectionContent}>
                 <div className={styles.patientSelect}>
                   <Table>
@@ -213,13 +224,13 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                 <div className={styles.formSection}>
                   <div className={styles.formRow}>
                     <div className={styles.formControl}>
-                      <Select id="visit-type" labelText="Select a Visit Type" onChange={visitTypeChangeHandler}>
-                        <SelectItem value="" text="Select" />;
-                        {visitTypes &&
-                          visitTypes.map((vt) => {
-                            return <SelectItem value={vt.uuid} text={vt.display} />;
-                          })}
-                      </Select>
+                      <ComboBox
+                        onChange={visitTypeChangeHandler}
+                        id="visit-type-combobox"
+                        items={visitTypeOptions}
+                        itemToString={(item) => (item ? item.text : '')}
+                        titleText="Select a Visit Type"
+                      />
                     </div>
                     <div className={styles.formControl}>
                       <Select id="service" labelText="Select a Service" onChange={serviceChangeHandler}>
