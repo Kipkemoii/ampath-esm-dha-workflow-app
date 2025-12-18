@@ -195,7 +195,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             <div className={styles.sectionHeader}>
               <h4 className={styles.sectionTitle}>Send To Triage</h4>
             </div>
-            {patients.length === 0 ? (
+            {patients.length > 0 ? (
               <div className={styles.sectionContent}>
                 <div className={styles.patientSelect}>
                   <Table>
