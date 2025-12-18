@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { OtpStatus, type RequestCustomOtpDto } from '../../types';
-import { Button, InlineLoading, Modal, ModalBody, TextInput } from '@carbon/react';
+import { Button, FormLabel, InlineLoading, Modal, ModalBody } from '@carbon/react';
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
 import { maskValue } from '../../utils/mask-data';
+import OTPInput from '../../../shared/ui/otp-input/otp-input.component';
 
 interface OtpVerificationModalpProps {
   requestCustomOtpDto: RequestCustomOtpDto;
@@ -114,23 +115,19 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                   <></>
                 )}
 
-                {otpStatus === OtpStatus.Sent ? (
+                {otpStatus === OtpStatus.Verified ? (
                   <>
-                    <TextInput
-                      id="otp-input"
-                      labelText="Enter OTP"
-                      value={otp}
-                      onChange={(e) => setOtp(e.target.value)}
-                      placeholder="Enter the code sent to your phone"
-                    />
+                    <h6>OTP Verification Successfull!</h6>
                   </>
                 ) : (
                   <></>
                 )}
-
-                {otpStatus === OtpStatus.Verified ? (
+              </div>
+              <div className={styles.otpSection}>
+                {otpStatus === OtpStatus.Sent ? (
                   <>
-                    <h6>OTP Verification Successfull!</h6>
+                    <FormLabel>Enter OTP</FormLabel>
+                    <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
                   </>
                 ) : (
                   <></>
