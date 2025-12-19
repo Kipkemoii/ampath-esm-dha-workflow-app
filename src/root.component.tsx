@@ -12,6 +12,8 @@ import Consultation from './service-queues/consultation/consultation.component';
 import Dashboard from './dashboard/dashboard.component';
 import AccountingComponent from './accounting/accounting.component';
 import DailyBookings from './bookings/daily/daily-bookings.component';
+import MchTriage from './mch/queues/triage/mch-triage';
+import MchConsultation from './mch/queues/consultation/mch-consultation';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -34,6 +36,8 @@ const Root: React.FC = () => {
           <Route path="appointments" element={<AppointmentsComponent />} />
           <Route path="accounting" element={<AccountingComponent />} />
           <Route path="bookings/daily" element={<DailyBookings />} />
+          <Route path="mch/triage" element={<MchTriage />} />
+          <Route path="mch/consultation" element={<MchConsultation />} />
           <Route path="*" element={<RegistryComponent />} />
         </Routes>
       </main>
