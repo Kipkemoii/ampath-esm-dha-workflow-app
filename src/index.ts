@@ -9,6 +9,7 @@ import { configSchema } from './config-schema';
 import { registryDashboardMeta } from './registry-dashboard.meta';
 import { createDashboardLink } from './createDashboardLink';
 import { queueDashboardMeta } from './queue-dashboard.meta';
+import { pharmacyDashboardMeta } from './pharmacy-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -76,3 +77,5 @@ export const registryExtension = getAsyncLifecycle(() => import('./registry/regi
 export const queueDashboardLink = getSyncLifecycle(createDashboardLink(queueDashboardMeta), options);
 
 export const queueDashboardExtension = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
+
+export const pharmacyDashboardLink = getSyncLifecycle(createDashboardLink(pharmacyDashboardMeta), options);

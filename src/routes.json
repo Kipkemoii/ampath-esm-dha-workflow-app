@@ -65,6 +65,18 @@
       "component": "registryExtension",
       "name": "client-registry",
       "slot": "client-registry-dashboard-slot"
+    },
+    {
+      "name": "pharmacy-dashboard-link",
+      "component": "pharmacyDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "dispensing",
+        "slot": "dispensing-dashboard-slot",
+        "title": "Pharmacy"
+      },
+      "online": true,
+      "offline": true
     }
   ],
   "modals": [
