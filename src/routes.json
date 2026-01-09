@@ -77,6 +77,23 @@
       },
       "online": true,
       "offline": true
+    },
+    {
+      "name": "triage-dashboard-link",
+      "component": "triageDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "triage",
+        "slot": "triage-queue-dashboard-slot",
+        "title": "Triage"
+      },
+      "online":true,
+      "offline": false
+    },
+    {
+      "component": "triageQueueExtension",
+      "name": "triage",
+      "slot": "triage-queue-dashboard-slot"
     }
   ],
   "modals": [
