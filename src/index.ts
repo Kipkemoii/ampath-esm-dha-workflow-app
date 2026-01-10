@@ -6,11 +6,13 @@
  */
 import { getAsyncLifecycle, defineConfigSchema, getSyncLifecycle } from '@openmrs/esm-framework';
 import { configSchema } from './config-schema';
-import { registryDashboardMeta } from './registry-dashboard.meta';
+import { registryDashboardMeta } from './dashboard-meta/registry-dashboard.meta';
 import { createDashboardLink } from './createDashboardLink';
-import { queueDashboardMeta } from './queue-dashboard.meta';
-import { pharmacyDashboardMeta } from './pharmacy-dashboard.meta';
-import { triageDashboardMeta } from './triage-dashboard.meta';
+import { queueDashboardMeta } from './dashboard-meta/queue-dashboard.meta';
+import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta';
+import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
+import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboard.meta';
+import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -84,3 +86,14 @@ export const pharmacyDashboardLink = getSyncLifecycle(createDashboardLink(pharma
 export const triageDashboardLink = getSyncLifecycle(createDashboardLink(triageDashboardMeta), options);
 
 export const triageQueueExtension = getAsyncLifecycle(() => import('./triage/triage.component'), options);
+
+export const consultationDashboardLink = getSyncLifecycle(createDashboardLink(consultationDashboardMeta), options);
+
+export const consultationQueue = getAsyncLifecycle(
+  () => import('./service-queues/consultation/consultation.component'),
+  options,
+);
+
+export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dhaWorkflowDashboardMeta), options);
+
+export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
