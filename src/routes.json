@@ -105,6 +105,57 @@
       },
       "online": true,
       "offline": true
+    },
+     {
+      "name": "accounting-dashboard-link",
+      "component": "accountingDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "accounting",
+        "slot": "accounting-dashboard-slot",
+        "title": "Accounting"
+      },
+      "online":true,
+      "offline": false
+    },
+     {
+      "component": "accountingDashboard",
+      "name": "accounting",
+      "slot": "accounting-dashboard-slot"
+    },
+    {
+      "name": "registers-dashboard-link",
+      "component": "registersDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "registers",
+        "slot": "registers-dashboard-slot",
+        "title": "Registers"
+      },
+      "online":true,
+      "offline": false
+    },
+     {
+      "component": "registers",
+      "name": "registers",
+      "slot": "registers-dashboard-slot"
+    },
+    {
+      "name": "reports-dashboard-link",
+      "component": "reportsDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "reports",
+        "slot": "reports-dashboard-slot",
+        "title": "Reports"
+      },
+      "online":true,
+      "offline": false
+    },
+     {
+      "component": "reports",
+      "name": "Reports",
+      "slot": "reports-dashboard-slot"
     }
   ],
   "modals": [

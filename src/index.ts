@@ -13,6 +13,9 @@ import { pharmacyDashboardMeta } from './dashboard-meta/pharmacy-dashboard.meta'
 import { triageDashboardMeta } from './dashboard-meta/triage-dashboard.meta';
 import { consultationDashboardMeta } from './dashboard-meta/consultation-dashboard.meta';
 import { dhaWorkflowDashboardMeta } from './dashboard-meta/dha-workflow-dashboard.meta';
+import { accountingDashboardMeta } from './dashboard-meta/accounting-dashboard.meta';
+import { registersDashboardMeta } from './dashboard-meta/registers-dashboard.meta';
+import { reportsDashboardMeta } from './dashboard-meta/reports-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -97,3 +100,15 @@ export const consultationQueue = getAsyncLifecycle(
 export const dhaWorkflowDashboardLink = getSyncLifecycle(createDashboardLink(dhaWorkflowDashboardMeta), options);
 
 export const dhaWorkflowDashboard = getAsyncLifecycle(() => import('./dashboard/dashboard.component'), options);
+
+export const accountingDashboardLink = getSyncLifecycle(createDashboardLink(accountingDashboardMeta), options);
+
+export const accountingDashboard = getAsyncLifecycle(() => import('./accounting/accounting.component'), options);
+
+export const registersDashboardLink = getSyncLifecycle(createDashboardLink(registersDashboardMeta), options);
+
+export const registersDashboard = getAsyncLifecycle(() => import('./registers/registers.component'), options);
+
+export const reportsDashboardLink = getSyncLifecycle(createDashboardLink(reportsDashboardMeta), options);
+
+export const reportsDashboard = getAsyncLifecycle(() => import('./reports/reports.component'), options);
