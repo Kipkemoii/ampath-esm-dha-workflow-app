@@ -3,7 +3,6 @@ import {
   Button,
   Checkbox,
   ComboBox,
-  InlineLoading,
   Modal,
   ModalBody,
   Select,
@@ -17,10 +16,25 @@ import {
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
 import { type Patient, useVisitTypes, useSession, showSnackbar, type VisitType } from '@openmrs/esm-framework';
-import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue } from '../../types';
+import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue, PaymentDetail } from '../../types';
 import { createQueueEntry, getFacilityServiceQueues } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { createVisit } from '../../../resources/visit.resource';
+import {
+  createBill,
+  fetchBillableServices,
+  fetchCashPoints,
+  fetchPaymentModes,
+} from '../../../shared/services/billing.resource';
+import {
+  type PayableBillableService,
+  type ServicePrice,
+  type BillableService,
+  type PaymentMode,
+  type CreateBillDto,
+  type PaymentStatus,
+  type CashPoint,
+} from '../../../shared/types';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -45,14 +59,35 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedVisitType, setSelectedVisitType] = useState<string>();
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>();
   const [selectedServiceQueue, setSelectedServiceQueue] = useState<string>();
+  const [paymentModes, setPaymentModes] = useState<PaymentMode[]>([]);
+  const [cashPoints, setCashPoints] = useState<CashPoint[]>([]);
+  const [selectedCashPoint, setSelectedCashPoint] = useState<CashPoint>(null);
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>(null);
   const [selectedPriority, setSelectedPriority] = useState<string>('');
+  const [selectedPaymentDetail, setSelectedPaymentDetail] = useState<string>();
+  const [billableServices, setBillableServices] = useState<BillableService[]>([]);
+  const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
+  const [filteredBillableServices, setFilteredBillableServices] = useState<ServicePrice[]>(null);
+  const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice>(null);
   const [loading, setLoading] = useState<boolean>(false);
   const visitTypes = useVisitTypes();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const visitTypeOptions = useMemo(() => generateVisitTypeOptions(), [visitTypes]);
+
+  const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+
+  const paymentDetails = Object.values(PaymentDetail).map((value) => {
+    return {
+      id: value,
+      label: value,
+    };
+  });
   useEffect(() => {
     getServiceQueues();
+    getPaymentMethods();
+    getBillableServices();
+    getCashPoints();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
@@ -63,6 +98,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const sendToTriage = async () => {
     setLoading(true);
     try {
+      const createBillDto = generateCreateBillDto();
+      const resp = await createBill(createBillDto);
+      if (resp) {
+        showAlert('success', 'Bill succesfully created', '');
+      }
       const newVisit = await createPatientVisit();
       if (newVisit) {
         const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit.uuid);
@@ -115,6 +155,40 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   };
   const priorityChangeHandler = (priorityUuid: string) => {
     setSelectedPriority(priorityUuid);
+  };
+  const paymentDetailsHandler = (paymentDetailSelected: string) => {
+    setSelectedPaymentDetail(paymentDetailSelected);
+  };
+  const paymentMethodHandler = (selectedPaymentModeUuid: string) => {
+    const selectedPaymentMode = paymentModes.find((pm) => {
+      return pm.uuid === selectedPaymentModeUuid;
+    });
+    setSelectedPaymentMode(selectedPaymentMode);
+    const paymentModeBillableServices = getBillableServiceByPaymentMode(selectedPaymentMode);
+    setFilteredBillableServices(paymentModeBillableServices);
+  };
+  const getBillableServiceByPaymentMode = (paymentMode: PaymentMode): PayableBillableService[] => {
+    const paymentBillableServices: ServicePrice[] = [];
+    servicePrices.forEach((sp) => {
+      if (sp.paymentMode) {
+        if (sp.paymentMode.uuid === paymentMode.uuid) {
+          paymentBillableServices.push(sp);
+        }
+      }
+    });
+    return paymentBillableServices;
+  };
+  const billableServicesHandler = (selectedBillableServiceUuid: string) => {
+    const selectedBillableService = servicePrices.find((sp) => {
+      return sp.uuid === selectedBillableServiceUuid;
+    });
+    setSelectedBillableService(selectedBillableService);
+  };
+  const cashPointsHandler = (selectedCashPointUuid: string) => {
+    const selectedCashPoint = cashPoints.find((cp) => {
+      return cp.uuid === selectedCashPointUuid;
+    });
+    setSelectedCashPoint(selectedCashPoint);
   };
   const createPatientVisit = async () => {
     const visitDto = getCreateVisitDto();
@@ -187,6 +261,62 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
   }
 
+  async function getPaymentMethods() {
+    const methods = await fetchPaymentModes();
+    setPaymentModes(methods);
+  }
+
+  async function getBillableServices() {
+    const billableServices = await fetchBillableServices();
+    setBillableServices(billableServices);
+    generateServiceTypesList(billableServices);
+  }
+
+  async function getCashPoints() {
+    const cp = await fetchCashPoints();
+    setCashPoints(cp);
+  }
+
+  function getfacilityCashpoints() {
+    return cashPoints.filter((cp) => {
+      return cp.location.uuid === locationUuid;
+    });
+  }
+
+  function generateServiceTypesList(billableServices: BillableService[]) {
+    const sp: ServicePrice[] = [];
+    for (let bs of billableServices) {
+      if (bs.servicePrices) {
+        const servicePrices = bs.servicePrices;
+        for (let servicePrice of servicePrices) {
+          sp.push(servicePrice);
+        }
+      }
+    }
+    setServicePrices(sp);
+  }
+
+  function generateCreateBillDto(): CreateBillDto {
+    const payload: CreateBillDto = {
+      lineItems: [
+        {
+          billableService: selectedBillableService.billableService.uuid,
+          quantity: 1,
+          price: selectedBillableService.price,
+          priceName: selectedBillableService.name,
+          priceUuid: selectedBillableService.uuid,
+          lineItemOrder: 0,
+          paymentStatus: 'PENDING',
+        },
+      ],
+      cashPoint: selectedCashPoint.uuid,
+      patient: selectedPatient.uuid,
+      status: 'PENDING',
+      payments: [],
+    };
+    return payload;
+  }
+
   return (
     <>
       <Modal
@@ -232,6 +362,78 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                 <div className={styles.formSection}>
                   <div className={styles.formRow}>
                     <div className={styles.formControl}>
+                      <Select
+                        id="payment-details"
+                        labelText="Payment Details"
+                        onChange={($event) => paymentDetailsHandler($event.target.value)}
+                      >
+                        <SelectItem value="" text="Select" />;
+                        {paymentDetails.map((pd) => {
+                          return <SelectItem value={pd.id} text={pd.label} />;
+                        })}
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+                <div className={styles.formSection}>
+                  {selectedPaymentDetail === PaymentDetail.Paying ? (
+                    <>
+                      <div className={styles.formRow}>
+                        <div className={styles.formControl}>
+                          <Select
+                            id="payment-method"
+                            labelText="Payment Method"
+                            onChange={($event) => paymentMethodHandler($event.target.value)}
+                          >
+                            <SelectItem value="" text="Select" />;
+                            {paymentModes &&
+                              paymentModes.map((pm) => {
+                                return <SelectItem value={pm.uuid} text={pm.name} />;
+                              })}
+                          </Select>
+                        </div>
+                        <div className={styles.formControl}>
+                          <Select
+                            id="billable-service"
+                            labelText="Billable Services"
+                            onChange={($event) => billableServicesHandler($event.target.value)}
+                          >
+                            <SelectItem value="" text="Select" />;
+                            {filteredBillableServices &&
+                              filteredBillableServices.map((sp) => {
+                                return (
+                                  <SelectItem
+                                    value={sp.uuid}
+                                    text={`${sp.billableService.name}(${sp.name}:${sp.price})`}
+                                  />
+                                );
+                              })}
+                          </Select>
+                        </div>
+                      </div>
+                      <div className={styles.formRow}>
+                        <div className={styles.formControl}>
+                          <Select
+                            id="cash-point"
+                            labelText="Cash Point"
+                            onChange={($event) => cashPointsHandler($event.target.value)}
+                          >
+                            <SelectItem value="" text="Select" />;
+                            {facilityCashPoints &&
+                              facilityCashPoints.map((cp) => {
+                                return <SelectItem value={cp.uuid} text={cp.name} />;
+                              })}
+                          </Select>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <></>
+                  )}
+                </div>
+                <div className={styles.formSection}>
+                  <div className={styles.formRow}>
+                    <div className={styles.formControl}>
                       <ComboBox
                         onChange={visitTypeChangeHandler}
                         id="visit-type-combobox"
@@ -241,7 +443,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                       />
                     </div>
                     <div className={styles.formControl}>
-                      <Select id="service" labelText="Select a Service" onChange={serviceChangeHandler}>
+                      <Select id="service" labelText="Select a Queue Service" onChange={serviceChangeHandler}>
                         <SelectItem value="" text="Select" />;
                         {serviceQueues &&
                           serviceQueues.map((sq) => {

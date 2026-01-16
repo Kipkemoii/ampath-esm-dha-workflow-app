@@ -307,3 +307,8 @@ export type QueueEntryResult = {
   visit_uuid: string;
   queue_coming_from: string;
 };
+
+export enum PaymentDetail {
+  Paying = 'Paying',
+  NonPaying = 'Non-Paying',
+}

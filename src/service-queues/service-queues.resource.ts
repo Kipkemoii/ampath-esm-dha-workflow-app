@@ -141,7 +141,7 @@ export function useQueue(service: string = '7f7ec7ad-cdd7-4ed9-bc2e-5c5bd9f065b2
     Error
   >(service ? apiUrl : null, openmrsFetch);
 
-  return { data, isLoading };
+ return { data, isLoading };
 }
 
 export async function getServiceQueueByLocationUuid(
