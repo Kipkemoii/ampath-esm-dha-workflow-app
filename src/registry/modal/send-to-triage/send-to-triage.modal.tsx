@@ -98,22 +98,28 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const sendToTriage = async () => {
     setLoading(true);
     try {
-      const createBillDto = generateCreateBillDto();
-      const resp = await createBill(createBillDto);
-      if (resp) {
-        showAlert('success', 'Bill succesfully created', '');
-      }
       const newVisit = await createPatientVisit();
       if (newVisit) {
         const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit.uuid);
         const queueEntryResp = await createQueueEntry(addToTriageQueueDto);
+
         if (queueEntryResp) {
           showAlert('success', 'Patient has succesfully been moved to the Triage queue', '');
+        }
+
+        // add bill
+        const createBillDto = generateCreateBillDto();
+        const createBillResp = await createBill(createBillDto);
+        if (createBillResp) {
+          showAlert('success', 'Bill succesfully created', '');
+        }
+
+        if (queueEntryResp && createBillResp) {
           onModalClose({ success: true });
         }
       }
     } catch (error) {
-      showAlert('error', 'Error creating visit', '');
+      showAlert('error', error.message ?? 'Error creating visit', '');
     } finally {
       setLoading(false);
     }

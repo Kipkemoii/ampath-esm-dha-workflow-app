@@ -1,5 +1,5 @@
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
-import { EndVisitDto, type CreateVisitDto } from '../registry/types';
+import { type EndVisitDto, type CreateVisitDto } from '../registry/types';
 
 export async function createVisit(createVisitDto: CreateVisitDto) {
   const url = `${restBaseUrl}/visit`;

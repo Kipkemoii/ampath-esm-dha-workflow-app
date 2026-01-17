@@ -26,7 +26,7 @@ export async function createBill(createBillDto: CreateBillDto) {
     body: JSON.stringify(createBillDto),
   });
   const result = await response.json();
-  return result.data;
+  return result.results ?? [];
 }
 
 export async function fetchCashPoints(): Promise<CashPoint[]> {
