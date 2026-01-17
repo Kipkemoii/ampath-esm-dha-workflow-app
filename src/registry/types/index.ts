@@ -227,6 +227,12 @@ export type CreateVisitDto = {
   startDatetime: null | string;
   stopDatetime: null | string;
   patient: string;
+  attributes?: VisitAttribute[];
+};
+
+export type VisitAttribute = {
+  attributeType: string;
+  value: string;
 };
 
 export type EndVisitDto = {
@@ -312,3 +318,5 @@ export enum PaymentDetail {
   Paying = 'Paying',
   NonPaying = 'Non-Paying',
 }
+
+export const CCC_UUID = 'a8a3899a-1350-11df-a1f1-0026b9348838';

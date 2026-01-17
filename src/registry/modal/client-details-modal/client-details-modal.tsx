@@ -3,7 +3,6 @@ import { type HieClient } from '../../types';
 import React from 'react';
 import styles from './client-details-modal.scss';
 import ClientDetails from '../../client-details/client-details';
-import PaymentOptionsComponent from '../../payment-details/payment-options/payment-options';
 
 interface ClientDetailsModalProps {
   client: HieClient;
@@ -33,27 +32,23 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
         size="md"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={registerOnAfyaYangu}
-        primaryButtonText="Register on Afya Yangu"
+        onRequestSubmit={() => onSendClientToTriage(client.id)}
+        primaryButtonText="Send To Triage"
         secondaryButtonText="Cancel"
       >
         <ModalBody>
           <div className={styles.clientDetailsLayout}>
             <div className={styles.sectionHeader}>
-              <h4 className={styles.sectionTitle}>Patient/Payment Details</h4>
+              <h4 className={styles.sectionTitle}>Patient Details</h4>
             </div>
             <div className={styles.sectionContent}>
               <Tabs>
                 <TabList contained>
                   <Tab>Patient Details</Tab>
-                  <Tab>Payment Details</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
                     <ClientDetails client={client} />
-                  </TabPanel>
-                  <TabPanel>
-                    <PaymentOptionsComponent />
                   </TabPanel>
                 </TabPanels>
               </Tabs>
@@ -64,11 +59,6 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
               </div>
               <div className={styles.btnContainer}>
                 <Button kind="secondary">Walk In Orders</Button>
-              </div>
-              <div className={styles.btnContainer}>
-                <Button kind="tertiary" onClick={() => onSendClientToTriage(client.id)}>
-                  Send To Triage
-                </Button>
               </div>
             </div>
           </div>

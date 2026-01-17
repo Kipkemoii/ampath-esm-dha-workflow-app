@@ -13,10 +13,19 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
 import { type Patient, useVisitTypes, useSession, showSnackbar, type VisitType } from '@openmrs/esm-framework';
-import { type HieClient, type CreateVisitDto, type QueueEntryDto, type ServiceQueue, PaymentDetail } from '../../types';
+import {
+  type HieClient,
+  type CreateVisitDto,
+  type QueueEntryDto,
+  type ServiceQueue,
+  PaymentDetail,
+  CCC_UUID,
+  type VisitAttribute,
+} from '../../types';
 import { createQueueEntry, getFacilityServiceQueues } from '../../../resources/queue.resource';
 import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
 import { createVisit } from '../../../resources/visit.resource';
@@ -69,6 +78,9 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
   const [filteredBillableServices, setFilteredBillableServices] = useState<ServicePrice[]>(null);
   const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice>(null);
+  const [selectedInsuranceScheme, setSelectedInsuranceScheme] = useState<string>('');
+  const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
+  const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
   const visitTypes = useVisitTypes();
   const session = useSession();
@@ -107,11 +119,18 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
           showAlert('success', 'Patient has succesfully been moved to the Triage queue', '');
         }
 
-        // add bill
-        const createBillDto = generateCreateBillDto();
-        const createBillResp = await createBill(createBillDto);
-        if (createBillResp) {
-          showAlert('success', 'Bill succesfully created', '');
+        // add bill if it was a paying client
+        let createBillResp = null;
+        if (selectedPaymentDetail === PaymentDetail.Paying && selectedBillableService) {
+          const createBillDto = generateCreateBillDto();
+          if (isValidCreateBillDto(createBillDto)) {
+            createBillResp = await createBill(createBillDto);
+            if (createBillResp) {
+              showAlert('success', 'Bill succesfully created', '');
+            }
+          }
+        } else {
+          createBillResp = true;
         }
 
         if (queueEntryResp && createBillResp) {
@@ -172,6 +191,9 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     setSelectedPaymentMode(selectedPaymentMode);
     const paymentModeBillableServices = getBillableServiceByPaymentMode(selectedPaymentMode);
     setFilteredBillableServices(paymentModeBillableServices);
+    setSelectedInsuranceScheme('');
+    setSelectedInsurancePolicy('');
+    setSelectedPriority('');
   };
   const getBillableServiceByPaymentMode = (paymentMode: PaymentMode): PayableBillableService[] => {
     const paymentBillableServices: ServicePrice[] = [];
@@ -195,6 +217,15 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       return cp.uuid === selectedCashPointUuid;
     });
     setSelectedCashPoint(selectedCashPoint);
+  };
+  const insuranceSchemeHandler = (selectedInsuranceScheme: string) => {
+    setSelectedInsuranceScheme(selectedInsuranceScheme);
+  };
+  const insurancePolicyHandler = (selectedInsurancePolicy: string) => {
+    setSelectedInsurancePolicy(selectedInsurancePolicy);
+  };
+  const patientCategoryHandler = (categoryUuid: string) => {
+    setSelectedPatientCategory(categoryUuid);
   };
   const createPatientVisit = async () => {
     const visitDto = getCreateVisitDto();
@@ -228,13 +259,18 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     return true;
   };
   const getCreateVisitDto = (): CreateVisitDto => {
-    return {
+    const visitAttributes = getVisitAttributes();
+    const visitDto: CreateVisitDto = {
       visitType: selectedVisitType,
       location: locationUuid,
       startDatetime: null,
       stopDatetime: null,
-      patient: selectedPatient?.uuid ?? '',
+      patient: selectedPatient?.uuid,
     };
+    if (visitAttributes.length > 0) {
+      visitDto['attributes'] = visitAttributes;
+    }
+    return visitDto;
   };
   const showAlert = (alertType: 'error' | 'success', title: string, subtitle: string) => {
     showSnackbar({
@@ -243,6 +279,29 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       subtitle: subtitle,
     });
   };
+
+  function getVisitAttributes(): VisitAttribute[] {
+    const attributes: VisitAttribute[] = [];
+    if (selectedInsuranceScheme) {
+      attributes.push({
+        attributeType: '3a988e33-a6c0-4b76-b924-01abb998944b',
+        value: selectedInsuranceScheme,
+      });
+    }
+    if (selectedInsurancePolicy) {
+      attributes.push({
+        attributeType: 'aac48226-d143-4274-80e0-264db4e368ee',
+        value: selectedInsurancePolicy,
+      });
+    }
+    if (selectedPaymentMode) {
+      attributes.push({
+        attributeType: '8553afa0-bdb9-4d3c-8a98-05fa9350aa85',
+        value: selectedPaymentMode.uuid,
+      });
+    }
+    return attributes;
+  }
 
   function generateVisitTypeOptions() {
     return visitTypes.map((vt: VisitType) => {
@@ -321,6 +380,32 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       payments: [],
     };
     return payload;
+  }
+  function isValidCreateBillDto(createBillDto: CreateBillDto): boolean {
+    if (!createBillDto.patient) {
+      showAlert('error', 'Please select a patient', '');
+      return false;
+    }
+    if (!createBillDto.status) {
+      showAlert('error', 'Bill does not have a status', '');
+      return false;
+    }
+    if (!createBillDto.cashPoint) {
+      showAlert('error', 'Please select a cashpoint', '');
+      return false;
+    }
+    if (!createBillDto.lineItems || createBillDto.lineItems.length === 0) {
+      showAlert('error', 'Please select a valid cashpoint', '');
+      return false;
+    }
+    return true;
+  }
+
+  function hasSelectedPaymentMode(paymentMode: string): boolean {
+    if (!selectedPaymentMode) {
+      return false;
+    }
+    return selectedPaymentMode.name.trim().toLowerCase().includes(paymentMode.trim().toLowerCase());
   }
 
   return (
@@ -417,6 +502,28 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                           </Select>
                         </div>
                       </div>
+                      {hasSelectedPaymentMode('insurance') ? (
+                        <>
+                          <div className={styles.formRow}>
+                            <div className={styles.formControl}>
+                              <TextInput
+                                id="insurance-scheme"
+                                labelText="Insurance scheme"
+                                onChange={(e) => insuranceSchemeHandler(e.target.value)}
+                              />
+                            </div>
+                            <div className={styles.formControl}>
+                              <TextInput
+                                id="policy-number"
+                                labelText="Policy number"
+                                onChange={(e) => insurancePolicyHandler(e.target.value)}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <></>
+                      )}
                       <div className={styles.formRow}>
                         <div className={styles.formControl}>
                           <Select
@@ -429,6 +536,25 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                               facilityCashPoints.map((cp) => {
                                 return <SelectItem value={cp.uuid} text={cp.name} />;
                               })}
+                          </Select>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <></>
+                  )}
+
+                  {selectedPaymentDetail === PaymentDetail.NonPaying ? (
+                    <>
+                      <div className={styles.formRow}>
+                        <div className={styles.formControl}>
+                          <Select
+                            id="patient-category"
+                            labelText="Patient Category"
+                            onChange={($event) => patientCategoryHandler($event.target.value)}
+                          >
+                            <SelectItem value="" text="Select" />;
+                            <SelectItem value={CCC_UUID} text="CCC" />;
                           </Select>
                         </div>
                       </div>
