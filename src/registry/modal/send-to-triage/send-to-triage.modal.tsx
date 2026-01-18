@@ -108,8 +108,23 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     window.open('https://afyayangu.go.ke/', '_blank');
   };
   const sendToTriage = async () => {
+    if (!validateVisitQueueBill()) return;
     setLoading(true);
     try {
+      // add bill if it was a paying client
+      let createBillResp = null;
+      if (selectedPaymentDetail === PaymentDetail.Paying) {
+        const createBillDto = generateCreateBillDto();
+        if (isValidCreateBillDto(createBillDto)) {
+          createBillResp = await createBill(createBillDto);
+          if (createBillResp) {
+            showAlert('success', 'Bill succesfully created', '');
+          }
+        } else {
+          return false;
+        }
+      }
+
       const newVisit = await createPatientVisit();
       if (newVisit) {
         const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit.uuid);
@@ -119,21 +134,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
           showAlert('success', 'Patient has succesfully been moved to the Triage queue', '');
         }
 
-        // add bill if it was a paying client
-        let createBillResp = null;
-        if (selectedPaymentDetail === PaymentDetail.Paying && selectedBillableService) {
-          const createBillDto = generateCreateBillDto();
-          if (isValidCreateBillDto(createBillDto)) {
-            createBillResp = await createBill(createBillDto);
-            if (createBillResp) {
-              showAlert('success', 'Bill succesfully created', '');
-            }
-          }
-        } else {
-          createBillResp = true;
-        }
-
-        if (queueEntryResp && createBillResp) {
+        if ((queueEntryResp && PaymentDetail.Paying && createBillResp) || (queueEntryResp && PaymentDetail.NonPaying)) {
           onModalClose({ success: true });
         }
       }
@@ -143,6 +144,50 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       setLoading(false);
     }
   };
+  function validateVisitQueueBill(): boolean {
+    if (!selectedPatient) {
+      showAlert('error', 'Please select a patient', '');
+      return false;
+    }
+    if (!selectedPaymentDetail) {
+      showAlert('error', 'Please select a paying or non paying option', '');
+      return false;
+    }
+
+    if (selectedPaymentDetail === PaymentDetail.Paying) {
+      if (!selectedPaymentMode) {
+        showAlert('error', 'Please select a payment method', '');
+        return false;
+      }
+      if (!selectedBillableService) {
+        showAlert('error', 'Please select a billable service', '');
+        return false;
+      }
+      if (!selectedCashPoint) {
+        showAlert('error', 'Please select a cashpoint', '');
+        return false;
+      }
+    }
+    if (selectedPaymentDetail === PaymentDetail.NonPaying) {
+      if (!selectedPatientCategory) {
+        showAlert('error', 'Please select a patient category', '');
+        return false;
+      }
+    }
+    if (!selectedVisitType) {
+      showAlert('error', 'Please select a visit type', '');
+      return false;
+    }
+    if (!selectedServiceQueue) {
+      showAlert('error', 'Please select a service queue', '');
+      return false;
+    }
+    if (!selectedPriority) {
+      showAlert('error', 'Please select a service queue priority', '');
+      return false;
+    }
+    return true;
+  }
   const generateAddToTriageDto = (newVisitUuid: string): QueueEntryDto => {
     const payload: QueueEntryDto = {
       visit: {
@@ -391,11 +436,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       return false;
     }
     if (!createBillDto.cashPoint) {
-      showAlert('error', 'Please select a cashpoint', '');
+      showAlert('error', 'Please select a valid cashpoint', '');
       return false;
     }
     if (!createBillDto.lineItems || createBillDto.lineItems.length === 0) {
-      showAlert('error', 'Please select a valid cashpoint', '');
+      showAlert('error', 'Please select a valid billable service', '');
       return false;
     }
     return true;
