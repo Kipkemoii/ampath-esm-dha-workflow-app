@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { OtpStatus, type RequestCustomOtpDto } from '../../types';
-import { Button, FormLabel, InlineLoading, Modal, ModalBody } from '@carbon/react';
+import {
+  Button,
+  FormLabel,
+  InlineLoading,
+  Modal,
+  ModalBody,
+  RadioButton,
+  RadioButtonGroup,
+  TextInput,
+} from '@carbon/react';
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
@@ -26,15 +35,17 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   const [otpStatus, setOtpStatus] = useState<string>(OtpStatus.Draft);
   const [loading, setLoading] = useState<boolean>(false);
   const [sessionId, setSessionId] = useState<string>('');
+  const [overrideOtp, setOverideOtp] = useState<boolean>(false);
+  const [alternativeIdNo, setAlternativeIdNo] = useState<string>();
 
   const handleSendOtp = async () => {
-    if (!requestCustomOtpDto.identificationNumber) {
+    if (!requestCustomOtpDto.identificationNumber && !alternativeIdNo) {
       showAlert('error', 'Invalid Identification Value', 'Please enter a valid ID value');
       return;
     }
     setLoading(true);
     try {
-      const response = await requestCustomOtp(requestCustomOtpDto);
+      const response = await requestCustomOtp(getOtpPayload());
       setSessionId(response.sessionId);
       setOtpStatus(OtpStatus.Sent);
 
@@ -45,6 +56,19 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
     } finally {
       setLoading(false);
     }
+  };
+  const getOtpPayload = (): RequestCustomOtpDto => {
+    let payload: RequestCustomOtpDto = null;
+    if (overrideOtp) {
+      payload = {
+        ...requestCustomOtpDto,
+        identificationNumber: alternativeIdNo,
+      };
+    } else {
+      payload = requestCustomOtpDto;
+    }
+
+    return payload;
   };
   const showAlert = (alertType: 'error' | 'success', title: string, subtitle: string) => {
     showSnackbar({
@@ -129,6 +153,16 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
     }
     return '';
   };
+  const handleOtpOverrideSelection = (overrideSelection: string) => {
+    if (overrideSelection === 'override') {
+      setOverideOtp(true);
+    } else {
+      setOverideOtp(false);
+    }
+  };
+  const handleAlternativeIdNo = (alternativeNo: string) => {
+    setAlternativeIdNo(alternativeNo);
+  };
   return (
     <>
       <Modal
@@ -144,13 +178,38 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
           <div className={styles.modalVerificationLayout}>
             <div className={styles.sectionHeader}>
               <h4 className={styles.sectionTitle}>One Time Password (OTP)</h4>
-              <h6>(Enter one time password to proceed)</h6>
             </div>
             <div className={styles.sectionContent}>
               <div className={styles.contentHeader}>
                 {otpStatus === OtpStatus.Draft ? (
                   <>
-                    <h6>Send Code to Phone {maskAllButFirstAndLastThree(phoneNumber)}?</h6>
+                    <RadioButtonGroup
+                      defaultSelected="no-override"
+                      legendText="OTP Override"
+                      onChange={(v) => handleOtpOverrideSelection(v as string)}
+                      name="override-button-default-group"
+                    >
+                      <RadioButton
+                        id="no-override"
+                        labelText={`Send Code to Phone ${maskAllButFirstAndLastThree(phoneNumber)}?`}
+                        value="no-override"
+                      />
+                      <RadioButton id="override" labelText="Send OTP to alternative contact" value="override" />
+                    </RadioButtonGroup>
+
+                    {overrideOtp ? (
+                      <>
+                        <TextInput
+                          id="override-number"
+                          labelText="Use alternative ID number and OTP will be sent to their phone number"
+                          onChange={(e) => handleAlternativeIdNo(e.target.value)}
+                          required={true}
+                          placeholder=""
+                        />
+                      </>
+                    ) : (
+                      <></>
+                    )}
                   </>
                 ) : (
                   <></>
@@ -168,6 +227,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                 {otpStatus === OtpStatus.Sent ? (
                   <>
                     <div className={styles.otpForm}>
+                      <h6>(Enter one time password to proceed)</h6>
                       <FormLabel>Enter OTP</FormLabel>
                       <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
                     </div>
