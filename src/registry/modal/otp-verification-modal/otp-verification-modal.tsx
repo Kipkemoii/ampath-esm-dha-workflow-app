@@ -199,13 +199,15 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
 
                     {overrideOtp ? (
                       <>
-                        <TextInput
-                          id="override-number"
-                          labelText="Use alternative ID number and OTP will be sent to their phone number"
-                          onChange={(e) => handleAlternativeIdNo(e.target.value)}
-                          required={true}
-                          placeholder=""
-                        />
+                        <div className={styles.formControl}>
+                          <TextInput
+                            id="override-number"
+                            labelText="Use alternative ID number and OTP will be sent to their phone number"
+                            onChange={(e) => handleAlternativeIdNo(e.target.value)}
+                            required={true}
+                            placeholder="Enter National ID"
+                          />
+                        </div>
                       </>
                     ) : (
                       <></>
