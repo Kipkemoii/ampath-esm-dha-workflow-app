@@ -2,7 +2,8 @@ import { type Location } from '@openmrs/esm-framework';
 
 export type BillableService = {
   uuid: string;
-  name: string;
+  name?: string;
+  display?: string;
   shortName: string;
   serviceStatus: 'ENABLED' | 'DISABLED';
   serviceType: ServiceType | null;

@@ -16,7 +16,14 @@ import {
   TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import { type Patient, useVisitTypes, useSession, showSnackbar, type VisitType } from '@openmrs/esm-framework';
+import {
+  type Patient,
+  useVisitTypes,
+  useSession,
+  showSnackbar,
+  type VisitType,
+  type Visit,
+} from '@openmrs/esm-framework';
 import {
   type HieClient,
   type CreateVisitDto,
@@ -127,7 +134,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
       const newVisit = await createPatientVisit();
       if (newVisit) {
-        const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit.uuid);
+        const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit);
         const queueEntryResp = await createQueueEntry(addToTriageQueueDto);
 
         if (queueEntryResp) {
@@ -188,10 +195,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
     return true;
   }
-  const generateAddToTriageDto = (newVisitUuid: string): QueueEntryDto => {
+  const generateAddToTriageDto = (newVisit: Visit): QueueEntryDto => {
     const payload: QueueEntryDto = {
       visit: {
-        uuid: newVisitUuid,
+        uuid: newVisit.uuid,
       },
       queueEntry: {
         status: {
@@ -206,7 +213,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
         patient: {
           uuid: selectedPatient.uuid,
         },
-        startedAt: new Date().toISOString(),
+        startedAt: newVisit.startDatetime,
         sortWeight: 0,
       },
     };
@@ -389,7 +396,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
   function getfacilityCashpoints() {
     return cashPoints.filter((cp) => {
-      return cp.location.uuid === locationUuid;
+      return cp && cp.location?.uuid === locationUuid;
     });
   }
 
@@ -540,7 +547,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                                 return (
                                   <SelectItem
                                     value={sp.uuid}
-                                    text={`${sp.billableService.name}(${sp.name}:${sp.price})`}
+                                    text={`${sp.billableService.display}(${sp.name}:${sp.price})`}
                                   />
                                 );
                               })}

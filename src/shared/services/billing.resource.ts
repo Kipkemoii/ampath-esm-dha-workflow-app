@@ -30,7 +30,8 @@ export async function createBill(createBillDto: CreateBillDto) {
 }
 
 export async function fetchCashPoints(): Promise<CashPoint[]> {
-  const cashPointUrl = `${restBaseUrl}/billing/cashPoint`;
+  const v = 'full';
+  const cashPointUrl = `${restBaseUrl}/billing/cashPoint?v=${v}`;
   const resp = await openmrsFetch(cashPointUrl);
   const data = await resp.json();
   return data.results ?? [];
