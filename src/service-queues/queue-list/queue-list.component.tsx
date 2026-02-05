@@ -10,6 +10,7 @@ import {
   TableHeader,
   TableRow,
   Tag,
+  TextInput,
 } from '@carbon/react';
 import { type QueueEntryResult } from '../../registry/types';
 import React, { useMemo, useState } from 'react';
@@ -38,6 +39,7 @@ const QueueList: React.FC<QueueListProps> = ({
   handleClearQueue,
 }) => {
   const [checkIn, setCheckIn] = useState<boolean>(false);
+  const [searchString, setSearchString] = useState<string>();
   const urgentEntries = useMemo(
     () => sortQueueByPriorityAndWaitTime(queueEntries, QueueEntryPriority.Emergency),
     [queueEntries],
@@ -47,6 +49,7 @@ const QueueList: React.FC<QueueListProps> = ({
     [queueEntries],
   );
   const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries]);
+  const filteredQueueEntries = useMemo(() => filterQueueBySearchString(), [queueEntries, searchString]);
   function generatePatientWaitingList() {
     return [...urgentEntries, ...normalEntries];
   }
@@ -97,11 +100,31 @@ const QueueList: React.FC<QueueListProps> = ({
   const clearQueue = () => {
     handleClearQueue(sortedQueueEntries);
   };
+  const handlQueueSearch = (searchTerm: string) => {
+    setSearchString(searchTerm);
+  };
+  function filterQueueBySearchString(): QueueEntryResult[] {
+    if (!searchString) {
+      return sortedQueueEntries;
+    }
+    return sortedQueueEntries.filter((qe) => {
+      const fullName = `${qe.family_name} ${qe.middle_name} ${qe.given_name}`;
+      return fullName.trim().toLowerCase().includes(searchString.trim().toLowerCase());
+    });
+  }
   return (
     <>
       <div className={styles.queueListLayout}>
         <div className={styles.actionHeader}>
           <>
+            <div className={styles.searchInput}>
+              <TextInput
+                id="queue-search"
+                labelText=""
+                onChange={(e) => handlQueueSearch(e.target.value)}
+                placeholder="Enter patient name to filter"
+              />
+            </div>
             {checkIn ? (
               <>
                 <Button kind="secondary" onClick={handleCheckin}>
@@ -141,8 +164,8 @@ const QueueList: React.FC<QueueListProps> = ({
               </TableRow>
             </TableHead>
             <TableBody>
-              {sortedQueueEntries.map((val, index) => (
-                <TableRow>
+              {filteredQueueEntries.map((val, index) => (
+                <TableRow id={val.queue_entry_uuid}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     {checkIn ? (
