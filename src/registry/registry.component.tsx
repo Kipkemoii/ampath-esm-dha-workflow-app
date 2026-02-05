@@ -10,6 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tag,
   TextInput,
 } from '@carbon/react';
 import React, { useState } from 'react';
@@ -25,6 +26,7 @@ import SendToTriageModal from './modal/send-to-triage/send-to-triage.modal';
 import { formatDependantDisplayData } from './utils/format-dependant-display-data';
 import { registerHieClientInAmrs } from '../resources/hie-amrs-automatic-registration.service';
 import { getErrorMessages } from './utils/error-handler';
+import EligibilityTags from './eligibility/eliigibility-tags/eligibility-tags';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -74,6 +76,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       setLoading(false);
     }
   };
+
   const isValidCustomSmsPayload = (payload: RequestCustomOtpDto): boolean => {
     if (!payload.identificationNumber) {
       showAlert('error', 'Please enter a valid identification number', '');
@@ -301,6 +304,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                               <TableHeader>CR</TableHeader>
                               <TableHeader>Phone No</TableHeader>
                               <TableHeader>ID No</TableHeader>
+                              <TableHeader>Eligibility Status</TableHeader>
                             </TableRow>
                           </TableHead>
                           <TableBody>
@@ -312,6 +316,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                               <TableCell>{maskValue(principal.id)}</TableCell>
                               <TableCell>{maskValue(principal.phone)}</TableCell>
                               <TableCell>{maskValue(principal.identification_number)}</TableCell>
+                              <TableCell>
+                                <EligibilityTags crId={principal.id} locationUuid={locationUuid} />
+                              </TableCell>
                             </TableRow>
                           </TableBody>
                         </Table>
@@ -321,26 +328,60 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                     )}
                     {selectedPatient === 'dependants' ? (
                       <>
-                        <RadioButtonGroup
-                          defaultSelected=""
-                          helperText=""
-                          invalidText=""
-                          legendText=""
-                          name="dependant-group"
-                          onChange={(dependantId) => handleSelectedDependant(dependantId as string)}
-                        >
-                          {principal.dependants.map((d) => {
-                            const dependant = d.result[0];
-                            const relationship = d.relationship;
-                            return (
-                              <RadioButton
-                                id={dependant.id}
-                                labelText={formatDependantDisplayData(dependant, relationship)}
-                                value={dependant.id}
-                              />
-                            );
-                          })}
-                        </RadioButtonGroup>
+                        <div className={styles.dependantDetails}>
+                          <div>
+                            <RadioButtonGroup
+                              defaultSelected=""
+                              helperText=""
+                              invalidText=""
+                              legendText=""
+                              name="dependant-group"
+                              onChange={(dependantId) => handleSelectedDependant(dependantId as string)}
+                            >
+                              {principal.dependants.map((d) => {
+                                const dependant = d.result[0];
+                                const relationship = d.relationship;
+                                return (
+                                  <RadioButton
+                                    id={dependant.id}
+                                    labelText={formatDependantDisplayData(dependant, relationship)}
+                                    value={dependant.id}
+                                  />
+                                );
+                              })}
+                            </RadioButtonGroup>
+                          </div>
+                          <div>
+                            {selectedDependant ? (
+                              <>
+                                <Table>
+                                  <TableHead>
+                                    <TableRow>
+                                      <TableHeader>Name</TableHeader>
+                                      <TableHeader>CR</TableHeader>
+                                      <TableHeader>Eligibility Status</TableHeader>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    <TableRow>
+                                      <TableCell>
+                                        {selectedDependant.first_name}{' '}
+                                        {maskExceptFirstAndLast(selectedDependant.middle_name)}{' '}
+                                        {maskExceptFirstAndLast(selectedDependant.last_name)}
+                                      </TableCell>
+                                      <TableCell>{maskValue(selectedDependant.id)}</TableCell>
+                                      <TableCell>
+                                        <EligibilityTags crId={selectedDependant.id} locationUuid={locationUuid} />
+                                      </TableCell>
+                                    </TableRow>
+                                  </TableBody>
+                                </Table>
+                              </>
+                            ) : (
+                              <></>
+                            )}
+                          </div>
+                        </div>
                       </>
                     ) : (
                       <></>

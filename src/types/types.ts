@@ -163,3 +163,17 @@ export type CreateQueueRoomDto = {
     uuid: string;
   };
 };
+
+export type TagType =
+  | 'red'
+  | 'magenta'
+  | 'purple'
+  | 'blue'
+  | 'cyan'
+  | 'teal'
+  | 'green'
+  | 'gray'
+  | 'cool-gray'
+  | 'warm-gray'
+  | 'high-contrast'
+  | 'outline';

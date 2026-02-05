@@ -29,7 +29,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
     <>
       <Modal
         open={open}
-        size="md"
+        size="lg"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
         onRequestSubmit={() => onSendClientToTriage(client.id)}

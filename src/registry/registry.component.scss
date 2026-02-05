@@ -81,3 +81,9 @@
     flex-direction: row;
     width: 30%;
 }
+.dependantDetails{
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  row-gap: 10px;
+}
