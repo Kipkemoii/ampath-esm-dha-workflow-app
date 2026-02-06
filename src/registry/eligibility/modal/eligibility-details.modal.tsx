@@ -74,6 +74,7 @@ const ClientEligibilityDetailsModal: React.FC<ClientEligibilityDetailsModalProps
                         <TableHeader>Coverage Status</TableHeader>
                         <TableHeader>Coverage Reason</TableHeader>
                         <TableHeader>Principal Contributor</TableHeader>
+                        <TableHeader>Principal Contributor Employment Type</TableHeader>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -84,7 +85,13 @@ const ClientEligibilityDetailsModal: React.FC<ClientEligibilityDetailsModalProps
                             <TableCell>{scheme.schemeName}</TableCell>
                             <TableCell>{scheme.memberType}</TableCell>
                             <TableCell>
-                              {scheme.policy.number} ({scheme.policy.startDate} - {scheme.policy.endDate})
+                              {scheme.policy ? (
+                                <>
+                                  {scheme.policy.number} ({scheme.policy.startDate} - {scheme.policy.endDate})
+                                </>
+                              ) : (
+                                <></>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Tag
@@ -102,9 +109,10 @@ const ClientEligibilityDetailsModal: React.FC<ClientEligibilityDetailsModalProps
                             <TableCell>{scheme.coverage.message}</TableCell>
                             <TableCell>{scheme.coverage.reason}</TableCell>
                             <TableCell>
-                              {scheme.principalContributor.crNumber} : ({scheme.principalContributor.name} :
-                              {scheme.principalContributor.relationship})
+                              {scheme.principalContributor.crNumber} : {scheme.principalContributor.name},
+                              {scheme.principalContributor.relationship}
                             </TableCell>
+                            <TableCell>{scheme.principalContributor.employmentType}</TableCell>
                           </TableRow>
                         );
                       })}
