@@ -1,0 +1,13 @@
+.container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    justify-content: space-between;
+    width: 85vw;
+    min-height: 60vh;
+}
+
+.container iframe {
+  width: 85vw;
+  min-height: 85vh;
+}

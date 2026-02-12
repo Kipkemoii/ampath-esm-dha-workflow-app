@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import styles from './overview.component.scss';
 import { type QueueEntryResult } from '../../registry/types';
 import PatientList from '../patient-list/patient-list.component';
+import Chart from '../charts/chart.component';
 
 interface OverviewProps {
   triageCount?: QueueEntryResult[];
@@ -91,6 +92,7 @@ const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount }) =
           <h4 className={styles.emergency}>0</h4>
         </Tile>
       </div>
+      <Chart />
       <FluidDropdown
         className={styles.dropdownItem}
         id={''}
