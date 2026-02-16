@@ -20,6 +20,7 @@ import { reportsDashboardMeta } from './dashboard-meta/reports-dashboard.meta';
 import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta';
 import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
+import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -131,3 +132,9 @@ export const serviceQueueAdmin = getAsyncLifecycle(
 );
 
 export const serviceQueuesAdminLink = getSyncLifecycle(createDashboardLink(serviceQueueAdminDashboardMeta), options);
+export const admissionsDashboardLink = getSyncLifecycle(createDashboardLink(admissionsDashboardMeta), options);
+
+export const admissionsDashboard = getAsyncLifecycle(
+  () => import('./admissions/admissions-dashboard.component'),
+  options,
+);

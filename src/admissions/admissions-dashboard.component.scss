@@ -1,0 +1,15 @@
+.admissionsLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    padding: 2% 2%;
+}
+
+.statsSection{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    column-gap: 15px;
+    margin-bottom: 15px;
+}

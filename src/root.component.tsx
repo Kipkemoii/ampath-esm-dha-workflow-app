@@ -16,6 +16,7 @@ import MchTriage from './mch/queues/triage/mch-triage';
 import MchConsultation from './mch/queues/consultation/mch-consultation';
 import Mortuary from './mortuary/mortuary.component';
 import ServiceQueueAdminDashboard from './service-queues/admin/service-queue-admin-dashboard.component';
+import AdmissionsDashboard from './admissions/admissions-dashboard.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -42,6 +43,7 @@ const Root: React.FC = () => {
           <Route path="mch/consultation" element={<MchConsultation />} />
           <Route path="mortuary" element={<Mortuary />} />
           <Route path="service-queue-admin" element={<ServiceQueueAdminDashboard />} />
+          <Route path="admissions-dashboard" element={<AdmissionsDashboard />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />

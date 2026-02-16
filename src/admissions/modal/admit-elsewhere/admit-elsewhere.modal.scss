@@ -1,0 +1,23 @@
+.admitModalLayout{
+    display: flex;
+    flex-direction: column;
+    row-gap: 15px;
+    width: 100%;
+}
+.admitModalContentSection{
+    display: flex;
+    flex-direction: column;
+    row-gap: 15px;
+    width: 100%;
+}
+
+.locationSelect{
+    width: 100%;
+}
+
+.formRow{
+   display: flex;
+   flex-direction: row;
+   width: 100%;
+   column-gap: 5px;
+}

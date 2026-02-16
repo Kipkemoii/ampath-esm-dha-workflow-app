@@ -4,9 +4,10 @@ import styles from './stat-card.component.scss';
 interface StatCardProps {
   title: string;
   count: number;
+  other?: string;
 }
 
-const StatCard: React.FC<StatCardProps> = ({ title, count }) => {
+const StatCard: React.FC<StatCardProps> = ({ title, count, other }) => {
   if (!title) {
     return <></>;
   }
@@ -14,7 +15,9 @@ const StatCard: React.FC<StatCardProps> = ({ title, count }) => {
     <div className={styles.statsCard}>
       <div className={styles.statsCardHeader}>
         <h5>{title}</h5>
-        <h1>{count}</h1>
+        <h1>
+          {count} {other}
+        </h1>
       </div>
     </div>
   );

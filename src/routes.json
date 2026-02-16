@@ -200,6 +200,23 @@
       "component": "serviceQueueAdmin",
       "name": "service-queue-admin",
       "slot": "service-queue-admin-dashboard-slot"
+    },
+    {
+      "name": "admissions-dashboard-link",
+      "component": "admissionsDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "admissions-dashboard",
+        "slot": "admissions-dashboard-slot",
+        "title": "Admissions Dashboard"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "admissionsDashboard",
+      "name": "admissions-dashboard",
+      "slot": "admissions-dashboard-slot"
     }
   ],
   "modals": [
