@@ -44,6 +44,7 @@ export type PayableBillableService = ServicePrice & {
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'CANCELLED';
 
 export type LineItem = {
+  uuid?: string;
   billableService: string;
   quantity: number;
   price: number;
@@ -51,6 +52,8 @@ export type LineItem = {
   priceUuid: string;
   lineItemOrder: number;
   paymentStatus: PaymentStatus;
+  voided?: boolean;
+  voidedReason?: string;
 };
 
 export type CreateBillDto = {
@@ -67,4 +70,58 @@ export type CashPoint = {
   description: string;
   retired: boolean;
   location: Location;
+};
+
+export type CreateClientPaymentModeDto = {
+  clientId: string;
+  paymentModeUuid: string;
+};
+export type HieClientPaymentMode = {
+  client_id: string;
+  payment_mode_uuid: string;
+};
+
+export type HieBillPayment = {
+  billUuid: string;
+  paymentUuid: string;
+  referenceNo: string;
+};
+
+export type ServiceQueueDailyReport = {
+  queue_room_name: string;
+  patients: number;
+};
+
+export type ServiceQueueDailyReportResp = {
+  schemas: any;
+  sqlQuery: string;
+  size: number;
+  result: ServiceQueueDailyReport[];
+};
+
+export type ServiceQueueReportPatientList = {
+  queue_entry_id: number;
+  patient_id: number;
+  queue_id: number;
+  queue_room_name: string;
+  queue_room_id: number;
+  service_name: string;
+  patient_uuid: string;
+  uuid: string;
+  person_id: number;
+  gender: string;
+  birthdate: string;
+  age: number;
+  person_name: string;
+  identifiers: string;
+  phone_number: string;
+};
+
+export type ServiceQueueDailyPatientListReportResp = {
+  schemas: any;
+  sqlQuery: string;
+  size: number;
+  results: {
+    results: ServiceQueueReportPatientList[];
+  };
 };

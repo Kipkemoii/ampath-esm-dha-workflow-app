@@ -16,6 +16,12 @@ export enum OtpStatus {
   Verified = 'VERIFIED',
 }
 
+export enum OtpOptions {
+  Skip = 'SKIP',
+  NoOverride = 'NO OVERRIDE',
+  Override = 'OVERRIDE',
+}
+
 export interface ValidateCustomOtpResponse {
   message: string;
   isValid?: boolean;
@@ -312,14 +318,20 @@ export type QueueEntryResult = {
   status: string;
   visit_uuid: string;
   queue_coming_from: string;
+  bill_status: string;
+  bill_item_payment_status: string;
+  price_name: string;
+  cash_unpaid_client: string;
+  hide_in_queue: number;
+  identifiers: string;
+  phone_number: string;
+  age: number;
 };
 
 export enum PaymentDetail {
   Paying = 'Paying',
   NonPaying = 'Non-Paying',
 }
-
-export const CCC_UUID = 'a8a3899a-1350-11df-a1f1-0026b9348838';
 
 export type EligibilityFilterDto = {
   requestIdType: string;

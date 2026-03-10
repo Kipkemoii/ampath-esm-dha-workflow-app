@@ -22,6 +22,7 @@ import { mchQueueDashboardMeta } from './dashboard-meta/mch-dashboard.meta';
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
+import { billingDashboardMeta } from './dashboard-meta/billing-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -150,5 +151,23 @@ export const patientChartAdmissionsLink = getSyncLifecycle(
 );
 export const patientAdmissionSummary = getAsyncLifecycle(
   () => import('./admissions/inpatient/inpatient-admissions.component'),
+  options,
+);
+export const billingDashboardLink = getSyncLifecycle(createDashboardLink(billingDashboardMeta), options);
+
+export const billingDashboard = getAsyncLifecycle(
+  () => import('./billing/dashboard/billingDashboard.component'),
+  options,
+);
+
+export const billingRoot = getAsyncLifecycle(() => import('./billing/billing-root'), options);
+
+export const createOrderBillFormWorkspace = getAsyncLifecycle(
+  () => import('./billing/workspaces/create-order-bill-form-workspace/create-order-bill-form.workspace'),
+  options,
+);
+
+export const visitBillingForm = getAsyncLifecycle(
+  () => import('./billing/extensions/visit-billing/visit-billing.extension'),
   options,
 );

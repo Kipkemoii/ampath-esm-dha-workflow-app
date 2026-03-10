@@ -1,8 +1,12 @@
-import { Button, Modal, ModalBody, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { Modal, ModalBody, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { type HieClient } from '../../types';
-import React from 'react';
+import React, { useState } from 'react';
 import styles from './client-details-modal.scss';
 import ClientDetails from '../../client-details/client-details';
+import PaymentOptionsComponent from '../../payment-details/payment-options/payment-options';
+import { type CreateClientPaymentModeDto, type HieClientPaymentMode, type PaymentMode } from '../../../shared/types';
+import { createClientPaymentMode } from '../../../shared/services/client-payment-mode.resource';
+import { showSnackbar } from '@openmrs/esm-framework';
 
 interface ClientDetailsModalProps {
   client: HieClient;
@@ -19,11 +23,51 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
   onSubmit,
   onSendClientToTriage,
 }) => {
+  const [selectedPaymentMode, setSelectedPaymentMode] = useState<PaymentMode>();
+  const [clientPaymentMode, setClientPaymentMode] = useState<HieClientPaymentMode>();
   if (!client) {
     return <>No Client data</>;
   }
-  const registerOnAfyaYangu = () => {
-    window.open('https://afyayangu.go.ke/', '_blank');
+  const handleSelectedPatientOption = (selectedPaymentMode: PaymentMode) => {
+    setSelectedPaymentMode(selectedPaymentMode);
+    addClientPaymentMode(selectedPaymentMode);
+  };
+  const generateClientPaymentModePayload = (selectedPaymentMode: PaymentMode): CreateClientPaymentModeDto => {
+    return {
+      clientId: client.id,
+      paymentModeUuid: selectedPaymentMode.uuid,
+    };
+  };
+  const addClientPaymentMode = async (selectedPaymentMode: PaymentMode) => {
+    const paymentModePayload = generateClientPaymentModePayload(selectedPaymentMode);
+    try {
+      const resp = await createClientPaymentMode(paymentModePayload);
+      if (resp) {
+        setClientPaymentMode(resp);
+        showSnackbar({
+          kind: 'success',
+          title: 'Payment method set succesfully',
+          subtitle: `Client Payment method has been set to ${selectedPaymentMode.name} succesfully`,
+        });
+      }
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error setting client payment method',
+        subtitle: 'An error ocurred while setting the client payment method. Please retry or contact support',
+      });
+    }
+  };
+  const confirmPatientDetails = () => {
+    if (!clientPaymentMode) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Missing Payment method',
+        subtitle: 'Please select a payment method before proceeding',
+      });
+    } else {
+      onSendClientToTriage(client.id);
+    }
   };
   return (
     <>
@@ -32,7 +76,7 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
         size="lg"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={() => onSendClientToTriage(client.id)}
+        onRequestSubmit={confirmPatientDetails}
         primaryButtonText="Send To Triage"
         secondaryButtonText="Cancel"
       >
@@ -45,21 +89,17 @@ const ClientDetailsModal: React.FC<ClientDetailsModalProps> = ({
               <Tabs>
                 <TabList contained>
                   <Tab>Patient Details</Tab>
+                  <Tab>Payment Details</Tab>
                 </TabList>
                 <TabPanels>
                   <TabPanel>
                     <ClientDetails client={client} />
                   </TabPanel>
+                  <TabPanel>
+                    <PaymentOptionsComponent onSelectPaymentMethod={handleSelectedPatientOption} />
+                  </TabPanel>
                 </TabPanels>
               </Tabs>
-            </div>
-            <div className={styles.actionSection}>
-              <div className={styles.btnContainer}>
-                <Button kind="primary">Book Appointment</Button>
-              </div>
-              <div className={styles.btnContainer}>
-                <Button kind="secondary">Walk In Orders</Button>
-              </div>
             </div>
           </div>
         </ModalBody>

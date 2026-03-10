@@ -1,0 +1,17 @@
+.headerCardLayout{
+    display: flex;
+    flex-direction: column;
+    width: 20%;
+    .headerTitle{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 5px;
+    }
+    .headerDetails{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 5px;
+    }
+}

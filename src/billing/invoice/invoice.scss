@@ -1,0 +1,113 @@
+.invoiceLayout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 15px;
+    padding: 2% 2%;
+
+    .invoiceHeader {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 5px;
+        width: 100%;
+
+        .invoiceTitle {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+        }
+
+        .invoiceHeaderDetails {
+            display: flex;
+            flex-direction: row;
+            width: 100%;
+            row-gap: 5px;
+        }
+    }
+
+    .contentSection {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 5px;
+        width: 100%;
+
+        .lineItemsSection {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            row-gap: 15px;
+            width: 100%;
+
+            .lineItemsHeader {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+            }
+
+            .lineItemsData {
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+            }
+        }
+
+        .paymentSection {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            row-gap: 10px;
+            margin-top: 15px;
+
+            .paymentSectionHeader {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+            }
+            .paymentDetails{
+                display: flex;
+                flex-direction: column;
+                width: 100%;
+                row-gap: 10px;
+            }
+
+            .paymentSectionContent {
+                display: flex;
+                flex-direction: row;
+                width: 100%;
+                column-gap: 10px;
+                margin-top: 15px;
+
+                .paymentMethodSection {
+                    display: flex;
+                    flex-direction: row;
+                    width: 70%;
+                    column-gap: 5px;
+                }
+
+                .processPaymentSection {
+                    display: flex;
+                    flex-direction: column;
+                    width: 30%;
+                    row-gap: 15px;
+                    .actionRow{
+                        display: flex;
+                        flex-direction: row;
+                        column-gap: 5px;
+                        width: 100%;
+                    }
+                }
+
+            }
+
+        }
+    }
+}
+
+.formRow{
+    display: flex;
+    flex-direction: column;
+    width: 30%;
+    column-gap: 5px;
+}

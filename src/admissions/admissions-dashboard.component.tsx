@@ -1,10 +1,21 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './admissions-dashboard.component.scss';
-import StatCard from '../service-queues/service-queue/stats/stat-card/stat-card.component';
+import StatCard from '../shared/ui/stat-card/stat-card.component';
 import { InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
-import { FHIRResource, useSession } from '@openmrs/esm-framework';
-import { getAdmissionLoactionData, getAdmissionRequests, getAdmittedPatientsData, getDichargedEncounters } from './admissions.resource';
-import { type Disposition, type AdmissionLocationData, BedLayout, FhirEncounter, FhirBundleEntry, FhirEncounterBundle } from './types';
+import { useSession } from '@openmrs/esm-framework';
+import {
+  getAdmissionLoactionData,
+  getAdmissionRequests,
+  getAdmittedPatientsData,
+  getDichargedEncounters,
+} from './admissions.resource';
+import {
+  type Disposition,
+  type AdmissionLocationData,
+  type BedLayout,
+  type FhirEncounter,
+  type FhirEncounterBundle,
+} from './types';
 import AdmittedPatientsList from './admitted-list/admitted-patients-list';
 import AdmissionsRequestList from './admission-request-list/admission-request-list';
 import { AdmissionEncounterTypeUuids } from './constants';
@@ -14,11 +25,11 @@ const AdmissionsDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<AdmissionLocationData>(null);
   const [admissionListData, setAdmissionListData] = useState<Disposition[]>([]);
   const [admittedPatientsData, setAdmittedPatientsData] = useState<BedLayout[]>([]);
-  const [dischargeEncounterBundle,setDischargeEncounterBundle] = useState<FhirEncounterBundle>();
+  const [dischargeEncounterBundle, setDischargeEncounterBundle] = useState<FhirEncounterBundle>();
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
-  const sortedDischargeEncounters = useMemo(()=>generateDischargeEncounters(),[dischargeEncounterBundle])
+  const sortedDischargeEncounters = useMemo(() => generateDischargeEncounters(), [dischargeEncounterBundle]);
   useEffect(() => {
     fetchData();
   }, [locationUuid]);
@@ -28,7 +39,7 @@ const AdmissionsDashboard: React.FC = () => {
     getAdmissionListData();
     getAdmittedPatients();
     getDisachargedEncounters();
-  }
+  };
   const getDashboardData = async () => {
     const res = await getAdmissionLoactionData(locationUuid);
     setDashboardData(res);
@@ -53,30 +64,29 @@ const AdmissionsDashboard: React.FC = () => {
   const getDisachargedEncounters = async () => {
     const res = await getDichargedEncounters(AdmissionEncounterTypeUuids.DISCHARGE_ENCOUNTER_TYPE_UUID, locationUuid);
     setDischargeEncounterBundle(res);
-  }
-  function generateDischargeEncounters(): FhirEncounter[]{
-    if(dischargeEncounterBundle && dischargeEncounterBundle.entry){
-    const fhirEntries = dischargeEncounterBundle.entry ?? [];
-    let dischargeEncounters: FhirEncounter[] = [];
-    fhirEntries.forEach((fe) => {
-      const resource = fe.resource;
-      if (resource && resource.resourceType === 'Encounter') {
-        dischargeEncounters.push(resource);
-      }
-    });
-    // order encounters in desc order
-    const sortedEnc = dischargeEncounters.sort((a,b)=>{
-       return new Date(b.period.start).getTime() - new Date(a.period.start).getTime();
-    });
-    return sortedEnc;
-  }else{
+  };
+  function generateDischargeEncounters(): FhirEncounter[] {
+    if (dischargeEncounterBundle && dischargeEncounterBundle.entry) {
+      const fhirEntries = dischargeEncounterBundle.entry ?? [];
+      let dischargeEncounters: FhirEncounter[] = [];
+      fhirEntries.forEach((fe) => {
+        const resource = fe.resource;
+        if (resource && resource.resourceType === 'Encounter') {
+          dischargeEncounters.push(resource);
+        }
+      });
+      // order encounters in desc order
+      const sortedEnc = dischargeEncounters.sort((a, b) => {
+        return new Date(b.period.start).getTime() - new Date(a.period.start).getTime();
+      });
+      return sortedEnc;
+    } else {
       return [];
-  }
-   
+    }
   }
   const handleRefresh = () => {
     fetchData();
-  }
+  };
   return (
     <>
       <div className={styles.admissionsLayout}>
@@ -98,10 +108,12 @@ const AdmissionsDashboard: React.FC = () => {
           </>
         </div>
         <div className={styles.contentSection}>
-          {
-            loading ? (<>
+          {loading ? (
+            <>
               <InlineLoading description="Fetching Data...please wait...." />
-            </>) : (<>
+            </>
+          ) : (
+            <>
               <Tabs>
                 <TabList contained>
                   <Tab>Admission Requests</Tab>
@@ -110,35 +122,36 @@ const AdmissionsDashboard: React.FC = () => {
                 </TabList>
                 <TabPanels>
                   <TabPanel>
-                    {admissionListData ? <AdmissionsRequestList
-                      admissionListData={admissionListData}
-                      bedLayouts={admittedPatientsData}
-                      refresh={handleRefresh}
-                    /> : <></>}
-                  </TabPanel>
-                  <TabPanel>
-                    {admittedPatientsData ?
-                      <AdmittedPatientsList
-                        admittedPatientsData={admittedPatientsData}
+                    {admissionListData ? (
+                      <AdmissionsRequestList
+                        admissionListData={admissionListData}
+                        bedLayouts={admittedPatientsData}
                         refresh={handleRefresh}
-                      /> : <></>}
+                      />
+                    ) : (
+                      <></>
+                    )}
                   </TabPanel>
                   <TabPanel>
-                    {
-                      sortedDischargeEncounters ? (<>
-                        <DischargedList
-                          dischargedEncounters={sortedDischargeEncounters}
-                          refresh={handleRefresh}
-                        />
-                      </>) : (<></>)
-                    }
-
+                    {admittedPatientsData ? (
+                      <AdmittedPatientsList admittedPatientsData={admittedPatientsData} refresh={handleRefresh} />
+                    ) : (
+                      <></>
+                    )}
+                  </TabPanel>
+                  <TabPanel>
+                    {sortedDischargeEncounters ? (
+                      <>
+                        <DischargedList dischargedEncounters={sortedDischargeEncounters} refresh={handleRefresh} />
+                      </>
+                    ) : (
+                      <></>
+                    )}
                   </TabPanel>
                 </TabPanels>
               </Tabs>
-            </>)
-          }
-
+            </>
+          )}
         </div>
       </div>
     </>

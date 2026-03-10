@@ -1,7 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { type QueueEntryResult } from '../../registry/types';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { closeQueueEntry, getServiceQueueByLocationUuid } from '../service-queues.resource';
+import {
+  closeQueueEntry,
+  getServiceQueueByLocationUuid,
+  getServiceQueueDailyPatientListReport,
+  getServiceQueueDailyReport,
+} from '../service-queues.resource';
 import { Button, InlineLoading, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import QueueList from '../queue-list/queue-list.component';
 import styles from './service-queue.component.scss';
@@ -13,6 +18,8 @@ import SignOffEntryModal from '../modals/sign-off/sign-off.modal';
 import { endVisit } from '../../resources/visit.resource';
 import { QUEUE_SERVICE_UUIDS } from '../../shared/constants/concepts';
 import ConfirmModal from '../../shared/ui/confirm-modal/confirm.modal';
+import { type ServiceQueueReportPatientList, type ServiceQueueDailyReport } from '../../shared/types';
+import DailyReportPatientListModal from '../modals/daily-report-patient-list/daily-report-patient-list';
 
 interface ServiceQueueComponentProps {
   serviceTypeUuid: string;
@@ -21,6 +28,10 @@ interface ServiceQueueComponentProps {
 
 const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTypeUuid, title }) => {
   const [queueEntries, setQueueEntries] = useState<QueueEntryResult[]>([]);
+  const [queueEntryDailyReport, setQueueEntryDailyReport] = useState<ServiceQueueDailyReport[]>([]);
+  const [queueEntryDailyReportPatientList, setQueueEntryDailyReportPatientList] = useState<
+    ServiceQueueReportPatientList[]
+  >([]);
   const [selectedQueueEntry, setSelectedQueueEntry] = useState<QueueEntryResult>();
   const [displayMoveModal, setDisplayMoveModal] = useState<boolean>(false);
   const [displayTransitionModal, setDisplayTransitionModal] = useState<boolean>(false);
@@ -28,6 +39,7 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   const [displaySignOffModal, setDisplaySignOffModal] = useState<boolean>(false);
   const [displayConfirmClearQueueModal, setDisplayConfirmClearQueueModal] = useState<boolean>(false);
   const [queueEntryToClear, setQueueEntryToClear] = useState<QueueEntryResult[]>();
+  const [displayDailyReportPatientListModal, setDisplayDailyReportPatientListModal] = useState<boolean>(false);
   const [loading, setLoading] = useState<boolean>(false);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
@@ -49,14 +61,55 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
   const groupedByRoom: { [key: string]: QueueEntryResult[] } = useMemo(() => groupEntriesByRooms(), [queueEntries]);
 
   useEffect(() => {
-    getEntryQueues();
-  }, []);
+    if (serviceTypeUuid && locationUuid) {
+      getEntryQueues();
+      getEntryQueueDailyReport();
+      fetchStatsPatientList();
+    }
+  }, [serviceTypeUuid, locationUuid]);
+
+  const filterOutClients = (queueEntries: QueueEntryResult[]) => {
+    if (!queueEntries) {
+      return [];
+    }
+    return queueEntries.filter((q) => {
+      if ('hide_in_queue' in q) {
+        return q.hide_in_queue === 0;
+      } else {
+        return true;
+      }
+    });
+  };
 
   const getEntryQueues = async () => {
     setLoading(true);
-    const res = await getServiceQueueByLocationUuid(serviceTypeUuid, locationUuid);
-    setQueueEntries(res);
-    setLoading(false);
+    try {
+      const res = await getServiceQueueByLocationUuid(serviceTypeUuid, locationUuid);
+      const queueClients = filterOutClients(res);
+      setQueueEntries(queueClients);
+      setLoading(false);
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error fetching queue',
+        subtitle: 'An error occurred while fetching the queue. Please reload or contact support',
+      });
+    }
+  };
+
+  const getEntryQueueDailyReport = async () => {
+    setLoading(true);
+    try {
+      const res = await getServiceQueueDailyReport(serviceTypeUuid, locationUuid);
+      setQueueEntryDailyReport(res);
+      setLoading(false);
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error fetching queue daily report',
+        subtitle: 'An error occurred while fetching the queue daily report. Please reload or contact support',
+      });
+    }
   };
 
   if (!groupedByRoom) {
@@ -177,6 +230,29 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
     setQueueEntryToClear([]);
   };
 
+  const fetchStatsPatientList = async () => {
+    try {
+      const resp = await getServiceQueueDailyPatientListReport(serviceTypeUuid, locationUuid);
+      setQueueEntryDailyReportPatientList(resp);
+    } catch (error) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Error fetching patient list',
+        subtitle: 'An error ocuured while fetching the service queue checked in patient list',
+      });
+    }
+  };
+
+  const getStatsPatientList = () => {
+    showDailiyReportPatientListModal();
+  };
+  const handleCloseDailiyReportPatientListModal = () => {
+    setDisplayDailyReportPatientListModal(false);
+  };
+  const showDailiyReportPatientListModal = () => {
+    setDisplayDailyReportPatientListModal(true);
+  };
+
   if (!serviceTypeUuid) {
     return <>No service type defined</>;
   }
@@ -190,7 +266,11 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
         <div>
           {queueEntries ? (
             <>
-              <StatDetails queueEntries={queueEntries} />
+              <StatDetails
+                queueEntries={queueEntries}
+                report={queueEntryDailyReport}
+                onStatDetailsRequest={getStatsPatientList}
+              />
             </>
           ) : (
             <></>
@@ -295,6 +375,18 @@ const ServiceQueueComponent: React.FC<ServiceQueueComponentProps> = ({ serviceTy
             onModalClose={handleCloseConfirmClearQueueModal}
             title="Clear Queue"
             subtitle="You are about to clear the patient queue and their respective visits. Are you sure?"
+          />
+        </>
+      ) : (
+        <></>
+      )}
+
+      {displayDailyReportPatientListModal && queueEntryDailyReportPatientList ? (
+        <>
+          <DailyReportPatientListModal
+            open={displayDailyReportPatientListModal}
+            onModalClose={handleCloseDailiyReportPatientListModal}
+            patientList={queueEntryDailyReportPatientList}
           />
         </>
       ) : (
