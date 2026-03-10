@@ -15,6 +15,12 @@ import useSWR from 'swr';
 import { useMemo } from 'react';
 import { type QueueEntryResult } from '../registry/types';
 import { getEtlBaseUrl } from '../shared/utils/get-base-url';
+import {
+  type ServiceQueueDailyPatientListReportResp,
+  type ServiceQueueDailyReport,
+  type ServiceQueueDailyReportResp,
+  type ServiceQueueReportPatientList,
+} from '../shared/types';
 
 export function serveQueueEntry(servicePointName: string, ticketNumber: string, status: string) {
   const abortController = new AbortController();
@@ -287,4 +293,30 @@ export async function getActiveQueueEntryByPatientUuid(patientUuid: string): Pro
   const response = await openmrsFetch(`${queueUrl}?${queryString}`);
   const result = await response.json();
   return result.results;
+}
+
+export async function getServiceQueueDailyReport(
+  serviceUuid: string,
+  locationUuid: string,
+): Promise<ServiceQueueDailyReport[]> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  const reportUrl = `${etlBaseUrl}/service-queue-daily-report?serviceUuid=${serviceUuid}&locationUuid=${locationUuid}`;
+  const response = await openmrsFetch<ServiceQueueDailyReportResp>(reportUrl);
+  const result = await response.json();
+  return result.result;
+}
+
+export async function getServiceQueueDailyPatientListReport(
+  serviceUuid: string,
+  locationUuid: string,
+): Promise<ServiceQueueReportPatientList[]> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  const reportUrl = `${etlBaseUrl}/service-queue-daily-report/patient-list?serviceUuid=${serviceUuid}&locationUuid=${locationUuid}`;
+  const response = await openmrsFetch<ServiceQueueDailyPatientListReportResp>(reportUrl);
+  const result: ServiceQueueDailyPatientListReportResp = await response.json();
+  if (result && result.results) {
+    return result.results.results ?? [];
+  } else {
+    return [];
+  }
 }

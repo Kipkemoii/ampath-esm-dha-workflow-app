@@ -4,4 +4,9 @@
     width: 100%;
     column-gap: 15px;
     margin-bottom: 15px;
+    .aggregate{
+        display: flex;
+        flex-direction: column;
+        width: 40%;
+    }
 }

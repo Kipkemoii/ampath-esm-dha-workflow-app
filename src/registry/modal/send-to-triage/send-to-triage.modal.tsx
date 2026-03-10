@@ -16,21 +16,13 @@ import {
   TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import {
-  type Patient,
-  useVisitTypes,
-  useSession,
-  showSnackbar,
-  type VisitType,
-  type Visit,
-} from '@openmrs/esm-framework';
+import { type Patient, useSession, showSnackbar, type VisitType, type Visit } from '@openmrs/esm-framework';
 import {
   type HieClient,
   type CreateVisitDto,
   type QueueEntryDto,
   type ServiceQueue,
   PaymentDetail,
-  CCC_UUID,
   type VisitAttribute,
 } from '../../types';
 import { createQueueEntry, getFacilityServiceQueues } from '../../../resources/queue.resource';
@@ -50,7 +42,11 @@ import {
   type CreateBillDto,
   type PaymentStatus,
   type CashPoint,
+  type HieClientPaymentMode,
 } from '../../../shared/types';
+import { PatientCategories } from '../../../shared/constants/patient-category';
+import { fetchClientPaymentMode } from '../../../shared/services/client-payment-mode.resource';
+import { VisitTypeUuids } from '../../../shared/constants/visit-types';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -89,12 +85,27 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedInsurancePolicy, setSelectedInsurancePolicy] = useState<string>('');
   const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const visitTypes = useVisitTypes();
+  const [hieClientPaymentMode, setHieClientPaymentMode] = useState<HieClientPaymentMode>();
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
-  const visitTypeOptions = useMemo(() => generateVisitTypeOptions(), [visitTypes]);
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+
+  const clientPaymentMode = useMemo(() => getClientPaymentMethod(), [hieClientPaymentMode, paymentModes]);
+
+  const visitTypeOptions = useMemo(
+    () => [
+      {
+        text: 'OPD Visit',
+        id: VisitTypeUuids.OPD_VISIT_TYPE_UUID,
+      },
+      {
+        text: 'Inpatient Visit',
+        id: VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID,
+      },
+    ],
+    [client],
+  );
 
   const paymentDetails = Object.values(PaymentDetail).map((value) => {
     return {
@@ -107,13 +118,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     getPaymentMethods();
     getBillableServices();
     getCashPoints();
+    getClientPaymentMode();
   }, [patients]);
   if (!patients) {
     return <>No Client data</>;
   }
-  const registerOnAfyaYangu = () => {
-    window.open('https://afyayangu.go.ke/', '_blank');
-  };
   const sendToTriage = async () => {
     if (!validateVisitQueueBill()) return;
     setLoading(true);
@@ -354,15 +363,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
     return attributes;
   }
-
-  function generateVisitTypeOptions() {
-    return visitTypes.map((vt: VisitType) => {
-      return {
-        id: vt.uuid,
-        text: vt.display,
-      };
-    });
-  }
   async function getServiceQueues() {
     try {
       const sqs = await getFacilityServiceQueues(locationUuid);
@@ -460,6 +460,25 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     return selectedPaymentMode.name.trim().toLowerCase().includes(paymentMode.trim().toLowerCase());
   }
 
+  async function getClientPaymentMode() {
+    try {
+      const resp = await fetchClientPaymentMode(client.id);
+      setHieClientPaymentMode(resp);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  function getClientPaymentMethod(): PaymentMode {
+    if (!paymentModes || !hieClientPaymentMode) {
+      return null;
+    }
+    const mode = paymentModes.find((pm) => {
+      return pm.uuid === hieClientPaymentMode.payment_mode_uuid;
+    });
+    return mode;
+  }
+
   return (
     <>
       <Modal
@@ -485,6 +504,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         <TableHeader>No</TableHeader>
                         <TableHeader>Name</TableHeader>
                         <TableHeader>Gender</TableHeader>
+                        <TableHeader>Payment Method</TableHeader>
                         <TableHeader>Select Patient</TableHeader>
                       </TableRow>
                     </TableHead>
@@ -494,6 +514,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                           <TableCell>{index + 1}</TableCell>
                           <TableCell>{p.person.preferredName.display}</TableCell>
                           <TableCell>{p.person.gender}</TableCell>
+                          <TableCell>{clientPaymentMode ? <>{clientPaymentMode.name}</> : <>Not Set</>}</TableCell>
                           <TableCell>
                             <Checkbox id={p.uuid} labelText="" onChange={() => onPatientSelect(p)} />
                           </TableCell>
@@ -606,7 +627,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                             onChange={($event) => patientCategoryHandler($event.target.value)}
                           >
                             <SelectItem value="" text="Select" />;
-                            <SelectItem value={CCC_UUID} text="CCC" />;
+                            <SelectItem value={PatientCategories.CCC_PATIENT_UUID} text="CCC" />;
+                            <SelectItem value={PatientCategories.MCH_PATIENT_UUID} text="MCH" />;
                           </Select>
                         </div>
                       </div>

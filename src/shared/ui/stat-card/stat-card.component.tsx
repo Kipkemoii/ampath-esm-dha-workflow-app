@@ -3,7 +3,7 @@ import styles from './stat-card.component.scss';
 
 interface StatCardProps {
   title: string;
-  count: number;
+  count?: number;
   other?: string;
 }
 

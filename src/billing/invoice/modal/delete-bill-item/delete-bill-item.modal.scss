@@ -1,0 +1,23 @@
+.deleteLineItemLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 10px;
+    margin: 15px 15px;
+    .contentSection{
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: 10px;
+        .details{
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+        .form{
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+        }
+    }
+}

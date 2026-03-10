@@ -1,0 +1,38 @@
+.aggregateStatsCard{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #d2d2d2;
+    min-height: 100px;
+    padding: 10px 10px;
+    column-gap: 10px;
+    .aggregateStatsCardHeader{
+        display: flex;
+        flex-direction: column;
+        width: 50%;
+        column-gap: 3px;
+    }
+    .stats{
+        display: flex;
+        flex-direction: column;
+        width: 50%;
+        font-size: 14px;
+        row-gap: 5px;
+       .statDetails{
+        display: flex;
+        flex-direction: row;
+        width: 100%;
+        .title{
+           width: 90%;
+        }
+        .count{
+            width: 10%;
+        }
+    }
+    }
+}
+
+.totalCount:hover{
+    cursor: pointer;
+}

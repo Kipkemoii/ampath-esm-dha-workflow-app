@@ -1,0 +1,13 @@
+.paymentOptionLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    min-height: 200px;
+    row-gap: 15px;
+    .formRow{
+        display: flex;
+        flex-direction: column;
+        row-gap: 10px;
+        width: 100%;
+    }
+}
