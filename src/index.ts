@@ -76,7 +76,7 @@ export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/wo
 
 export const registryDashboardLink = getSyncLifecycle(createDashboardLink(registryDashboardMeta), options);
 
-export const registryExtension = getAsyncLifecycle(() => import('./registry/registry.component'), options);
+export const registryExtension = getAsyncLifecycle(() => import('./registry/registry-entry'), options);
 
 export const queueDashboardLink = getSyncLifecycle(createDashboardLink(queueDashboardMeta), options);
 
