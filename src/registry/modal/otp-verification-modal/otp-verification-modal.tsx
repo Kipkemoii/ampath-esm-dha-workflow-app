@@ -75,7 +75,7 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
         ...requestCustomOtpDto,
         identificationNumber: alternativeIdNo ?? '',
         identificationType: HieIdentificationType.NationalID,
-        phoneNumber: alternativePhoneNo ? formatPhoneNumberForOTP(alternativePhoneNo) : '',
+        phoneNumber: alternativePhoneNo ?? '',
       };
     } else {
       payload = requestCustomOtpDto;
