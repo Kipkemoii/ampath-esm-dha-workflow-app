@@ -50,7 +50,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const [displaytriageModal, setDisplaytriageModal] = useState<boolean>(false);
   const [requestCustomOtpDto, setRequestCustomOtpDto] = useState<RequestCustomOtpDto>();
   const session = useSession();
-  const locationUuid = session.sessionLocation.uuid;
+  const locationUuid = session!.sessionLocation!.uuid;
   const { setPatient } = usePatient();
 
   const handleSearchPatient = async () => {

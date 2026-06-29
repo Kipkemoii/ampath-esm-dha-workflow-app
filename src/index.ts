@@ -155,12 +155,6 @@ export const visitBillingForm = getAsyncLifecycle(
   options,
 );
 
-export const claims = getAsyncLifecycle(
-  () => import('./claims/claims.component'),
-  options,
-);
+export const claims = getAsyncLifecycle(() => import('./claims/claims.component'), options);
 
-export const preauthsModal = getAsyncLifecycle(
-  () => import('./claims/modals/preauth.component'),
-  options,
-);
+export const preauthsModal = getAsyncLifecycle(() => import('./claims/modals/preauth.component'), options);

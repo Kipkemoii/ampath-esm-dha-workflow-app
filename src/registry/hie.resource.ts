@@ -1,4 +1,4 @@
-import { type PatientContactResponse, type HieAccessTokenResponse } from './hie.types';
+import { type PatientContactResponse, type HieAccessTokenResponse, type OTPWhitelistRequest } from './hie.types';
 import { type HieClient } from './types';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
 import { openmrsFetch } from '@openmrs/esm-framework';
@@ -39,7 +39,7 @@ export async function getOtpWhitelistingStatus(
   const data = await response.json();
 
   if (!response.ok) {
-    const errorText = data.message || 'Failed to fetch access token';
+    const errorText = data.message || 'Failed to fetch OTP whitelisting status';
     throw new Error(`Request failed with ${response.status}: ${errorText}`);
   }
 
@@ -66,38 +66,66 @@ export async function getPatientContacts(crId: string, locationUuid: string): Pr
   const data = await response.json();
 
   if (!response.ok) {
-    const errorText = data.message || 'Failed to fetch access token';
+    const errorText = data.message || 'Failed to fetch patient contacts';
     throw new Error(`Request failed with ${response.status}: ${errorText}`);
   }
 
   return data;
 }
 
-export async function createOTPWhitelisting(
-  reasonType: string,
-  reason: string,
-  crId: string,
-  attachments: string,
-  attachments_file_blob: string,
-  facility_fr_code: string,
-): Promise<any> {
-  const accessToken = await fetchAccessToken().then((res) => res.access_token);
+export async function createOTPWhitelisting(payload: OTPWhitelistRequest): Promise<PatientContactResponse> {
+  const hieBaseUrl = await getHieBaseUrl();
 
-  const payload = {
-    reason_type: reasonType,
-    reason: reason,
-    beneficiary_cr_id: crId,
-    attachments: attachments,
-    attachments_file_blob: attachments_file_blob,
-    biometric_attempts: '10',
-    facility_fr_code,
-  };
-  const url = `https://ilm-dev.dha.go.ke/uat-middleware/api/v1/patients/otp-whitelists`;
+  const formData = new FormData();
+  formData.append('reasonType', payload.reasonType);
+  formData.append('reason', payload.reason);
+  formData.append('beneficiaryCrId', payload.crId);
+  formData.append(
+    'attachments',
+    JSON.stringify([
+      {
+        document_title: payload.attachments_file_blob.name,
+        document_type: 'SUPPORT_DOCUMENT',
+        file_field_name: 'attachments_file_blob',
+      },
+    ]),
+  );
+  formData.append('attachmentsFileBlob', payload.attachments_file_blob);
+  formData.append('biometricAttempts', '10');
+  formData.append('locationUuid', payload.locationUuid);
+  const url = `${hieBaseUrl}/client/otp-whitelist`;
   const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
-      Authorization: `Bearer ${accessToken}`,
+    },
+    body: formData,
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    const errorText = data.message || 'Failed to send OTP whitelisting request';
+    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+  }
+
+  return data;
+}
+
+export async function sendClaimsOTP(patientId: string, locationUuid: string, intervention?: string): Promise<any> {
+  const hieBaseUrl = await getHieBaseUrl();
+
+  const payload = {
+    intervention_codes: ['SHA-09-047'],
+    patient_id: patientId,
+    locationUuid: locationUuid,
+  };
+  const url = `${hieBaseUrl}/claims-otp`;
+  const response = await openmrsFetch(url, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
   });
@@ -105,33 +133,7 @@ export async function createOTPWhitelisting(
   const data = await response.json();
 
   if (!response.ok) {
-    const errorText = data.message || 'Failed to fetch access token';
-    throw new Error(`Request failed with ${response.status}: ${errorText}`);
-  }
-
-  return data;
-}
-
-export async function sendOTP(patient: HieClient): Promise<any> {
-  const accessToken = await fetchAccessToken().then((res) => res.access_token);
-
-  const params = new URLSearchParams({
-    identification_number: patient.identification_number,
-    identification_type: patient.identification_type,
-  });
-  const url = `https://ilm-dev.dha.go.ke/uat-middleware/api/v1/patients/otp?${params}`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
-
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorText = data.message || 'Failed to fetch access token';
+    const errorText = data.message || 'Failed to fetch OTP';
     throw new Error(`Request failed with ${response.status}: ${errorText}`);
   }
 
@@ -180,7 +182,7 @@ export async function getBiometrictsRequestUrl(patient: HieClient): Promise<any>
     // Unique workstation identifier from the hardware/biometrics server
     work_station_id: '790bf760-08e6-4fbe-b892-7b877dd52f2b-F406692C85F3',
   };
-  const response = await fetch(url, {
+  const response = await openmrsFetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -198,9 +200,4 @@ export async function getBiometrictsRequestUrl(patient: HieClient): Promise<any>
   }
 
   return response.json();
-}
-
-export async function getAccessTokenAndClient(): Promise<{ token: HieAccessTokenResponse }> {
-  const token = await fetchAccessToken();
-  return { token };
 }
