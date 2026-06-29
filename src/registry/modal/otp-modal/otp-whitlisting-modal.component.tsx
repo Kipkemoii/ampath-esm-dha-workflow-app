@@ -1,22 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { getOtpWhitelistingStatus, getPatientContacts } from '../../hie.resource';
-import { Button, InlineLoading, Select, SelectItem, TextArea, FileUploader } from '@carbon/react';
+import { Button, InlineLoading, Select, SelectItem, TextArea, FileUploader, TextInput } from '@carbon/react';
 import { usePatient } from '../../../context/patient-context';
 import { useSession } from '@openmrs/esm-framework';
+import { type OTPWhitelistRequest } from '../../hie.types';
 
 interface OTPWhitlistingModalProps {
   onWhitelistStatusChange: (whitelisted: boolean) => void;
+  onWhitelistSubmit: (payload: OTPWhitelistRequest) => void;
+  onSendClaimsOtp: () => void;
+  onOtpVerified: (otp: string) => void;
+  onOtpVerificationStatusChange: (verified: boolean) => void;
+  submitting: boolean;
+  otpSent: boolean;
+  whitelistRequest: any;
 }
 
-const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistStatusChange }) => {
+const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
+  onWhitelistStatusChange,
+  onSendClaimsOtp,
+  onWhitelistSubmit,
+  onOtpVerified,
+  submitting,
+  otpSent,
+  whitelistRequest,
+  onOtpVerificationStatusChange,
+}) => {
   const [whitelisted, setWhitelisted] = useState<boolean | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [selectedReason, setSelectedReason] = useState('');
   const [reasonDescription, setReasonDescription] = useState('');
+  const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const { patient } = usePatient();
   const session = useSession();
   const locationUuid = session.sessionLocation!.uuid;
+  const [loadingWhitelistStatus, setLoadingWhitelistStatus] = useState(false);
 
   const REASON_TYPES = [
     'OLD',
@@ -34,26 +53,32 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
     'TECHNICAL_ISSUES',
   ];
   useEffect(() => {
-    const identifier = patient!.identification_number;
-    const identifierType = patient!.identification_type;
-    async function fetchData() {
-      try {
-        const res = await getOtpWhitelistingStatus(identifier, identifierType, locationUuid);
-
-        const isWhitelisted = res?.whitelistedForOTP ?? false;
-        // eslint-disable-next-line no-console
-        console.log('Whitelisted:', isWhitelisted);
-        setWhitelisted(isWhitelisted ?? false);
-        onWhitelistStatusChange(isWhitelisted ?? false);
-      } catch (error) {
-        console.error('Error fetching whitelist status:', error);
-        setWhitelisted(false);
-        onWhitelistStatusChange(false);
-      }
+    if (patient) {
+      checkWhitelistStatus();
     }
+  }, [patient]);
 
-    fetchData();
-  }, [onWhitelistStatusChange]);
+  const checkWhitelistStatus = async () => {
+    try {
+      setLoadingWhitelistStatus(true);
+      const res = await getOtpWhitelistingStatus(
+        patient!.identification_number,
+        patient!.identification_type,
+        locationUuid,
+      );
+
+      const isWhitelisted = res?.whitelistedForOTP ?? false;
+
+      setWhitelisted(isWhitelisted);
+
+      setWhitelisted(isWhitelisted);
+      onWhitelistStatusChange(isWhitelisted);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoadingWhitelistStatus(false);
+    }
+  };
 
   useEffect(() => {
     const crId = patient!.id;
@@ -72,7 +97,7 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
     }
 
     fetchData();
-  }, [onWhitelistStatusChange]);
+  }, [onWhitelistStatusChange, patient, locationUuid]);
 
   if (whitelisted === null) {
     return (
@@ -82,12 +107,11 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
     );
   }
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0] ?? null;
-    setFile(selectedFile);
+  const handleCheckStatus = async () => {
+    await checkWhitelistStatus();
   };
 
-  const handleWhitelistSubmit = () => {
+  const handleWhitelistSubmit = async () => {
     if (!file) {
       alert('Please upload a supporting document.');
       return;
@@ -103,37 +127,111 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
       return;
     }
 
-    // TODO: send file to backend (FormData)
-    const formData = new FormData();
-    formData.append('document', file);
-    formData.append('phoneNumber', phoneNumber);
-    formData.append('reasonType', selectedReason);
-    formData.append('reasonDescription', reasonDescription);
-
-    // eslint-disable-next-line no-console
-    console.log('Submitting whitelist request', {
-      phoneNumber,
-      selectedReason,
-      reasonDescription,
-      fileName: file.name,
+    onWhitelistSubmit({
+      reasonType: selectedReason,
+      reason: reasonDescription,
+      crId: patient!.id,
+      attachments_file_blob: file,
+      locationUuid,
     });
+  };
+
+  const handleSendClaimsOtp = async () => {
+    onOtpVerificationStatusChange(false);
+    onSendClaimsOtp();
+  };
+
+  const handleVerifyClaimsOtp = async () => {
+    onOtpVerified(otp.join(''));
+    onOtpVerificationStatusChange(true);
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d?$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value;
+    setOtp(newOtp);
+    if (value && index < 5) {
+      const nextInput = document.getElementById(`otp-${index + 1}`);
+      (nextInput as HTMLInputElement)?.focus();
+    }
   };
 
   return (
     <div>
       {whitelisted ? (
+        otpSent ? (
+          <>
+            <h2>Enter OTP</h2>
+
+            <p>
+              Enter the OTP sent to <strong>{phoneNumber}</strong>
+            </p>
+
+            <div style={{ display: 'flex', gap: '3rem', marginTop: '1rem' }}>
+              {otp.map((digit, index) => (
+                <TextInput
+                  key={index}
+                  id={`otp-${index}`}
+                  labelText=""
+                  hideLabel
+                  value={digit}
+                  maxLength={1}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  style={{
+                    width: '3rem',
+                    textAlign: 'center',
+                  }}
+                />
+              ))}
+            </div>
+
+            <div style={{ marginTop: '1rem' }}>
+              <Button onClick={handleVerifyClaimsOtp} disabled={otp.join('').length !== 6 || submitting}>
+                {submitting ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            <h2>OTP Verification</h2>
+
+            <p>
+              OTP will be sent to <strong>{phoneNumber}</strong>
+            </p>
+
+            <Button onClick={handleSendClaimsOtp} disabled={submitting}>
+              {submitting ? 'Sending...' : 'Send OTP'}
+            </Button>
+          </>
+        )
+      ) : whitelistRequest ? (
         <>
-          <h2>OTP Verification</h2>
+          <h2>Whitelisting Request Submitted</h2>
+
           <p>
-            An OTP will be sent to <strong>{phoneNumber}</strong>.
+            Status: <strong>{whitelistRequest.status}</strong>
           </p>
+
+          <p>
+            Beneficiary: <strong>{whitelistRequest.beneficiaryName}</strong>
+          </p>
+
+          <div style={{ marginTop: '1rem' }}>
+            <Button disabled={submitting} onClick={handleCheckStatus}>
+              {submitting ? 'Submitting...' : 'Refresh Status'}
+            </Button>
+          </div>
         </>
       ) : (
         <>
           <h2>Phone Number Whitelisting Status</h2>
+
           <p>
             The phone number <strong>{phoneNumber}</strong> is not whitelisted.
           </p>
+
           <div style={{ marginTop: '1rem' }}>
             <FileUploader
               labelTitle="Supporting Document"
@@ -146,6 +244,7 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
               }}
             />
           </div>
+
           <div style={{ marginTop: '1rem' }}>
             <Select
               id="reason-type"
@@ -154,11 +253,13 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
               onChange={(e) => setSelectedReason(e.target.value)}
             >
               <SelectItem value="" text="Select a reason" />
+
               {REASON_TYPES.map((reason) => (
                 <SelectItem key={reason} value={reason} text={reason.replace(/_/g, ' ')} />
               ))}
             </Select>
           </div>
+
           <div style={{ marginTop: '1rem' }}>
             <TextArea
               id="reason-description"
@@ -170,8 +271,11 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({ onWhitelistSt
           </div>
 
           <div style={{ marginTop: '1rem' }}>
-            <Button onClick={handleWhitelistSubmit} disabled={!file || !selectedReason || !reasonDescription.trim()}>
-              Submit Whitelisting Request
+            <Button
+              onClick={handleWhitelistSubmit}
+              disabled={submitting || !file || !selectedReason || !reasonDescription.trim()}
+            >
+              {submitting ? 'Submitting...' : 'Submit Whitelisting Request'}
             </Button>
           </div>
         </>

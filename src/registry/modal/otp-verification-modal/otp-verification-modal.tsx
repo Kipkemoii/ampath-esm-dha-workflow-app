@@ -1,18 +1,6 @@
 import React, { useState } from 'react';
 import { HieIdentificationType, OtpOptions, OtpStatus, type RequestCustomOtpDto } from '../../types';
-import {
-  FormLabel,
-  Modal,
-  ModalBody,
-  RadioButton,
-  RadioButtonGroup,
-  Tab,
-  TabList,
-  TabPanel,
-  TabPanels,
-  Tabs,
-  TextInput,
-} from '@carbon/react';
+import { FormLabel, Modal, ModalBody, RadioButton, RadioButtonGroup, TextInput } from '@carbon/react';
 import styles from './otp-verification-modal.scss';
 import { showSnackbar } from '@openmrs/esm-framework';
 import { requestCustomOtp, validateCustomOtp } from '../../registry.resource';
@@ -20,8 +8,6 @@ import { maskAllButFirstAndLastThree } from '../../utils/mask-data';
 import OTPInput from '../../../shared/ui/otp-input/otp-input.component';
 import Timer from '../../../shared/ui/timer/timer.component';
 import { formatPhoneNumberForOTP } from '../../utils/phone-number-formatter';
-import BiometricsVerificationModal from '../biometrics-verification-modal/biometrics-verification-modal';
-import OTPWhitlistingModal from '../otp-modal/otp-whitlisting-modal.component';
 
 interface OtpVerificationModalpProps {
   requestCustomOtpDto: RequestCustomOtpDto;
@@ -46,8 +32,9 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   );
   const [alternativeIdNo, setAlternativeIdNo] = useState<string>();
   const [alternativePhoneNo, setAlternativePhoneNo] = useState<string>();
-  const [selectedTab, setSelectedTab] = useState(0);
-  const [isWhitelisted, setIsWhitelisted] = useState<boolean>(false);
+  const [isWhitelisted, setIsWhitelisted] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [formComplete, setFormComplete] = useState(false);
 
   const handleSendOtp = async () => {
     if (!requestCustomOtpDto.identificationNumber && !alternativeIdNo) {
@@ -175,27 +162,6 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
   const handleAlternativePhoneNo = (alternativePhoneNo: string) => {
     setAlternativePhoneNo(alternativePhoneNo);
   };
-
-  const handleWhitelistPhone = async () => {
-    // eslint-disable-next-line no-console
-    console.log('Whitelist phone:', phoneNumber);
-
-    // call whitelist API
-    // await whitelistPhoneNumber(phoneNumber);
-  };
-
-  const getOtpWhitelistButtonText = () => {
-    return isWhitelisted ? 'Send OTP' : 'Whitelist Phone Number';
-  };
-
-  const getOtpWhitelistAction = () => {
-    if (isWhitelisted) {
-      return handleSendOtp();
-    }
-
-    return handleWhitelistPhone();
-  };
-
   return (
     <>
       <Modal
@@ -203,67 +169,54 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
         size="md"
         onSecondarySubmit={onModalClose}
         onRequestClose={onModalClose}
-        onRequestSubmit={selectedTab === 1 ? getOtpWhitelistAction : undefined}
-        primaryButtonText={selectedTab === 1 ? getOtpWhitelistButtonText() : undefined}
-        secondaryButtonText={selectedTab === 1 ? 'Cancel' : undefined}
-        passiveModal={selectedTab === 0}
-        // secondaryButtonText="Cancel"
+        onRequestSubmit={getPrimaryButtonFunc}
+        primaryButtonText={getPrimaryButtonText()}
+        secondaryButtonText="Cancel"
       >
         <ModalBody>
-          <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
-            <TabList>
-              <Tab>Biometrics Verification</Tab>
-              <Tab>OTP Verification</Tab>
-            </TabList>
-            <TabPanels>
-              <TabPanel>
-                <BiometricsVerificationModal open={false} onClose={() => {}} />
-              </TabPanel>
-              <TabPanel>
-                <OTPWhitlistingModal onWhitelistStatusChange={setIsWhitelisted} />
-                {/* <div className={styles.modalVerificationLayout}>
-                  <div className={styles.sectionHeader}>
-                    <h4 className={styles.sectionTitle}>One Time Password (OTP)</h4>
-                  </div>
-                  <div className={styles.sectionContent}>
-                    <div className={styles.contentHeader}>
-                      {otpStatus === OtpStatus.Draft ? (
-                        <>
-                          <RadioButtonGroup
-                            defaultSelected={requestCustomOtpDto.phoneNumber ? OtpOptions.NoOverride : OtpOptions.Override}
-                            legendText="OTP Override"
-                            onChange={(v) => handleOtpOverrideSelection(v as OtpOptions)}
-                            name="override-button-default-group"
-                          >
-                            {
-                        requestCustomOtpDto?.phoneNumber &&  <RadioButton
-                              id="no-override"
-                              labelText={`Send Code to Phone ${maskAllButFirstAndLastThree(phoneNumber)}?`}
-                              value={OtpOptions.NoOverride}
-                            />
-                            }
-                     
+          <div className={styles.modalVerificationLayout}>
+            <div className={styles.sectionHeader}>
+              <h4 className={styles.sectionTitle}>One Time Password (OTP)</h4>
+            </div>
+            <div className={styles.sectionContent}>
+              <div className={styles.contentHeader}>
+                {otpStatus === OtpStatus.Draft ? (
+                  <>
+                    <RadioButtonGroup
+                      defaultSelected={requestCustomOtpDto.phoneNumber ? OtpOptions.NoOverride : OtpOptions.Override}
+                      legendText="OTP Override"
+                      onChange={(v) => handleOtpOverrideSelection(v as OtpOptions)}
+                      name="override-button-default-group"
+                    >
+                      {requestCustomOtpDto?.phoneNumber && (
+                        <RadioButton
+                          id="no-override"
+                          labelText={`Send Code to Phone ${maskAllButFirstAndLastThree(phoneNumber)}?`}
+                          value={OtpOptions.NoOverride}
+                        />
+                      )}
+
                       <RadioButton
-                              id="override"
-                              labelText="Send OTP to alternative contact"
-                              value={OtpOptions.Override}
-                            />
+                        id="override"
+                        labelText="Send OTP to alternative contact"
+                        value={OtpOptions.Override}
+                      />
 
-                            <RadioButton id="skip" labelText="Skip OTP" value={OtpOptions.Skip} />
-                          </RadioButtonGroup>
+                      <RadioButton id="skip" labelText="Skip OTP" value={OtpOptions.Skip} />
+                    </RadioButtonGroup>
 
-                          {overrideOtp === OtpOptions.Override ? (
-                            <>
-                              <div className={styles.formControl}>
-                                <TextInput
-                                  id="override-number"
-                                  labelText="Alternative ID number"
-                                  onChange={(e) => handleAlternativeIdNo(e.target.value)}
-                                  required={true}
-                                  placeholder="Enter National ID"
-                                />
-                              </div>
-                               <div className={styles.formControl}>
+                    {overrideOtp === OtpOptions.Override ? (
+                      <>
+                        <div className={styles.formControl}>
+                          <TextInput
+                            id="override-number"
+                            labelText="Alternative ID number"
+                            onChange={(e) => handleAlternativeIdNo(e.target.value)}
+                            required={true}
+                            placeholder="Enter National ID"
+                          />
+                        </div>
+                        <div className={styles.formControl}>
                           <TextInput
                             id="override-phone"
                             labelText="Alternative Phone number"
@@ -273,52 +226,49 @@ const OtpVerificationModal: React.FC<OtpVerificationModalpProps> = ({
                           />
                         </div>
                       </>
-                          ) : (
-                            <></>
-                          )}
-                        </>
-                      ) : (
-                        <></>
-                      )}
+                    ) : (
+                      <></>
+                    )}
+                  </>
+                ) : (
+                  <></>
+                )}
 
-                      {otpStatus === OtpStatus.Verified ? (
-                        <>
-                          {overrideOtp === OtpOptions.Skip ? (
-                            <>
-                              <h6>OTP Verification Skipped! Continue</h6>
-                            </>
-                          ) : (
-                            <>
-                              <h6>OTP Verification Successfull!</h6>
-                            </>
-                          )}
-                        </>
-                      ) : (
-                        <></>
-                      )}
+                {otpStatus === OtpStatus.Verified ? (
+                  <>
+                    {overrideOtp === OtpOptions.Skip ? (
+                      <>
+                        <h6>OTP Verification Skipped! Continue</h6>
+                      </>
+                    ) : (
+                      <>
+                        <h6>OTP Verification Successfull!</h6>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <></>
+                )}
+              </div>
+              <div className={styles.otpSection}>
+                {otpStatus === OtpStatus.Sent ? (
+                  <>
+                    <div className={styles.otpForm}>
+                      <h6>(Enter one time password to proceed)</h6>
+                      <FormLabel>Enter OTP</FormLabel>
+                      <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
                     </div>
-                    <div className={styles.otpSection}>
-                      {otpStatus === OtpStatus.Sent ? (
-                        <>
-                          <div className={styles.otpForm}>
-                            <h6>(Enter one time password to proceed)</h6>
-                            <FormLabel>Enter OTP</FormLabel>
-                            <OTPInput otpLength={5} onChange={(value) => setOtp(value)} />
-                          </div>
-                          <div className={styles.otpTimer}>
-                            <Timer durationInSeconds={60} resetTimer={() => {}} onTimeUp={handleTimeUp} />
-                          </div>
-                        </>
-                      ) : (
-                        <></>
-                      )}
+                    <div className={styles.otpTimer}>
+                      <Timer durationInSeconds={60} resetTimer={() => {}} onTimeUp={handleTimeUp} />
                     </div>
-                  </div>
-                  <div className={styles.sectionAction}></div>
-                </div> */}
-              </TabPanel>
-            </TabPanels>
-          </Tabs>
+                  </>
+                ) : (
+                  <></>
+                )}
+              </div>
+            </div>
+            <div className={styles.sectionAction}></div>
+          </div>
         </ModalBody>
       </Modal>
     </>
