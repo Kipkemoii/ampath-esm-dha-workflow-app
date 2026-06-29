@@ -56,6 +56,7 @@ import ClaimsConsentModal from '../otp-verification-modal/claims-consent';
 import { OtpFormData, type OTPWhitelistRequest } from '../../hie.types';
 import { createOTPWhitelisting, sendClaimsOTP } from '../../hie.resource';
 import { usePatient } from '../../../context/patient-context';
+import ClaimsComponent from '../../../claims/claims.component';
 import { ClaimResult } from '../../../claims';
 
 interface SendToTriageModalProps {
@@ -162,11 +163,10 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     if (selectedPatient) {
       const identifiers = selectedPatient.identifiers;
       return {
-        crIdentifierId: identifiers?.find((i) => i.identifierType.uuid == 'e88dc246-3614-4ee3-8141-1f2a83054e72')
-          .identifier,
-      };
+        crIdentifierId: identifiers?.find(i => i.identifierType.uuid == "e88dc246-3614-4ee3-8141-1f2a83054e72").identifier
+      }
     }
-  }, [selectedPatient]);
+  }, [selectedPatient])
 
   const paymentDetails = Object.values(PaymentDetail).map((value) => {
     return {
@@ -592,7 +592,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   }
   function getTriageServiceQueues(serviceQueues: ServiceQueue[]) {
     return serviceQueues.filter((sq) => {
-      return registrationServicequeues.includes(sq.uuid ?? '');
+      return registrationServicequeues.includes(sq.uuid ?? '')
     });
   }
 
@@ -871,17 +871,12 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         </div>
                       </div>
                       {/* If using SHA claim */}
-                      {hasSelectedPaymentMode('SHIF') ? (
-                        <>
+                      {
+                        hasSelectedPaymentMode('SHIF') ? (<>
                           {/* <ClaimsComponent clientRegistryId={patientIdentifiers.crIdentifierId} onSelectChange={() => { }} /> */}
-                          <ExtensionSlot
-                            name="billing-claims-slot"
-                            state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, onSelectChange: () => {} }}
-                          />
-                        </>
-                      ) : (
-                        <></>
-                      )}
+                          <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, patientUuid: selectedPatient.uuid, triggerCreateVisit, onSelectChange: () => { }, onClaimsVisitStart }} />
+                        </>) : (<></>)
+                      }
                       {hasSelectedPaymentMode('insurance') ? (
                         <>
                           <div className={styles.formRow}>
