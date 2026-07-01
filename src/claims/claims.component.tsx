@@ -46,6 +46,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   onSelectChange,
   onClaimsVisitStart,
   onAddIntervention,
+  onInterventionChange,
 }) => {
   const { activeVisit } = useVisit(patientUuid);
   const [selectedIntervention, setSelectedIntervention] = useState<Intervention>();
