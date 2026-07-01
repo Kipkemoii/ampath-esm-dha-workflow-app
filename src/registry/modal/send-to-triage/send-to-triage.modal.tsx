@@ -16,7 +16,15 @@ import {
   TextInput,
 } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
-import { type Patient, useSession, showSnackbar, type Visit, useConfig, ExtensionSlot, Encounter } from '@openmrs/esm-framework';
+import {
+  type Patient,
+  useSession,
+  showSnackbar,
+  type Visit,
+  useConfig,
+  ExtensionSlot,
+  Encounter,
+} from '@openmrs/esm-framework';
 import {
   type HieClient,
   type CreateVisitDto,
@@ -58,7 +66,7 @@ import { OtpFormData, type OTPWhitelistRequest } from '../../hie.types';
 import { createOTPWhitelisting, sendClaimsOTP } from '../../hie.resource';
 import { usePatient } from '../../../context/patient-context';
 import ClaimsComponent from '../../../claims/claims.component';
-import { ClaimResult, Intervention, VisitType } from '../../../claims';
+import { type ClaimResult, type Intervention, Intervention, VisitType } from '../../../claims';
 import { Order } from '@openmrs/esm-patient-common-lib';
 import { getServiceType } from '../../../shared/services/claims.resource';
 
@@ -115,6 +123,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [whitelistRequest, setWhitelistRequest] = useState(null);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState(null);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | undefined>();
   const {
     registrationBillableServices,
     cashConsulationConceptUuid,
@@ -145,13 +154,13 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const visitType: VisitType = useMemo(() => {
     if (selectedVisitType) {
       if (selectedVisitType === VisitTypeUuids.OPD_VISIT_TYPE_UUID) {
-        return "OUTPATIENT";
+        return 'OUTPATIENT';
       }
       if (selectedVisitType === VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID) {
-        return "INPATIENT";
+        return 'INPATIENT';
       }
     }
-  }, [selectedVisitType, VisitTypeUuids])
+  }, [selectedVisitType, VisitTypeUuids]);
 
   const patientTypeOptions = useMemo(
     () => [
@@ -309,7 +318,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             // Add to bill order
             const billOrderDto = await generateBillOrderDto(encounter, createBillResp);
             await createOrderBillInHie(billOrderDto);
-
           } else {
             return false;
           }
@@ -768,19 +776,23 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
             return lineItem?.uuid as string;
           }
-          return "";
+          return '';
         })();
 
         let payload = {
           bill_uuid: billUuid,
           order_no: orderNumber,
-          line_item_uuid: lineItemUuid
+          line_item_uuid: lineItemUuid,
         };
 
         if (claimResult && intervention) {
           const interventionResult = intervention;
-          const electivePreauth = interventionResult.requiresOncologyPreauth || interventionResult.requiresOpticalPreauth || interventionResult.requiresRadiologyPreauth
-            || interventionResult.requiresRenalPreauth || interventionResult.requiresSurgicalPreauth;
+          const electivePreauth =
+            interventionResult.requiresOncologyPreauth ||
+            interventionResult.requiresOpticalPreauth ||
+            interventionResult.requiresRadiologyPreauth ||
+            interventionResult.requiresRenalPreauth ||
+            interventionResult.requiresSurgicalPreauth;
           const requiresPreauth = interventionResult.needsPreauth;
           const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
           const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
@@ -791,28 +803,26 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
             service_type: getServiceType(interventionResult, visitType),
             requires_preauth: requiresPreauth,
             normal_preauth: requiresPreauth && !electivePreauth,
-            elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth
-          }
+            elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
+          };
 
           if (applicableDocumentTypes && applicableDocumentTypes.length) {
-            interventionPayload["applicable_document_types"] = applicableDocumentTypes.join(",");
+            interventionPayload['applicable_document_types'] = applicableDocumentTypes.join(',');
           }
 
           if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
-            interventionPayload["required_preauth_document_types"] = requiredPreauthDocumentTypes.join(",");
+            interventionPayload['required_preauth_document_types'] = requiredPreauthDocumentTypes.join(',');
           }
 
           payload = {
             ...payload,
-            ...interventionPayload
-          }
+            ...interventionPayload,
+          };
         }
 
         return payload;
       }
-    } catch (error) {
-
-    }
+    } catch (error) {}
   }
 
   const handleWhitelistSubmit = async (payload: OTPWhitelistRequest) => {
@@ -823,7 +833,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     try {
       setSubmitting(true);
 
-      const response = await sendClaimsOTP(patient!.id, locationUuid!, intervention?.code);
+      const response = await sendClaimsOTP(patient!.id, locationUuid!, selectedIntervention?.code);
 
       if (response?.message?.includes('OTP')) {
         setOtpSent(true);
@@ -960,12 +970,24 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         </div>
                       </div>
                       {/* If using SHA claim */}
-                      {hasSelectedPaymentMode('SHA') ? (
+                      {hasSelectedPaymentMode('SHIF') ? (
                         <>
                           {/* <ClaimsComponent clientRegistryId={patientIdentifiers.crIdentifierId} onSelectChange={() => { }} /> */}
-                          <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, patientUuid: selectedPatient.uuid, triggerCreateVisit, otp, visitType, onSelectChange: () => { }, onClaimsVisitStart, onInterventionChange }} />
-                        </>) : (<></>)
-                      }
+                          <ExtensionSlot
+                            name="billing-claims-slot"
+                            state={{
+                              clientRegistryId: patientIdentifiers?.crIdentifierId,
+                              patientUuid: selectedPatient.uuid,
+                              triggerCreateVisit,
+                              otp,
+                              onSelectChange: () => {},
+                              onClaimsVisitStart,
+                            }}
+                          />
+                        </>
+                      ) : (
+                        <></>
+                      )}
                       {hasSelectedPaymentMode('insurance') ? (
                         <>
                           <div className={styles.formRow}>
