@@ -28,6 +28,15 @@ import {
   Encounter,
 } from '@openmrs/esm-framework';
 import {
+  type Patient,
+  useSession,
+  showSnackbar,
+  type Visit,
+  useConfig,
+  ExtensionSlot,
+  Encounter,
+} from '@openmrs/esm-framework';
+import {
   type HieClient,
   type CreateVisitDto,
   type QueueEntryDto,
@@ -881,7 +890,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
         return payload;
       }
-    } catch (error) { }
+    } catch (error) {}
   }
 
   const handleWhitelistSubmit = async (payload: OTPWhitelistRequest) => {
@@ -892,7 +901,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     try {
       setSubmitting(true);
 
-      const response = await sendClaimsOTP(patient!.id, locationUuid!, intervention?.code);
+      const response = await sendClaimsOTP(patient!.id, locationUuid!, selectedIntervention?.code);
 
       if (response?.message?.includes('OTP')) {
         setOtpSent(true);
@@ -938,8 +947,8 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
   const lastStep =
     selectedPaymentDetail === PaymentDetail.Paying &&
-      !hasSelectedPaymentMode('CASH') &&
-      !hasSelectedPaymentMode('MPESA')
+    !hasSelectedPaymentMode('CASH') &&
+    !hasSelectedPaymentMode('MPESA')
       ? 2
       : 1;
 
@@ -1085,17 +1094,19 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         {selectedPaymentDetail === PaymentDetail.Paying && (
                           <>
                             {hasSelectedPaymentMode('SHA') && (
-                              <ExtensionSlot name='billing-claims-slot'
+                              <ExtensionSlot
+                                name="billing-claims-slot"
                                 state={{
                                   clientRegistryId: patientIdentifiers?.crIdentifierId,
                                   patientUuid: selectedPatient.uuid,
                                   triggerCreateVisit,
                                   otp,
                                   visitType,
-                                  onSelectChange: () => { },
+                                  onSelectChange: () => {},
                                   onClaimsVisitStart,
-                                  onInterventionChange
-                                }} />
+                                  onInterventionChange,
+                                }}
+                              />
                             )}
 
                             {hasSelectedPaymentMode('insurance') && (
