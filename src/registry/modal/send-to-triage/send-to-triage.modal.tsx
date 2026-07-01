@@ -56,7 +56,7 @@ import ClaimsConsentModal from '../otp-verification-modal/claims-consent';
 import { OtpFormData, type OTPWhitelistRequest } from '../../hie.types';
 import { createOTPWhitelisting, sendClaimsOTP } from '../../hie.resource';
 import { usePatient } from '../../../context/patient-context';
-import { ClaimResult } from '../../../claims';
+import { type ClaimResult, type Intervention } from '../../../claims';
 
 interface SendToTriageModalProps {
   patients: Patient[];
@@ -104,11 +104,12 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [triggerCreateVisit, setTriggerCreateVisit] = useState<boolean>(false);
   const [showConsent, setShowSoncent] = useState<boolean>(false);
   const session = useSession();
-  const locationUuid = session.sessionLocation.uuid;
+  const locationUuid = session?.sessionLocation?.uuid;
   const [submitting, setSubmitting] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [whitelistRequest, setWhitelistRequest] = useState(null);
   const [otpVerified, setOtpVerified] = useState(false);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | undefined>();
   const {
     registrationBillableServices,
     cashConsulationConceptUuid,
@@ -736,7 +737,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     try {
       setSubmitting(true);
 
-      const response = await sendClaimsOTP(patient!.id, locationUuid);
+      const response = await sendClaimsOTP(patient!.id, locationUuid!, selectedIntervention?.code);
 
       if (response?.message?.includes('OTP')) {
         setOtpSent(true);
@@ -876,7 +877,11 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                           {/* <ClaimsComponent clientRegistryId={patientIdentifiers.crIdentifierId} onSelectChange={() => { }} /> */}
                           <ExtensionSlot
                             name="billing-claims-slot"
-                            state={{ clientRegistryId: patientIdentifiers?.crIdentifierId, onSelectChange: () => {} }}
+                            state={{
+                              clientRegistryId: patientIdentifiers?.crIdentifierId,
+                              onSelectChange: () => {},
+                              onInterventionChange: setSelectedIntervention,
+                            }}
                           />
                         </>
                       ) : (
