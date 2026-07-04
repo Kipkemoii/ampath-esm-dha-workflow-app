@@ -7,6 +7,8 @@ import {
   ModalBody,
   ProgressIndicator,
   ProgressStep,
+  ProgressIndicator,
+  ProgressStep,
   Select,
   SelectItem,
   Table,
@@ -141,6 +143,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [whitelistRequest, setWhitelistRequest] = useState(null);
   const [otpVerified, setOtpVerified] = useState(false);
   const [otp, setOtp] = useState(null);
+  const [selectedIntervention, setSelectedIntervention] = useState<Intervention | undefined>();
   const [step, setStep] = useState(0);
   const [displayOtpModal, setDisplayOtpModal] = useState<boolean>(false);
   const [requestCustomOtpDto, setRequestCustomOtpDto] = useState<RequestCustomOtpDto>();
@@ -922,8 +925,6 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
 
       setOtpVerified(true);
 
-      setOtp(otp);
-
       showSnackbar({
         kind: 'success',
         title: 'OTP Verified',
@@ -960,13 +961,13 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
     }
   };
 
-  const handleprimaryAction = async () => {
+  const handleprimaryAction = () => {
     if (step < lastStep) {
       setStep(step + 1);
       return;
     }
 
-    await handleSendToTriage();
+    handleSendToTriage();
   };
 
   const handleOtpSuccessfullVerification = () => {
@@ -1213,7 +1214,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
                         onOtpVerified={handleVerifyOtp}
                         onOtpVerificationStatusChange={setOtpVerified}
                         serviceType={getClaimServiceType(selectedVisitType ?? '')}
-                        interventionCode={intervention?.code ?? ''}
+                        interventionCode={selectedIntervention?.code ?? ''}
                       />
                     )}
                   </div>

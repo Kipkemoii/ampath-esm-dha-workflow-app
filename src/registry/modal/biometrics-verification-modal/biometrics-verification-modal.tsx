@@ -5,6 +5,7 @@ import { Button } from '@carbon/react';
 import { getBiometrictsRequestUrl } from '../../hie.resource';
 import { usePatient } from '../../../context/patient-context';
 import { useSession } from '@openmrs/esm-framework';
+import { useSession } from '@openmrs/esm-framework';
 
 type BiometricsVerificationModalProps = {
   open: boolean;
