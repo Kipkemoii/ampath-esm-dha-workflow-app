@@ -26,11 +26,25 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
   const [captureResult, setCaptureResult] = useState<CaptureResult | null>(null);
   const iframeRef = React.useRef<HTMLIFrameElement | null>(null);
   const [biometricIframeUrl, setBiometricIframeUrl] = useState<string>('');
-  const [workstationId, setWorkstationId] = useState<string | null>(null);
+  const [workstationId, setWorkstationId] = useState<string>('');
   const session = useSession();
   const locationUuid = session.sessionLocation?.uuid;
 
   const { patient } = usePatient();
+
+  useEffect(() => {
+    async function fetchWorkstationId() {
+      try {
+        const workstationData: BiometricsStatus = await getWorkstationId();
+        setWorkstationId(workstationData.workstationID);
+      } catch (err) {
+        console.error('Failed to fetch workstation ID:', err);
+        setError('Failed to load workstation ID. Please try again later.');
+      }
+    }
+
+    fetchWorkstationId();
+  }, []);
 
   useEffect(() => {
     // eslint-disable-next-line no-console
@@ -44,10 +58,6 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
     if (!patient || !locationUuid) return;
     async function fetchBiometricUrl() {
       try {
-        const biometricsStatus = await getWorkstationId();
-
-        const workstationId = biometricsStatus.workstationID;
-        setWorkstationId(workstationId);
         const urlData = await getBiometrictsRequestUrl(
           patient!,
           locationUuid!,
@@ -71,7 +81,7 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
     }
 
     fetchBiometricUrl();
-  }, [patient, locationUuid, interventionCode, serviceType]);
+  }, [patient, locationUuid, interventionCode, serviceType, workstationId]);
 
   const config = useMemo(
     () => ({
