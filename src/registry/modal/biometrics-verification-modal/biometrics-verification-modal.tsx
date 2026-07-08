@@ -47,14 +47,6 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
   }, []);
 
   useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('Patient:', patient);
-    // eslint-disable-next-line no-console
-    console.log('Location UUID:', locationUuid);
-    // eslint-disable-next-line no-console
-    console.log('Intervention Code:', interventionCode);
-    // eslint-disable-next-line no-console
-    console.log('Service Type:', serviceType);
     if (!patient || !locationUuid) return;
     async function fetchBiometricUrl() {
       try {
@@ -106,41 +98,35 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
 
   useEffect(() => {
     if (!open || !biometricIframeUrl) return;
+    const expectedOrigin = new URL(biometricIframeUrl).origin;
     const handler = (event: MessageEvent) => {
-      // eslint-disable-next-line no-console
-      console.log('Received message from iframe:', event.data);
-      // eslint-disable-next-line no-console
-      console.log('Open:', event.data);
-      if (!open || !biometricIframeUrl) return;
+      console.log('================================');
+      console.log('Expected Origin:', expectedOrigin);
+      console.log('Actual Origin:', event.origin);
+      console.log('Event:', event);
+      console.log('Data:', event.data);
+      console.log('================================');
 
-      const origin = new URL(biometricIframeUrl).origin;
-      if (event.origin !== origin) return;
+      if (event.origin !== expectedOrigin) {
+        return;
+      }
 
       const data = event.data;
 
-      console.log('Message:', data);
-      console.log('Origin:', event.origin);
-
-      if (!data || typeof data !== 'object') return;
-      if (data.type === 'BIOMETRIC_RESULT') {
-        setCaptureResult(data.payload);
-        setScanning(false);
+      if (!data || typeof data !== 'object') {
+        return;
       }
 
-      const handler = (event: MessageEvent) => {
-        console.log('================================');
-        console.log('Origin:', event.origin);
-        console.log('Event:', event);
-        console.log('Data:', event.data);
-        console.log('================================');
-      };
-
-      // eslint-disable-next-line no-console
-      console.log('HANDLER :', handler);
-
-      if (data.type === 'BIOMETRIC_ERROR') {
-        setError(data.message);
+      if (data.status === 'SUCCESS') {
+        setCaptureResult(data);
+      } else if (data.type === 'BIOMETRIC_RESULT') {
+        setCaptureResult(data.payload);
+      } else if (data.status === 'SCANNING') {
+        setScanning(true);
+      } else if (data.status === 'IDLE') {
         setScanning(false);
+      } else if (data.status === 'ERROR') {
+        setError(data.message || 'An error occurred during biometric verification.');
       }
     };
 
@@ -148,33 +134,6 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
 
     return () => window.removeEventListener('message', handler);
   }, [open, biometricIframeUrl]);
-
-  // const startScan = () => {
-  //   if (!biometricIframeUrl) return;
-
-  //   const origin = new URL(biometricIframeUrl).origin;
-
-  //   setScanning(true);
-  //   setError(null);
-
-  //   iframeRef.current?.contentWindow?.postMessage({ type: 'START_CAPTURE' }, origin);
-  // };
-
-  const startScan = () => {
-    if (!biometricIframeUrl || !iframeRef.current?.contentWindow) {
-      console.error('Iframe is not ready');
-      return;
-    }
-
-    const origin = new URL(biometricIframeUrl).origin;
-
-    setScanning(true);
-    setError(null);
-
-    console.log('Sending START_CAPTURE to', origin);
-
-    iframeRef.current.contentWindow.postMessage({ type: 'START_CAPTURE' }, origin);
-  };
 
   // eslint-disable-next-line no-console
   console.log('biometricIframeUrl:', biometricIframeUrl);
@@ -186,8 +145,6 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
           <h2 className={styles.centerText}>Biometrics Verification</h2>
           <p className={styles.centerText}>Please verify your identity using biometrics.</p>
 
-          {/* Scanner zone */}
-          {/* {biometricIframeUrl && <iframe ref={iframeRef} src={`${biometricIframeUrl}`} className={styles.iframe} />} */}
           {biometricIframeUrl && (
             <iframe
               ref={iframeRef}
@@ -207,10 +164,6 @@ const BiometricsVerificationModal: React.FC<BiometricsVerificationModalProps> = 
           <p className={`${styles.statusLabel} ${scanning ? styles.active : ''}`}>
             {scanning ? 'acquiring biometric data...' : 'awaiting input'}
           </p>
-
-          <Button className={styles.button} onClick={startScan} disabled={scanning}>
-            <span>{scanning ? 'Scanning...' : 'Scan Fingerprint'}</span>
-          </Button>
 
           {captureResult && (
             <div className={styles.result}>
