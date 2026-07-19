@@ -739,7 +739,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({ patientUuid, visitU
           onRequestSubmit={handleprimaryAction}
           primaryButtonText={loading ? 'Sending...please wait' : 'Save'}
           secondaryButtonText={'Cancel'}
-          primaryButtonDisabled={loading || !otpVerified || authGuid !== 'PENDING'}
+          primaryButtonDisabled={loading || !otpVerified || !authGuid}
         >
           <ModalBody>
             <div className={styles.clientDetailsLayout}>
