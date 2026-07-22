@@ -1,6 +1,6 @@
 import React, { useRef, useState } from 'react';
 
-import { useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
 import { type VisitIntervention } from '../../types';
 
 import styles from './attachments.scss';
@@ -55,8 +55,6 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const dischargeRef = useRef<HTMLDivElement>(null);
   const finalBillRef = useRef<HTMLDivElement>(null);
 
-  console.log('BILL: ', bill);
-
   if (!claimInterventions) return null;
 
   const generatePdf = async (element: HTMLElement): Promise<Blob> => {
@@ -93,13 +91,23 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     }
 
     try {
-      await sendClaimAttachment(
+      const response = await sendClaimAttachment(
         consentToken,
         document.name,
         claimInterventions.intervention_code,
         document.file,
         locationUuid!,
       );
+
+      if (response.error) {
+        showSnackbar({
+          kind: 'error',
+          title: 'Error Uploading Attachment',
+          subtitle: response.message,
+        });
+
+        return;
+      }
 
       setDocuments((prev) =>
         prev.map((d) =>

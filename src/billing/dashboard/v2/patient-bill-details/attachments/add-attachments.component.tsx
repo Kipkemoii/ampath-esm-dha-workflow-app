@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button, ButtonSet, Form, Modal, Select, SelectItem, Tag, TextInput } from '@carbon/react';
-import { useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import styles from './attachments.scss';
 import { type VisitIntervention } from '../../types';
@@ -43,13 +43,23 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
     if (!uploadedFile) return;
 
     try {
-      await sendClaimAttachment(
+      const response = await sendClaimAttachment(
         consentToken,
         attachment.documentType,
         claimInterventions.intervention_code,
         uploadedFile.file,
         locationUuid!,
       );
+
+      if (response.error) {
+        showSnackbar({
+          kind: 'error',
+          title: 'Error Uploading Attachment',
+          subtitle: response.message,
+        });
+
+        return;
+      }
 
       setAttachments((prev) =>
         prev.map((a) =>

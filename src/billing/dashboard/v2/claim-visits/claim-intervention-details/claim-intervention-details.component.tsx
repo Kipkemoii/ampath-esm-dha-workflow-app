@@ -8,10 +8,12 @@ import styles from './claim-intervention-details.component.scss';
 interface claimInterventionDetailsProps {
   claimInterventions: VisitIntervention[];
   patientBillDetails: PatientFacilityBillDetails;
+  consentToken: string;
 }
 const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   claimInterventions,
   patientBillDetails,
+  consentToken,
 }) => {
   if (!claimInterventions || claimInterventions.length === 0) {
     return <>No Intervention data</>;
@@ -25,7 +27,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
 
   const handleAddAttachment = (ci: any) => {
     launchWorkspace('upload-intervention-attachments-workspace', {
-      consentToken: ci.authorization_code,
+      consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
     });
@@ -33,7 +35,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
 
   const handleGenerateAttachment = (ci: any) => {
     launchWorkspace('generate-intervention-attachments-workspace', {
-      consentToken: ci.authorization_code,
+      consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
     });

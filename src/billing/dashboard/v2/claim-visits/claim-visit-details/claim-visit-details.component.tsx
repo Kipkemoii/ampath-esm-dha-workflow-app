@@ -37,20 +37,22 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
 
   useEffect(() => {
     if (triggerEndVisit && activeVisit) {
-      handleCloseVisit()
+      handleCloseVisit();
     }
   }, [triggerEndVisit, activeVisit]);
 
   function handleCloseVisit() {
-    endVisit(activeVisit?.uuid).then((v) => {
-      showSnackbar({
-        title: 'Success closing claim',
-        kind: 'success',
-        subtitle: 'Claim closed successfully',
+    endVisit(activeVisit?.uuid)
+      .then((v) => {
+        showSnackbar({
+          title: 'Success closing claim',
+          kind: 'success',
+          subtitle: 'Claim closed successfully',
+        });
+      })
+      .catch((err) => {
+        console.error(err);
       });
-    }).catch((err) => {
-      console.error(err);
-    });
   }
 
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
@@ -166,6 +168,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
                 <ClaimInterventionDetails
                   patientBillDetails={patientBillDetails}
                   claimInterventions={claimsVisit.interventions}
+                  consentToken={claimsVisit.authorization_code}
                 />
               )}
             </div>
