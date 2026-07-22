@@ -16,7 +16,7 @@ import { sendClaimAttachment } from '../../../../../registry/hie.resource';
 import FinalBillComponent from './final-bill.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
-  claimInterventions: VisitIntervention[];
+  claimInterventions: VisitIntervention;
   bill: any;
   consentToken: string;
 }
@@ -57,7 +57,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
   console.log('BILL: ', bill);
 
-  if (!claimInterventions?.length) return null;
+  if (!claimInterventions) return null;
 
   const generatePdf = async (element: HTMLElement): Promise<Blob> => {
     const canvas = await html2canvas(element, {
@@ -85,7 +85,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     return pdf.output('blob');
   };
 
-  const docTypes = claimInterventions[0].applicable_document_types;
+  const docTypes = claimInterventions.applicable_document_types;
 
   const handleSubmit = async (document: GeneratedDocument) => {
     if (!document.file) {
@@ -96,7 +96,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
       await sendClaimAttachment(
         consentToken,
         document.name,
-        claimInterventions[0].intervention_code,
+        claimInterventions.intervention_code,
         document.file,
         locationUuid!,
       );
@@ -195,11 +195,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
           >
             <div className={styles.interventionSection}>
               <span>Intervention name</span>
-              <Tag type="blue">{claimInterventions[0].intervention_name}</Tag>
+              <Tag type="blue">{claimInterventions.intervention_name}</Tag>
             </div>
             <div className={styles.interventionSection}>
               <span>Intervention code</span>
-              <Tag type="blue">{claimInterventions[0].intervention_code}</Tag>
+              <Tag type="blue">{claimInterventions.intervention_code}</Tag>
             </div>
           </div>
         </div>

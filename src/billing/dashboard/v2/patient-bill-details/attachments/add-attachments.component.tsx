@@ -10,8 +10,7 @@ import { sendClaimAttachment } from '../../../../../registry/hie.resource';
 
 interface AddInterventionAttachmentWorkspaceProps extends DefaultWorkspaceProps {
   consentToken: string;
-  patientUuid?: string;
-  claimInterventions: VisitIntervention[];
+  claimInterventions: VisitIntervention;
 }
 
 const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWorkspaceProps> = ({
@@ -47,7 +46,7 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
       await sendClaimAttachment(
         consentToken,
         attachment.documentType,
-        claimInterventions[0].intervention_code,
+        claimInterventions.intervention_code,
         uploadedFile.file,
         locationUuid!,
       );
@@ -82,9 +81,9 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
   const allUploaded =
     attachments.length > 0 && attachments.every((a) => a.files.length > 0 && a.files.every((f) => f.uploaded));
 
-  if (!claimInterventions || claimInterventions.length === 0) return null;
+  if (!claimInterventions) return null;
 
-  const docTypes = claimInterventions[0].applicable_document_types;
+  const docTypes = claimInterventions.applicable_document_types;
 
   const addFiles = (attachmentId: string, selectedFiles: FileList | null) => {
     if (!selectedFiles) return;
@@ -157,11 +156,11 @@ const AddInterventionAttachmentsWorkspace: React.FC<AddInterventionAttachmentWor
         >
           <div className={styles.interventionSection}>
             <span>Intervention name</span>
-            <Tag type="blue">{claimInterventions[0].intervention_name}</Tag>
+            <Tag type="blue">{claimInterventions.intervention_name}</Tag>
           </div>
           <div className={styles.interventionSection}>
             <span>Intervention code</span>
-            <Tag type="blue">{claimInterventions[0].intervention_code}</Tag>
+            <Tag type="blue">{claimInterventions.intervention_code}</Tag>
           </div>
         </div>
         {attachments.map((attachment) => (

@@ -83,23 +83,6 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
     setShowAddDoctorModal(false);
   }
 
-  const handleAddAttachment = () => {
-    launchWorkspace('upload-intervention-attachments-workspace', {
-      consentToken: claimsVisit.authorization_code,
-      patientUuid: '10',
-      claimInterventions: claimsVisit.interventions,
-      bill: patientBillDetails,
-    });
-  };
-
-  const handleGenerateAttachment = () => {
-    launchWorkspace('generate-intervention-attachments-workspace', {
-      consentToken: claimsVisit.authorization_code,
-      patientUuid: '10',
-      claimInterventions: claimsVisit.interventions,
-      bill: patientBillDetails,
-    });
-  };
   return (
     <>
       <div className={styles.cvLayout}>
@@ -179,7 +162,12 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
               <h6>Interventions</h6>
             </div>
             <div className={styles.cvRow}>
-              {claimsVisit.interventions && <ClaimInterventionDetails claimInterventions={claimsVisit.interventions} />}
+              {claimsVisit.interventions && (
+                <ClaimInterventionDetails
+                  patientBillDetails={patientBillDetails}
+                  claimInterventions={claimsVisit.interventions}
+                />
+              )}
             </div>
           </div>
           <div className={styles.cvRow}>
@@ -195,14 +183,6 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
               <h6>Doctors</h6>
             </div>
             <div className={styles.cvRow}>{<ClaimDoctors claimDoctors={claimsVisit.claim_doctors ?? []} />}</div>
-          </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <div className={styles.generateButtonSection}>
-                <Button onClick={handleAddAttachment}>Add Attachments</Button>
-                <Button onClick={handleGenerateAttachment}>Generate Attachments</Button>
-              </div>
-            </div>
           </div>
           <div className={styles.cvRow}>
             <div className={styles.cvRow}>
