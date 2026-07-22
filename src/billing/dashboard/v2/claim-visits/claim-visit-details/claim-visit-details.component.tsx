@@ -31,14 +31,11 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
     return '';
   }, [patientBillDetails]);
 
-  if (!claimsVisit) {
-    return <>No Data</>;
-  }
-
   useEffect(() => {
     if (triggerEndVisit && activeVisit) {
       handleCloseVisit();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerEndVisit, activeVisit]);
 
   function handleCloseVisit() {
@@ -56,6 +53,10 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
   }
 
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
+
+  if (!claimsVisit) {
+    return <>No Data</>;
+  }
 
   function displayCloseClaimModal() {
     setShowCloseClaimModal(true);
@@ -85,6 +86,33 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
     setShowAddDoctorModal(false);
   }
 
+  const handleAddAttachment = () => {
+    launchWorkspace('upload-intervention-attachments-workspace', {
+      consentToken: claimsVisit.authorization_code,
+      patientUuid: '10',
+      claimInterventions: claimsVisit.interventions,
+      bill: patientBillDetails,
+    });
+  };
+
+  const handleGenerateAttachment = () => {
+    launchWorkspace('generate-intervention-attachments-workspace', {
+      consentToken: claimsVisit.authorization_code,
+      patientUuid: '10',
+      claimInterventions: claimsVisit.interventions,
+      bill: patientBillDetails,
+    });
+  };
+
+    const handleSwitchIntervention = () => {
+    launchWorkspace('switch-intervention-workspace', {
+      consentToken: claimsVisit.authorization_code,
+      currentInterventions: claimsVisit.interventions,
+      patientId: patientBillDetails?.cr_no ?? claimsVisit.patient_number,
+      billDate: patientBillDetails?.bill_date ?? claimsVisit.visit_start,
+      onSwitchSuccess: () => invalidateProviderClaimPreview(),
+    });
+  };
   return (
     <>
       <div className={styles.cvLayout}>
@@ -98,6 +126,15 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({ claimsVisit, loca
             </Button>
             <Button kind="tertiary" onClick={displayCloseSubmitClaimModal}>
               Submit claim
+            </Button>
+            <Button
+              kind="tertiary"
+              onClick={handleSwitchIntervention}
+              disabled={
+                !claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE')
+              }
+            >
+              Switch Intervention
             </Button>
           </div>
         </div>
