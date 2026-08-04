@@ -162,10 +162,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       return false;
     }
     if (intervention && visitType) {
-      const serviceType = getServiceType(intervention, visitType);
-      if (serviceType === 'PER_DIEM') {
-        return false;
-      }
+      return !["PER DIEM", "PER_DIEM"].includes(intervention?.paymentMechanism.trim().toUpperCase());
     }
     return true;
   }, [preExistingInterventions, intervention, visitType]);

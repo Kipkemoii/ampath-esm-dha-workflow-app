@@ -131,7 +131,7 @@ const ClaimDetailsByToken: React.FC<claimDetailsByTokenProps> = ({
     wantedToken && (claimVisit?.authorization_code ?? '').trim().toUpperCase() === wantedToken ? claimVisit : undefined;
 
   if (claim) {
-    return <ClaimVisitDetails claimsVisit={claim} locationUuid={locationUuid} claimRefreshing={isValidating} />;
+    return <ClaimVisitDetails claimsVisit={claim} locationUuid={locationUuid} />;
   }
   if (isLoading || isValidating) {
     return <ClaimDetailsSkeleton />;
