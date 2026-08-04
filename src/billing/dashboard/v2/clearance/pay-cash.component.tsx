@@ -17,14 +17,18 @@ import { closeWorkspace } from '@openmrs/esm-framework';
 import { type PendingLineItem } from '../types';
 
 import styles from './pay-cash.scss';
+import { updateBillItemStatus } from '../../../api/billing.api';
 
 interface PayCashComponentProps {
   lineItems?: PendingLineItem[];
+  billUuid: string;
+  cashModeUuid: string;
 }
 
-const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [] }) => {
+const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [], billUuid, cashModeUuid }) => {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [amountTendered, setAmountTendered] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const toggleRow = (index: number) => {
     setSelectedRows((prev) => (prev.includes(index) ? prev.filter((i) => i !== index) : [...prev, index]));
@@ -50,15 +54,23 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [] }) =
   const hasSelection = selectedRows.length > 0;
 
   const onCancel = () => {
+    if (isProcessing) return;
     closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
   };
 
-  const exceedsAmountDue = amountTendered > amountDue;
-  const hasValidAmount = hasSelection && amountTendered > 0 && amountTendered <= amountDue;
-
-  const onProcessPayment = () => {
-    if (!hasValidAmount) {
+  const onProcessPayment = async () => {
+    if (isProcessing) {
       return;
+    }
+    setIsProcessing(true);
+    try {
+      await Promise.all(
+        selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
+      );
+    } catch (error) {
+      console.error('Error processing payment:', error);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -132,27 +144,17 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [] }) =
           </div>
 
           <div className={styles.actions}>
-            <Button kind="secondary" size="sm" onClick={onCancel}>
+            <Button kind="secondary" size="sm" onClick={onCancel} disabled={isProcessing}>
               Cancel
             </Button>
 
-            <Button kind="primary" size="sm" disabled={!hasSelection} onClick={onProcessPayment}>
-              Process Payment
+            <Button kind="primary" size="sm" disabled={!hasSelection || isProcessing} onClick={onProcessPayment}>
+              {isProcessing ? 'Processing...' : 'Process Payment'}
             </Button>
           </div>
         </Tile>
       )}
-
-      {exceedsAmountDue && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          title="Invalid amount"
-          subtitle="Amount tendered cannot be greater than the amount due."
-        />
-      )}
     </div>
   );
 };
-
 export default PayCashComponent;

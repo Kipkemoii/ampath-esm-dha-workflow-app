@@ -47,6 +47,7 @@ export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Pr
   return (data.results ?? []).map((bill: any) => ({
     ...bill,
     bill_items: typeof bill.bill_items === 'string' ? JSON.parse(bill.bill_items) : bill.bill_items,
+    payments: typeof bill.payments === 'string' ? JSON.parse(bill.payments) : bill.payments,
   }));
 }
 
@@ -766,8 +767,7 @@ export async function fetchPatientDiagnosesForBilling(
     fetchPatientEncounterDiagnosis(visitDto),
   ]);
 
-  const visitRows: AmrsVisitDiagnosis[] =
-    visitResult.status === 'fulfilled' ? visitResult.value ?? [] : [];
+  const visitRows: AmrsVisitDiagnosis[] = visitResult.status === 'fulfilled' ? (visitResult.value ?? []) : [];
 
   const maternityRows: AmrsVisitDiagnosis[] =
     maternityResult.status === 'fulfilled'
@@ -798,7 +798,7 @@ export async function fetchPatientDiagnosesForBilling(
       : [];
 
   const encounterRows: AmrsVisitDiagnosis[] =
-    encounterResult.status === 'fulfilled' ? encounterResult.value ?? [] : [];
+    encounterResult.status === 'fulfilled' ? (encounterResult.value ?? []) : [];
 
   const merged = [...visitRows, ...maternityRows, ...encounterRows];
   const seen = new Set<string>();
@@ -816,7 +816,7 @@ export async function fetchPatientDiagnosesForBilling(
   return deduped;
 }
 
-export async function fetchFacilityBedOccupancy(locationUuid: string):  Promise<BedOccupancy>{
+export async function fetchFacilityBedOccupancy(locationUuid: string): Promise<BedOccupancy> {
   const { hieBaseUrl } = await getHieBaseUrl();
   const response = await openmrsFetch(`${hieBaseUrl}/bed-occupancy?locationUuid=${locationUuid}`);
   const data = (await response.json()) as BedOccupancy;

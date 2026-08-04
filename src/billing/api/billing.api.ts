@@ -4,8 +4,9 @@ import { getClaimsUrl, getClaimsKey } from '../../shared/utils/get-base-url';
 async function claimsFetch(path: string, method: string = 'GET', body?: any) {
   try {
     const [baseUrl, claimsKey] = await Promise.all([getClaimsUrl(), getClaimsKey()]);
+    const url = 'https://kibana.ampath.or.ke/etl-claims/api/hie';
 
-    const res = await openmrsFetch(`${baseUrl}${path}`, {
+    const res = await openmrsFetch(`${url}${path}`, {
       method,
       headers: {
         'AMPATH-CLAIMS-KEY': claimsKey,
@@ -104,4 +105,36 @@ export async function processPayment(billId: string, payload: any) {
     headers: { 'Content-Type': 'application/json' },
     body: payload,
   });
+}
+
+export async function updateBillItemStatus(
+  billUuid: string,
+  billItemUuid: string,
+  cashModeUuid: string = '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+) {
+  if (!billUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill UUID is required',
+    };
+  }
+
+  if (!billItemUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill Item UUID is required',
+    };
+  }
+
+  const payload = {
+    billUuid: billUuid,
+    billItemsUuid: [billItemUuid],
+    cashModeUuid: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+  };
+
+  const res = claimsFetch(`/bill-item/status`, 'POST', payload);
+
+  return res;
 }

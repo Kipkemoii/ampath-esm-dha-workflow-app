@@ -22,8 +22,8 @@ import {
 } from '../../../service-queues/metrics/metrics-cards/metrics-card.component';
 import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
+import NewFacilityBills from './new-facility-bills/new-facility-bills.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
-import InpatientRequests from './inpatient-requests/inpatient-requests.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -113,6 +113,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   const [awaiting, setAwaiting] = useState(0);
   const [cashDue, setCashDue] = useState(0);
   const [selectedTab, setSelectedTab] = useState(() => lastSelectedTab ?? 0);
+  const [billsDetailsOpen, setBillsDetailsOpen] = useState(false);
   // Which status bucket the bills tab should open on, with a nonce so clicking the same
   // tile twice still navigates. The payer is no longer part of it: each payer is its own
   // dashboard tab now, so `tab` alone says which list a tile means.
@@ -307,13 +308,14 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   />
                 </TabPanel>
                 <TabPanel>
-                  <FacilityBills
+                  {/* <FacilityBills
                     locationUuid={locationUuid}
                     billingDate={billingDate}
                     payerTab={CASH_PAYER_TAB}
                     navStatusKey={billsNav.statusKey}
                     navNonce={billsNav.nonce}
-                  />
+                  /> */}
+                  <NewFacilityBills locationUuid={locationUuid} billingDate={billingDate} />
                 </TabPanel>
                 <TabPanel>
                   {/* The same table on the SHA payer. It was a sub-tab inside Facility

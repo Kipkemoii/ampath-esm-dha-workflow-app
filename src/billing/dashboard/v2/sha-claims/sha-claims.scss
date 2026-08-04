@@ -1,0 +1,8 @@
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.panel {
+  padding: layout.$spacing-05;
+  border: 1px solid $ui-03;
+  background-color: $ui-01;
+}
