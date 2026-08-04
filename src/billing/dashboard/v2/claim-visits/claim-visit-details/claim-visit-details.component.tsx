@@ -136,7 +136,6 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
 
   const { preview: preauthPreview } = usePreauthPreview(claimsVisit?.authorization_code, locationUuid);
-
   // A claim can't be submitted to SHA without at least one recorded diagnosis.
   const hasDiagnosis = (claimsVisit?.claim_diagnoses ?? []).length > 0;
 

@@ -31,6 +31,7 @@ export type FacilityBill = {
       it. Absent until the backend supplies it — used by the SHA-bills claim-status
       filter. */
   claim_status?: string | null;
+  payments?: PatientPayment[];
 };
 
 export type PatientFacilityBillsDto = {
@@ -434,6 +435,8 @@ export type ActiveCashVisit = {
   visit_type_uuid: string;
   line_item_date: string | null;
   pending_line_items: PendingLineItem[];
+  cash_mode_uuid: string;
+  bill_uuid: string;
 };
 
 export interface BillLineItem {
@@ -452,7 +455,7 @@ export interface PatientBill {
   patient_name: string;
   receipt_number: string;
   cash_point: string;
-  identifiers: string;
+  identifier: string;
   bill_id: number;
   bill_date: string;
   bill_status: string;
@@ -461,10 +464,14 @@ export interface PatientBill {
   location_id: string;
   consent_token: string;
   visit_type: string;
+  payments: BillPayment[];
+  visit_uuid: string;
+  visit_type_uuid: string;
 }
 
 export interface PendingLineItem {
-  bill_id: number;
+  bill_item_id: number;
+  bill_item_uuid: string;
   price: number;
   price_name: string;
   status: string;
@@ -483,4 +490,15 @@ export interface PendingBillLineItems {
   cash_point: string;
   line_item_date: string;
   pending_line_items: PendingLineItem[];
+  bill_uuid: string;
+  cash_mode_uuid: string;
 }
+
+export type BillPayment = {
+  bill_payment_uuid: string;
+  payment_date: string;
+  payment_mode: string;
+  amount: number;
+  amount_tendered: number;
+  bill_id: string;
+};

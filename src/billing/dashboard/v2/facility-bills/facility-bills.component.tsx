@@ -1,5 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { type FacilityBillsDto, type FacilityBill, type ClaimVisitReponse, type PatientBill } from '../types';
+import {
+  type FacilityBillsDto,
+  type FacilityBill,
+  type ClaimVisitReponse,
+  type PatientBill,
+  BillLineItem,
+  BillPayment,
+} from '../types';
 import {
   Button,
   DataTable,
@@ -112,7 +119,8 @@ interface BillRow {
   claimGuid: string;
   /** Everything the free-text search looks at, pre-joined. */
   searchText: string;
-  lineItems?: FacilityBill['bill_items'];
+  lineItems?: BillLineItem[];
+  payments?: BillPayment[];
 }
 
 const billRow = (fb: PatientBill): BillRow => {
@@ -120,7 +128,7 @@ const billRow = (fb: PatientBill): BillRow => {
   return {
     id: `bill-${fb.bill_uuid}`,
     patientName: fb.patient_name,
-    crNumber: formatCr(fb.identifiers),
+    crNumber: formatCr(fb.identifier),
     visitType: fb.visit_type || '—',
     status,
     billDate: fb.bill_date || '—',
@@ -129,10 +137,11 @@ const billRow = (fb: PatientBill): BillRow => {
     claimGuid: '',
     // The cash point is no longer a column but is still searchable — it's how a cashier
     // finds their own bills.
-    searchText: `${fb.patient_name} ${formatCr(fb.identifiers)}  ${fb.receipt_number ?? ''} ${
+    searchText: `${fb.patient_name} ${formatCr(fb.identifier)}  ${fb.receipt_number ?? ''} ${
       fb.visit_type ?? ''
     } ${status} ${fb.cash_point ?? ''}`.toLowerCase(),
     lineItems: fb.bill_items,
+    payments: fb.payments,
   };
 };
 
@@ -351,7 +360,7 @@ const FacilityBills: React.FC<facilityBillsProps> = ({
       if (token && !byToken.has(token)) {
         byToken.set(token, fb);
       }
-      const cr = crKey(fb.identifiers);
+      const cr = crKey(fb.identifier);
       if (cr && !byCr.has(cr)) {
         byCr.set(cr, fb);
       }
