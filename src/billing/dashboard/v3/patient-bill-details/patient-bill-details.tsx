@@ -10,13 +10,14 @@ import {
   fetchMaternityDiagnosis,
   fetchPatientBillPayments,
   fetchPatientDiagnosis,
+  fetchPatientEncounterDiagnosis,
   fetchPatientFacilityBillDetails,
 } from '../../../billing-claims.resource';
 import { showSnackbar } from '@openmrs/esm-styleguide';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
-import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, AmrsMaternityDiagnosisDto } from '../../../types';
+import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis,type AmrsMaternityDiagnosisDto } from '../../../types';
 interface patientBillDetailsProps {
   patientUuid: string;
   locationUuid: string;
@@ -30,7 +31,19 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return patientBillDetails[0] ?? null;
   }, [patientBillDetails]);
   const billStatus = useMemo(() => getBillStatus(patientBillDetails), [patientBillDetails]);
-  const [patientAmrsVisitDiagnosis, setPatientAmrsVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+   const [visitDiagnosis, setVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+    const [maternityDiagnosis, setMaternityDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+    const [encounterDiagnosis, setEncounterDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+    const patientAmrsVisitDiagnosis = useMemo(
+      () => [...visitDiagnosis, ...maternityDiagnosis, ...encounterDiagnosis],
+      [visitDiagnosis, maternityDiagnosis, encounterDiagnosis],
+    );
+
+
+  const [visitDiagnosisLoading, setVisitDiagnosisLoading] = useState<boolean>(true);
+  const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
+  const [encounterDiagnosisLoading, setEncounterDiagnosisLoading] = useState<boolean>(true);
+  const diagnosisLoading = visitDiagnosisLoading || maternityDiagnosisLoading || encounterDiagnosisLoading;
 
   useEffect(() => {
     if (locationUuid && patientUuid && billingDate) {
@@ -38,6 +51,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
       getPatientPayments();
       getPatientAmrsVisitDiagnosis();
       getPatientAmrsMaternityDiagnosis();
+      getPatientAmrsEncounterDiagnosis();
     }
   }, [locationUuid, patientUuid, billingDate]);
   async function getPatientBillDetails() {
@@ -106,34 +120,55 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     }
   }
   async function getPatientAmrsVisitDiagnosis() {
-    const amrsVisitDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
-    try {
-      const resp = await fetchPatientDiagnosis(amrsVisitDiagnosisPayload);
-      if (resp && resp.length > 0) {
-        setPatientAmrsVisitDiagnosis((prev) => ([...prev, ...resp]));
+      setVisitDiagnosisLoading(true);
+      const amrsVisitDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
+      try {
+        const resp = await fetchPatientDiagnosis(amrsVisitDiagnosisPayload);
+        setVisitDiagnosis(resp ?? []);
+      } catch (error) {
+        showSnackbar({
+          title: 'Error fetching patient diagnosis',
+          kind: 'error',
+          subtitle: 'An error occurred while fetching the patient diagnosis',
+        });
+      } finally {
+        setVisitDiagnosisLoading(false);
       }
-    } catch (error) {
-      showSnackbar({
-        title: 'Error fetching patient diagnosis',
-        kind: 'error',
-        subtitle: 'An error occurred while fetching the patient diagnosis',
-      });
     }
-  }
-  async function getPatientAmrsMaternityDiagnosis() {
-    const amrsMaternityDiagnosisPayload = getPatientAmrsMaternityDiagnosisPayload();
-    try {
-      const resp: any = await fetchMaternityDiagnosis(amrsMaternityDiagnosisPayload);
-      if (resp && resp.length > 0) {
-        const results = resp.filter((r) => r?.uuid != null).map(v => ({ ...v, practitioner_identifier_type: "National ID" }));
-        setPatientAmrsVisitDiagnosis((prev) => ([...prev, ...results]));
+    async function getPatientAmrsMaternityDiagnosis() {
+      setMaternityDiagnosisLoading(true);
+      const amrsMaternityDiagnosisPayload = getPatientAmrsMaternityDiagnosisPayload();
+      try {
+        const resp: any = await fetchMaternityDiagnosis(amrsMaternityDiagnosisPayload);
+        const results = (resp ?? [])
+          .filter((r) => r?.uuid != null)
+          .map((v) => ({ ...v, practitioner_identifier_type: 'National ID' }));
+        setMaternityDiagnosis(results);
+      } catch (error) {
+        showSnackbar({
+          title: 'Error fetching patient maternity diagnosis',
+          kind: 'error',
+          subtitle: 'An error occurred while fetching the patient maternity diagnosis',
+        });
+      } finally {
+        setMaternityDiagnosisLoading(false);
       }
+    }
+  async function getPatientAmrsEncounterDiagnosis() {
+    setEncounterDiagnosisLoading(true);
+    const amrsMaternityDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
+    try {
+      const resp: any = await fetchPatientEncounterDiagnosis(amrsMaternityDiagnosisPayload);
+      const results = (resp ?? []).filter((r) => r?.uuid != null).map((v) => ({ ...v }));
+      setEncounterDiagnosis(results);
     } catch (error) {
       showSnackbar({
-        title: 'Error fetching patient maternity diagnosis',
+        title: 'Error fetching patient encounter diagnosis',
         kind: 'error',
-        subtitle: 'An error occurred while fetching the patient maternity diagnosis',
+        subtitle: 'An error occurred while fetching the patient encounter diagnosis',
       });
+    } finally {
+      setEncounterDiagnosisLoading(false);
     }
   }
   function getPatientAmrsVisitDiagnosisPayload(): AmrsVisitDiagnosisDto {
