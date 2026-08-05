@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { forwardRef, useState } from 'react';
 import styles from './case-summary.scss';
+import { fetchCaseSummary } from '../../../../../billing-claims.resource';
+import { useSession } from '@openmrs/esm-framework';
 
 const DEMO_PATIENT = {
   facility: 'Sample County Government',
@@ -121,14 +123,28 @@ function SectionBlock({ number, title, children }) {
   );
 }
 
-const CaseSummary = ({ patient = DEMO_PATIENT }) => {
-  const [caseSummary, setCaseSummary] = useState();
+interface CaseSummaryProps {
+  patient?: typeof DEMO_PATIENT;
+}
 
-  const fetchCaseSummary = async () => {};
+const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DEMO_PATIENT }, ref) => {
   const p = patient;
+  const session = useSession();
+  const locationUuid = session?.sessionLocation?.uuid;
+
+  const [caseSummary, setCasesummary] = useState();
+
+  const getCaseSummary = async () => {
+    try {
+      const res = await fetchCaseSummary(locationUuid!, '');
+      console.log('RESULTS ONE: ', res);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
-    <div className={styles['cs-root']}>
+    <div className={styles['cs-root']} ref={ref}>
       <div className={styles['cs-shell']}>
         <header className={styles['cs-header']}>
           <div className={styles['cs-header-bar']} />
@@ -146,9 +162,7 @@ const CaseSummary = ({ patient = DEMO_PATIENT }) => {
         <div className={styles['cs-identity']}>
           <div className={styles['cs-field']}>
             <div className={styles['cs-field-label']}>Patient Name</div>
-            <div className={styles['cs-field-value']} cs-name-value>
-              {p.patientName}
-            </div>
+            <div className={`${styles['cs-field-value']} ${styles['cs-name-value']}`}>{p.patientName}</div>
           </div>
           <Field label="DOB" value={p.dob} />
           <Field label="Age / Gender" value={`${p.age}y · ${p.gender}`} />
@@ -303,6 +317,8 @@ const CaseSummary = ({ patient = DEMO_PATIENT }) => {
       </div>
     </div>
   );
-};
+});
+
+CaseSummary.displayName = 'CaseSummary';
 
 export default CaseSummary;
