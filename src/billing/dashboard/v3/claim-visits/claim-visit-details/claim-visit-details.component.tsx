@@ -158,11 +158,9 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <Button
               kind="tertiary"
               onClick={handleSwitchIntervention}
-              disabled={
-                !claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE')
-              }
+              disabled={!claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE')}
             >
-              Switch Intervention
+              Switch Interventionnn
             </Button>
           </div>
         </div>
@@ -234,6 +232,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                   patientBillDetails={patientBillDetails}
                   claimInterventions={claimsVisit.interventions}
                   consentToken={claimsVisit.authorization_code}
+                  visitUuid={activeVisit?.uuid}
                 />
               )}
             </div>

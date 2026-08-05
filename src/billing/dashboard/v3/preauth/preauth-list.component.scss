@@ -1,0 +1,34 @@
+.preauthList {
+  width: 100%;
+}
+
+.toolbarRow {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.toolbarRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.refreshBtn {
+  flex-shrink: 0;
+  margin-bottom: 0.125rem;
+}
+
+.muted {
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+}
+
+.notes {
+  max-width: 18rem;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.75rem;
+  line-height: 1.3;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
