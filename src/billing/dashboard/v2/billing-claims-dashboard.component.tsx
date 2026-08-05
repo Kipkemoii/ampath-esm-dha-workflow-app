@@ -22,8 +22,8 @@ import {
 } from '../../../service-queues/metrics/metrics-cards/metrics-card.component';
 import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
-import NewFacilityBills from './new-facility-bills/new-facility-bills.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
+import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -308,14 +308,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                   />
                 </TabPanel>
                 <TabPanel>
-                  {/* <FacilityBills
-                    locationUuid={locationUuid}
-                    billingDate={billingDate}
-                    payerTab={CASH_PAYER_TAB}
-                    navStatusKey={billsNav.statusKey}
-                    navNonce={billsNav.nonce}
-                  /> */}
-                  <NewFacilityBills locationUuid={locationUuid} billingDate={billingDate} />
+                 <FacilityBillsV3 locationUuid={locationUuid} billingDate={billingDate} />
                 </TabPanel>
                 <TabPanel>
                   {/* The same table on the SHA payer. It was a sub-tab inside Facility

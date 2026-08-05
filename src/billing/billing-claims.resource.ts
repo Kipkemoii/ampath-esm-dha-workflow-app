@@ -34,7 +34,7 @@ import {
   type AmrsVisitDiagnosis,
   type AmrsVisitDiagnosisDto,
   type AmrsVisitDiagnosisResponse,
-  BedOccupancy,
+  type BedOccupancy,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
