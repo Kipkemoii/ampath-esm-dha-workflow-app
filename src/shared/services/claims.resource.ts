@@ -32,7 +32,7 @@ export const getServiceType = (
     return 'CAPITATION';
   }
   if (["PER DIEM", "PER_DIEM"].includes(paymentMechanism.trim().toUpperCase())) {
-    return 'PER_DIEM';
+    return 'INPATIENT';
   }
   if (accessPoint.trim().toUpperCase() === 'IP') {
     return 'INPATIENT';
