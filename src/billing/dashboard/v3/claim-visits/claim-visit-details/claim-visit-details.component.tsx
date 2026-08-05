@@ -15,6 +15,7 @@ import AddClaimDoctorModal from '../modal/claim-doctors/add-claim-doctor/add-cla
 import { VisitTypeUuids } from '../../../../../shared/constants/visit-types';
 import { VisitType } from '../../../../../claims';
 import { canEditClaimContent } from '../../../v2/claim-statuses';
+import { interventionHasBlockingPreauth, usePreauthPreview } from '../../../../../claims/claims.resource';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -81,6 +82,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   }, [activeVisit, VisitTypeUuids]);
 
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
+  const { preview: preauthPreview } = usePreauthPreview(claimsVisit?.authorization_code, locationUuid);
 
   if (!claimsVisit) {
     return <>No Data</>;
@@ -134,12 +136,17 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
 
   // Same gates as v2: content edits only while claim is DRAFT / DRAFT_RESUBMIT and not refreshing.
   const canSwitchIntervention = canEditClaimContent(claimsVisit.workflow_state) && !claimRefreshing;
-  const hasActiveIntervention = Boolean(
-    claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE'),
+  const hasSwitchableIntervention = Boolean(
+    claimsVisit.interventions?.some((iv) => {
+      const active = (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE';
+      if (!active) return false;
+      // Match row Actions: blocking preauth locks Switch together with Raise/Resubmit.
+      return !interventionHasBlockingPreauth(preauthPreview, iv.intervention_code);
+    }),
   );
 
   const handleSwitchIntervention = () => {
-    if (!canSwitchIntervention || !hasActiveIntervention) {
+    if (!canSwitchIntervention || !hasSwitchableIntervention) {
       return;
     }
     launchWorkspace('switch-intervention-workspace', {
@@ -172,7 +179,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <Button
               kind="tertiary"
               onClick={handleSwitchIntervention}
-              disabled={!canSwitchIntervention || !hasActiveIntervention}
+              disabled={!canSwitchIntervention || !hasSwitchableIntervention}
             >
               Switch Intervention
             </Button>

@@ -16,6 +16,7 @@ import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framewor
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
 import {
   interventionHasBlockingPreauth,
+  interventionHasFailedPreauth,
   usePreauthPreview,
 } from '../../../../../claims/claims.resource';
 
@@ -62,8 +63,28 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     });
   };
 
+  const canActOnIntervention = (intervention: VisitIntervention) =>
+    canSwitchIntervention && isActiveIntervention(intervention);
+
+  const hasBlockingPreauth = (intervention: VisitIntervention) =>
+    interventionHasBlockingPreauth(preauthPreview, intervention.intervention_code);
+
+  /** Switch stays locked while a non-resubmittable preauth is in flight / finalised. */
+  const canSwitchFor = (intervention: VisitIntervention) =>
+    canActOnIntervention(intervention) && !hasBlockingPreauth(intervention);
+
+  const canRaisePreauthFor = (intervention: VisitIntervention) => {
+    return canActOnIntervention(intervention) && Boolean(intervention.needs_preauth) && !hasBlockingPreauth(intervention);
+  };
+
+  const isResubmitPreauth = (intervention: VisitIntervention) =>
+    interventionHasFailedPreauth(preauthPreview, intervention.intervention_code);
+
+  const raisePreauthLabel = (intervention: VisitIntervention) =>
+    isResubmitPreauth(intervention) ? 'Resubmit preauth' : 'Raise preauth';
+
   const handleSwitchIntervention = (intervention: VisitIntervention) => {
-    if (!canSwitchIntervention || !isActiveIntervention(intervention)) {
+    if (!canSwitchFor(intervention)) {
       return;
     }
     launchWorkspace('switch-intervention-workspace', {
@@ -78,15 +99,6 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       },
     });
   };
-
-  const canActOnIntervention = (intervention: VisitIntervention) =>
-    canSwitchIntervention && isActiveIntervention(intervention);
-
-  const canRaisePreauthFor = (intervention: VisitIntervention) => {
-    const alreadyRaised = interventionHasBlockingPreauth(preauthPreview, intervention.intervention_code);
-    return canActOnIntervention(intervention) && Boolean(intervention.needs_preauth) && !alreadyRaised;
-  };
-
   const handleRaisePreauth = (intervention: VisitIntervention) => {
     if (!canSwitchIntervention) {
       return;
@@ -112,6 +124,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       ? intervention.applicable_document_types.map(String)
       : parseDocTypes(intervention.applicable_document_types as string | null | undefined);
 
+    // Fresh raise and failure-state resubmit both reopen the same preauth form.
     launchWorkspace('preauth-form-workspace', {
       consentToken,
       patientUuid: patientBillDetails?.patient_uuid,
@@ -160,7 +173,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
         <TableBody>
           {claimInterventions &&
             claimInterventions.map((ci) => {
-              const canAct = canActOnIntervention(ci);
+              const canSwitch = canSwitchFor(ci);
               const canRaise = canRaisePreauthFor(ci);
               const hasAttachments = (ci.applicable_document_types ?? []).length > 0;
               return (
@@ -186,14 +199,14 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
                   <TableCell>
                     <MenuButton label="Actions" kind="ghost" size="sm">
                       <MenuItem
-                        label="Raise preauth"
+                        label={raisePreauthLabel(ci)}
                         onClick={() => handleRaisePreauth(ci)}
                         disabled={!canRaise}
                       />
                       <MenuItem
                         label="Switch intervention"
                         onClick={() => handleSwitchIntervention(ci)}
-                        disabled={!canAct}
+                        disabled={!canSwitch}
                       />
                     </MenuButton>
                   </TableCell>

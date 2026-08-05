@@ -93,6 +93,11 @@ export type AmrsVisitDiagnosis = {
   value_coded?: number | null;
   /** Encounter diagnosis coded concept (/patient/encounter-diagnosis). */
   diagnosis_coded?: number | null;
+  /**
+   * Diagnosis rank from encounter-diagnosis ETL (1 = primary / preferred for preauth).
+   * Lower ranks are preferred when multiple diagnoses are present.
+   */
+  dx_rank?: number | null;
   concept_source_name: string;
   hl7_code: string;
   icd11_code: string;

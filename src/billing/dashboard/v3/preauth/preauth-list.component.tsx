@@ -15,6 +15,7 @@ import { launchWorkspace, showSnackbar } from '@openmrs/esm-framework';
 import {
   checkPreauthStatus,
   invalidatePreauthPreview,
+  isPreauthNeedsClarification,
   type PreauthCheckKind,
 } from '../../../../claims/claims.resource';
 import EmptyState from '../shared/empty-state.component';
@@ -222,12 +223,14 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
               const flags = interventionFlagsFromBillItem(item);
               const meta = rowMeta[key];
               const elective = needsElectivePreauth(item);
-              // Already-raised (pending / clarification / finalised) must not show Raise again.
+              // Not raised, terminal failure, or clarification → Raise / Resubmit.
+              // Other pending / finalised states stay blocked.
               const canRaise =
                 meta?.kind === 'not_raised' ||
                 meta?.kind === 'failed' ||
+                isPreauthNeedsClarification(meta?.status ?? '') ||
                 (elective && meta?.kind === 'no_token');
-              const showNotes = Boolean(meta?.notes?.trim()) && !canRaise;
+              const showNotes = Boolean(meta?.notes?.trim()) && meta?.kind !== 'not_raised';
               return (
                 <TableRow key={key}>
                   <TableCell>
@@ -257,7 +260,9 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
                   <TableCell>
                     {canRaise ? (
                       <Button kind="ghost" size="sm" onClick={() => handleRaise(item)}>
-                        Raise preauth
+                        {meta?.kind === 'failed' || isPreauthNeedsClarification(meta?.status ?? '')
+                          ? 'Resubmit preauth'
+                          : 'Raise preauth'}
                       </Button>
                     ) : (
                       '—'

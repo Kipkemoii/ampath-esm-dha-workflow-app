@@ -876,7 +876,7 @@ export async function fetchPreauthPreviewRowsForTokens(
   return rows;
 }
 
-const PREAUTH_TERMINAL_FAILURE = new Set(['REJECTED', 'CANCELLED', 'FAILED', 'DECLINED']);
+const PREAUTH_TERMINAL_FAILURE = new Set(['REJECTED', 'CANCELLED', 'CANCELED', 'FAILED', 'DECLINED']);
 
 const PREAUTH_SUBMITTED = new Set([
   'ACTIVE',
@@ -960,15 +960,33 @@ export function extractPreauthCodeForIntervention(
 }
 
 /**
- * True when preview already has a non-failed preauth for this intervention —
- * Raise should be hidden (re-raise allowed after terminal failure).
+ * True when preview already has a non-failed, non-clarification preauth for this
+ * intervention — Raise should be hidden. Terminal failure and clarification allow
+ * reopening the form to resubmit.
  */
 export function interventionHasBlockingPreauth(preview: unknown, interventionCode: string): boolean {
   const item = findPreauthPreviewForIntervention(preview, interventionCode);
   if (!item) return false;
   const status = statusFromPreviewItem(item);
   if (!status) return true; // row exists but status blank — treat as already raised
-  return !isPreauthTerminalFailure(status);
+  return !isPreauthResubmittable(status);
+}
+
+/**
+ * True when this intervention's preauth failed or needs clarification —
+ * UI can offer Resubmit and reopen the preauth form.
+ */
+export function interventionHasFailedPreauth(preview: unknown, interventionCode: string): boolean {
+  const status = extractPreauthStatusForIntervention(preview, interventionCode);
+  return Boolean(status) && isPreauthResubmittable(status);
+}
+
+/** Alias for clarity at call sites that mean "resubmit", not only hard failure. */
+export function interventionAllowsPreauthResubmit(
+  preview: unknown,
+  interventionCode: string,
+): boolean {
+  return interventionHasFailedPreauth(preview, interventionCode);
 }
 
 export function extractPreauthStatus(preview: unknown): string {
@@ -1014,7 +1032,15 @@ export function isPreauthFinalised(status: string): boolean {
 }
 
 export function isPreauthTerminalFailure(status: string): boolean {
-  return PREAUTH_TERMINAL_FAILURE.has((status || '').toUpperCase());
+  const s = (status || '').toUpperCase();
+  if (PREAUTH_TERMINAL_FAILURE.has(s)) return true;
+  // HIE sometimes returns prefixed / alternate spellings (e.g. PREAUTH_CANCELLED).
+  return s.includes('CANCEL');
+}
+
+/** Failure, cancellation, or clarification — provider may reopen the preauth form and resubmit. */
+export function isPreauthResubmittable(status: string): boolean {
+  return isPreauthTerminalFailure(status) || isPreauthNeedsClarification(status);
 }
 
 /** Statuses that mean the preauth was accepted by HIE — form can close. */
@@ -1085,7 +1111,8 @@ export async function checkPreauthStatus(
     if (isPreauthTerminalFailure(status)) {
       return { status, preview, kind: 'failed', preauthCode, notes };
     }
-    // Includes CLARIFICATION_AFTER_AUTOMATIC_CHECKS and other in-flight payer states.
+    // Clarification stays `pending` for status-tag colouring ("Needs clarification"),
+    // but is not a blocking preauth — callers use isPreauthNeedsClarification / resubmit helpers.
     return { status, preview, kind: 'pending', preauthCode, notes };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e ?? 'Failed to get preauth preview');

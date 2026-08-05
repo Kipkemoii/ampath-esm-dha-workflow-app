@@ -27,7 +27,7 @@ import {
   type PreauthFormPayload,
 } from '../../../../claims/claims.resource';
 import { cancelAllPendingAuthorizations, sendClaimsOTP, authorizeClaimsWithOtp } from '../../../../registry/hie.resource';
-import { addClaimDiagnosis, fetchPatientDiagnosesForBilling } from '../../../billing-claims.resource';
+import { addClaimDiagnosis, fetchPatientDiagnosesForBilling, preferredDiagnosisForPreauth } from '../../../billing-claims.resource';
 import { ensureInterventionOnVisit } from '../../../../claims/interventions.resource';
 import { type AmrsVisitDiagnosis } from '../../../types';
 import { type PatientFacilityBillDetails } from '../types';
@@ -75,7 +75,9 @@ const diagnosisPickLabel = (item: DiagnosisPick | null) => {
   if (!item) return '';
   if (item.kind === 'visit') {
     const d = item.dx;
-    return `${d.icd11_code ?? '—'} · ${d.concept_source_name || d.encounter_type || 'Visit diagnosis'}`;
+    const rank =
+      d.dx_rank != null && Number.isFinite(Number(d.dx_rank)) ? ` · Rank ${Number(d.dx_rank)}` : '';
+    return `${d.icd11_code ?? '—'} · ${d.concept_source_name || d.encounter_type || 'Visit diagnosis'}${rank}`;
   }
   return `${item.hit.icd11Code} · ${item.hit.display}`;
 };
@@ -428,9 +430,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         });
         if (!cancelled) {
           setVisitDiagnoses(results ?? []);
-          const withIcd = (results ?? []).filter((d) => d.icd11_code);
-          if (withIcd.length === 1) {
-            applyDiagnosisPick(visitDxPick(withIcd[0]), { fromUser: false });
+          // Prefer dx_rank === 1; otherwise best-ranked ICD-coded row. Multiple options
+          // stay available in the ComboBox (already ordered by rank from the fetch).
+          const preferred = preferredDiagnosisForPreauth(results ?? []);
+          if (preferred) {
+            applyDiagnosisPick(visitDxPick(preferred), { fromUser: false });
           }
         }
       } catch {
@@ -1231,7 +1235,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
 
           <div className={styles.searchBlock}>
             <p className={styles.fieldHint}>
-              Diagnosis (ICD-11)
+              Diagnosis (ICD-11). Prefills rank 1 when available; choose another if needed.
             </p>
             {loadingDx ? (
               <InlineLoading description="Loading patient diagnoses…" />

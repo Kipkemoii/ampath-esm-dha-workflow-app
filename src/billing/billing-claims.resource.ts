@@ -745,6 +745,34 @@ function diagnosisDedupeKey(d: AmrsVisitDiagnosis): string {
   return `${d.encounter_id ?? ''}|${(d.icd11_code ?? '').trim()}`;
 }
 
+/** Numeric rank for sorting; missing/invalid ranks sort last. */
+function diagnosisRankValue(d: AmrsVisitDiagnosis): number {
+  const r = d.dx_rank;
+  if (r == null || r === ('' as unknown)) return Number.POSITIVE_INFINITY;
+  const n = Number(r);
+  return Number.isFinite(n) ? n : Number.POSITIVE_INFINITY;
+}
+
+/** Order diagnoses for preauth: dx_rank 1 first, then 2…; unranked last. */
+export function sortDiagnosesByRank(rows: AmrsVisitDiagnosis[]): AmrsVisitDiagnosis[] {
+  return [...rows].sort((a, b) => {
+    const byRank = diagnosisRankValue(a) - diagnosisRankValue(b);
+    if (byRank !== 0) return byRank;
+    return String(a.encounter_datetime ?? '').localeCompare(String(b.encounter_datetime ?? ''));
+  });
+}
+
+/**
+ * Preferred diagnosis for preauth prefill: explicit dx_rank === 1 when present,
+ * otherwise the best-ranked row that has an ICD-11 code.
+ */
+export function preferredDiagnosisForPreauth(rows: AmrsVisitDiagnosis[]): AmrsVisitDiagnosis | null {
+  const withIcd = rows.filter((d) => (d.icd11_code ?? '').trim());
+  if (!withIcd.length) return null;
+  const sorted = sortDiagnosesByRank(withIcd);
+  return sorted.find((d) => Number(d.dx_rank) === 1) ?? sorted[0] ?? null;
+}
+
 /**
  * Load patient diagnoses from the same three ETL sources as bill/claim details,
  * merge, and dedupe. Used by Raise Preauth prefill (not wired into bill details).
@@ -783,6 +811,7 @@ export async function fetchPatientDiagnosesForBilling(
               encounter_type: v.encounter_type,
               concept_id: v.concept_id != null ? Number(v.concept_id) : null,
               value_coded: v.value_coded != null ? Number(v.value_coded) : null,
+              dx_rank: (v as { dx_rank?: number | null }).dx_rank ?? null,
               concept_source_name: v.concept_source_name,
               hl7_code: v.hl7_code,
               icd11_code: v.icd11_code,
@@ -801,7 +830,8 @@ export async function fetchPatientDiagnosesForBilling(
   const encounterRows: AmrsVisitDiagnosis[] =
     encounterResult.status === 'fulfilled' ? (encounterResult.value ?? []) : [];
 
-  const merged = [...visitRows, ...maternityRows, ...encounterRows];
+  // Best rank first so dedupe keeps the preferred row when the same ICD appears twice.
+  const merged = sortDiagnosesByRank([...visitRows, ...maternityRows, ...encounterRows]);
   const seen = new Set<string>();
   const deduped: AmrsVisitDiagnosis[] = [];
   for (const row of merged) {
