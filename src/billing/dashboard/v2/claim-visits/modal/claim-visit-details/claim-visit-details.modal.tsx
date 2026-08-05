@@ -42,6 +42,7 @@ const ClaimVisitDetailsModal: React.FC<claimVisitDetailsModalProps> = ({
               <ClaimVisitDetails
                 claimsVisit={claimsVisit}
                 locationUuid={locationUuid}
+                claimStateUnconfirmed={claimStateUnconfirmed}
               />
             ) : (
               <ClaimDetailsByToken consentToken={consentToken ?? ''} locationUuid={locationUuid} />
