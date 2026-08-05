@@ -38,6 +38,7 @@ import {
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
+import { VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -821,4 +822,16 @@ export async function fetchFacilityBedOccupancy(locationUuid: string): Promise<B
   const response = await openmrsFetch(`${hieBaseUrl}/bed-occupancy?locationUuid=${locationUuid}`);
   const data = (await response.json()) as BedOccupancy;
   return data;
+}
+
+export async function fetchCaseSummary(patientUuid: string, locationUuid: string): Promise<VisitSummaryResponse> {
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url =
+    `https://kibana.ampath.or.ke/openmrs/hie/case-summary` +
+    `?patientUuid=${encodeURIComponent(patientUuid)}` +
+    `&locationUuid=${encodeURIComponent(locationUuid)}`;
+
+  const response = await openmrsFetch(url);
+  const data = await response.json();
+  return data ?? null;
 }

@@ -210,7 +210,7 @@ export const switchInterventionWorkspace = getAsyncLifecycle(
 );
 
 export const preauthFormWorkspace = getAsyncLifecycle(
-  () => import('./billing/dashboard/v2/preauth/preauth.workspace'),
+  () => import('./billing/dashboard/v3/preauth/preauth.workspace'),
   options,
 );
 

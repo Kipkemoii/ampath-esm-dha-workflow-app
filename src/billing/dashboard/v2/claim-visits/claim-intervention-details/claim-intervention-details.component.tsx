@@ -88,11 +88,26 @@ export function buildInterventionRecords(
         { label: 'Accrued per diem days', value: ci.accrued_per_diem_days },
         { label: 'Active for UHC', value: <YesNo value={ci.active_for_uhc} /> },
         { label: 'Needs preauth', value: <YesNo value={ci.needs_preauth} /> },
-        { label: 'Surgical preauth', value: <YesNo value={asBool(ci.requires_surgical_preauth ?? (ci as any).requiresSurgicalPreauth)} /> },
-        { label: 'Renal preauth', value: <YesNo value={asBool(ci.requires_renal_preauth ?? (ci as any).requiresRenalPreauth)} /> },
-        { label: 'Oncology preauth', value: <YesNo value={asBool(ci.requires_oncology_preauth ?? (ci as any).requiresOncologyPreauth)} /> },
-        { label: 'Radiology preauth', value: <YesNo value={asBool(ci.requires_radiology_preauth ?? (ci as any).requiresRadiologyPreauth)} /> },
-        { label: 'Optical preauth', value: <YesNo value={asBool(ci.requires_optical_preauth ?? (ci as any).requiresOpticalPreauth)} /> },
+        {
+          label: 'Surgical preauth',
+          value: <YesNo value={asBool(ci.requires_surgical_preauth ?? (ci as any).requiresSurgicalPreauth)} />,
+        },
+        {
+          label: 'Renal preauth',
+          value: <YesNo value={asBool(ci.requires_renal_preauth ?? (ci as any).requiresRenalPreauth)} />,
+        },
+        {
+          label: 'Oncology preauth',
+          value: <YesNo value={asBool(ci.requires_oncology_preauth ?? (ci as any).requiresOncologyPreauth)} />,
+        },
+        {
+          label: 'Radiology preauth',
+          value: <YesNo value={asBool(ci.requires_radiology_preauth ?? (ci as any).requiresRadiologyPreauth)} />,
+        },
+        {
+          label: 'Optical preauth',
+          value: <YesNo value={asBool(ci.requires_optical_preauth ?? (ci as any).requiresOpticalPreauth)} />,
+        },
       ],
       expandable: opts
         ? {
@@ -106,12 +121,7 @@ export function buildInterventionRecords(
       actions: hasActions ? (
         <>
           {opts?.onSwitchIntervention ? (
-            <Button
-              kind="tertiary"
-              size="sm"
-              onClick={() => opts.onSwitchIntervention!(ci)}
-              disabled={!canAct}
-            >
+            <Button kind="tertiary" size="sm" onClick={() => opts.onSwitchIntervention!(ci)} disabled={!canAct}>
               Switch Intervention
             </Button>
           ) : null}
