@@ -116,6 +116,7 @@ export interface ClaimIntervention {
   optional_preauth_document_types: string[] | null;
   applicable_document_types: string[];
   needs_preauth: boolean;
+  needs_manual_preauth: boolean;
 }
 
 export interface PreExistingIntervention {
@@ -320,4 +321,20 @@ export interface SubBenefit {
 export interface MemberBalance {
   member: string;
   balance: number;
+}
+export interface PreauthRequest {
+  consentToken: string;
+  patientUuid: string;
+  orderNo: string;
+  subBenefitCode: string;
+  interventionCode: string;
+  serviceType: string;
+  locationUuid: string;
+  billableServiceUuid: string;
+  priceUuid: string;
+  requiresPreauth: boolean;
+  normalPreauth: boolean;
+  electivePreauth: boolean;
+  applicableDocumentTypes: string;
+  requiredPreauthDocumentTypes: string;
 }

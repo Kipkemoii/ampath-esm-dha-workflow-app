@@ -283,10 +283,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             };
 
             if (interventionResult) {
-                // Elective = needsManualPreauthApproval only — specialty flags are separate.
-                // Claim-visit interventions are post-claim (normal path); elective is pre-visit.
                 const requiresPreauth = Boolean(interventionResult.needs_preauth);
-                const isElective = false;
+                const isElective = Boolean(interventionResult.needs_preauth) && Boolean(interventionResult.needs_manual_preauth);
                 const requiredPreauthDocumentTypes = interventionResult.required_preauth_document_types;
                 const applicableDocumentTypes = interventionResult.applicable_document_types;
                 const subBenefitCode =

@@ -16,7 +16,6 @@ import styles from './claims.component.scss';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   createClaimsVisit,
-  fetchConsentToken,
   getServiceType,
   useBenefitUtilizations,
   useClientSubBenefits,
@@ -25,6 +24,7 @@ import {
   usePatientVisit,
   usePomsfBalance,
   updateBillOrderConsentToken,
+  createPreauthRequest,
 } from './claims.resource';
 import {
   type BenefitUtilization,
@@ -92,6 +92,16 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   const { interventions, isLoadingInterventions } = useInterventions(clientRegistryId, selectedSubBenefitCode?.code);
   const { preExistingInterventions, isLoadingPreExistingIntervention } = usePreExistingIntervention(patientUuid);
   const { sessionLocation } = useSession();
+
+  const handleAddPreauthRequest = async () => {
+    // await createPreauthRequest();
+  }
+
+  const generatePreauthRequestPayload = () => {
+    return {
+
+    }
+  }
 
   const loadedConsentToken = useMemo(() => {
     if (activeVisit) {
@@ -376,7 +386,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
         code: ci.intervention_code,
         paymentMechanism: ci.intervention_payment_mechanism,
         needsPreauth: !!ci.needs_preauth,
-        needsManualPreauthApproval: false,
+        needsManualPreauthApproval: !!ci.needs_manual_preauth,
         overallTariff: ci.accrued_per_diem_amount ?? '',
         kephLevelTarriff: ci.keph_level_tarrif ?? '',
         fund: ci.intervention_fund ?? '',
@@ -426,6 +436,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
       optional_preauth_document_types: null,
       applicable_document_types: i.applicableDocumentTypes ?? [],
       needs_preauth: !!i.needsPreauth,
+      needs_manual_preauth: !!i.needsManualPreauthApproval
     };
   };
 
@@ -450,7 +461,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
         onAddIntervention(mapIntervention(selectedIntervention), selectedSubBenefitCode);
       } else {
         const intervention = await addIntervention(consentToken, selectedIntervention.code, sessionLocation?.uuid);
-        onAddIntervention(intervention ?? mapIntervention(selectedIntervention), selectedSubBenefitCode);
+        onAddIntervention(mapIntervention(selectedIntervention), selectedSubBenefitCode);
       }
 
       showSnackbar({

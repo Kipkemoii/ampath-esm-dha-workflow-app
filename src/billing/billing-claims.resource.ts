@@ -35,6 +35,8 @@ import {
   type AmrsVisitDiagnosisDto,
   type AmrsVisitDiagnosisResponse,
   type BedOccupancy,
+  PayerPreviewResponse,
+  PayerPreviewResult,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
@@ -874,4 +876,29 @@ export async function fetchCaseSummary(
 
     throw new Error(err instanceof Error ? err.message : 'Unknown error occurred');
   }
+}
+
+export function usePayerClaimPreview(invoiceNo: string, locationUuid: string) {
+  const { hieBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+  const url = invoiceNo
+    ? `${hieBaseUrl}/claim-preview/payer?providerClaimNo=${invoiceNo}&locationUuid=${locationUuid}`
+    : null;
+
+  const { data, error, isLoading, isValidating } = useSWR<{
+    data: PayerPreviewResponse
+  }>(url, openmrsFetch, {
+    keepPreviousData: true
+  });
+
+  const results = data?.data?.results;
+  const result = results && results?.length ? results[0] : {} as PayerPreviewResult;
+
+  return {
+    payerPreviewResult: result,
+    error,
+    isLoading,
+    isValidating,
+  };
 }

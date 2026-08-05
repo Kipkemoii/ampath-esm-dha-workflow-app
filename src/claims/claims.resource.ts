@@ -10,6 +10,7 @@ import {
   type ClientSubBenefit,
   PomsfBalance,
   PreExistingIntervention,
+  PreauthRequest,
 } from './index';
 import { fetchUrl, getHieBaseUrl, getUrl, useHie } from './utils';
 import { openmrsFetch, restBaseUrl, useSession, Visit } from '@openmrs/esm-framework';
@@ -1246,6 +1247,8 @@ export const getServiceType = (selectedIntervention: Intervention, visitType?: V
   return visitType;
 };
 
-export const fetchConsentToken = async () => {
-  return '';
+export const createPreauthRequest = async (preauthRequest: PreauthRequest) => {
+    const hieBaseUrl = await getHieBaseUrl();
+    const postUrl = `${hieBaseUrl}/pre-auth/request`;
+    return openmrsFetch<{}>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: preauthRequest });
 };

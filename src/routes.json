@@ -408,6 +408,16 @@
       "canHide": true,
       "canMaximize": true,
       "width": "wider"
+    },
+    {
+      "name": "payer-preview-workspace",
+      "component": "payerPreviewWorkspace",
+      "title": "Payer preview details",
+      "type": "payer-preview",
+      "canMaximize": true,
+      "canHide": true,
+      "width": "wider",
+      "preferredWindowSize": "maximized"
     }
   ],
   "workspaces2": [

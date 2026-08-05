@@ -172,18 +172,18 @@ export interface FacilityPreauthsResponse {
 }
 
 export type BedOccupancyRate = {
-    total_ip_visits: number;
-    icu_visits: number;
-    hdu_visits: number;
-    normal_ip_visits: number;
-    newborn_visits: number;
-    dialysis_visits: number;
-    total_number_of_bed: number;
-    number_of_normal_bed: number;
-    number_of_icu_bed: number;
-    number_of_hdu_bed: number;
-    number_of_dialysis_bed: number;
-    number_of_baby_cot: number;
+  total_ip_visits: number;
+  icu_visits: number;
+  hdu_visits: number;
+  normal_ip_visits: number;
+  newborn_visits: number;
+  dialysis_visits: number;
+  total_number_of_bed: number;
+  number_of_normal_bed: number;
+  number_of_icu_bed: number;
+  number_of_hdu_bed: number;
+  number_of_dialysis_bed: number;
+  number_of_baby_cot: number;
 }
 
 export type BedOccupancy = {
@@ -191,3 +191,164 @@ export type BedOccupancy = {
   bp_level: string;
   bed_occupancy_rate: BedOccupancyRate
 };
+export interface PayerPreviewResponse {
+  results: PayerPreviewResult[];
+}
+export interface PayerPreviewResult {
+  id: number;
+  guid: string;
+  authorization: PayerAuthorization;
+  billFrom: string;
+  billTo: string;
+  created: string;
+  workflowState: string;
+  workflowDisplayName: string;
+  claimType: string;
+  actualDeductableCopay: string;
+  proposedValue: string;
+  proposedValueLessCopays: string;
+  totalCopayValue: string;
+  trackingNumber: string;
+  authToken: string;
+  memberNumber: string;
+  memberName: string;
+  providerName: string;
+  encounter: number;
+  providerClaimNo: string;
+  isInpatient: boolean;
+  diagnoses: PayerDiagnosis[];
+  claimLines: PayerClaimLine[];
+  claimTransitions: PayerClaimTransition[];
+  claimNotes: PayerClaimNote[];
+  claimDoctors: PayerClaimDoctor[];
+  owner: number;
+  schemeName: string;
+}
+interface PayerAuthorization {
+  id: number;
+  guid: string;
+  createdByName: string;
+  providerName: string;
+  authCode: string;
+  beneficiaryName: string;
+  beneficiaryCode: string;
+  beneficiaryScheme: string;
+  beneficiaryJoinDate: string;
+  interventions: PayerIntervention[];
+  token: string;
+  status: string;
+  expiry: string;
+  notes: string;
+  benefitType: string;
+  created: string;
+  isOpen: boolean;
+  isComplete: boolean;
+  label: string;
+  authorizationType: string[];
+  beneficiaryNumber: string;
+  preauthIds: number[];
+  totalAuthorizedAmount: string;
+  currentAvailableBalance: string;
+  needsPreauth: boolean;
+  isElective: boolean;
+  overallPreauthFinalised: boolean;
+  owner: number;
+}
+export interface PayerIntervention {
+  id: number;
+  guid: string;
+  accessPoint: string;
+  name: string;
+  code: string;
+  status: string;
+  paymentMechanism: string;
+  coverageLevel: string;
+  applicableGender: string;
+  applicableFacilityOwnership: string;
+  usageFrequencyType: string;
+  levelsApplicable: string[] | null;
+  annualQuantityLimit: number;
+  active: boolean;
+  needsPreauth: boolean;
+  needsManualPreauthApproval: boolean;
+  needsDoctorAuthorization: boolean;
+  needsMemberAuthorization: boolean;
+  needApprovalBeforeClaimSubmission: boolean;
+  isIntraMetro: boolean;
+  managementTariffHasLimit: boolean;
+  investigationTariffHasLimit: boolean;
+  overallTariff: string;
+  overallTariffHasLimit: boolean;
+  benefit: number;
+  kephLevelTarrif: string;
+  preauthFinalised: boolean;
+  requiresSurgicalPreauth: boolean;
+  requiresRenalPreauth: boolean;
+  requiresOncologyPreauth: boolean;
+  requiresRadiologyPreauth: boolean;
+  requiresOpticalPreauth: boolean;
+  optionalDocumentType: string | null;
+  requiredPreauthDocumentTypes: string[] | null;
+  optionalPreauthDocumentTypes: string[] | null;
+  applicableDocumentTypes: string[];
+}
+export interface PayerDiagnosis {
+  guid: string;
+  encounterGuid: string;
+  encounter: number;
+  siteCode: string;
+  siteCodeType: string;
+  name: string;
+  intervention: number;
+}
+export interface PayerClaimLine {
+  id: number;
+  guid: string;
+  name: string;
+  quantity: string;
+  intervention: number;
+  interventionCode: string;
+  interventionName: string;
+  billFrom: string;
+  billTo: string;
+  unit: string;
+  unitPrice: string;
+  claimLineTotal: string;
+  claimLineGrossTotal: string;
+  approvedLineTotal: string;
+  rejectedLineTotal: string;
+  providerClaimLineNo: string;
+  billingCode: string;
+  chargeDate: string;
+  workflowState: string;
+  schemeCode: string;
+  schemeName: string;
+}
+export interface PayerClaimTransition {
+  id: number;
+  guid: string;
+  workflowStateFrom: string;
+  workflowStateTo: string;
+  transitionDate: string;
+}
+export interface PayerClaimNote {
+  id: number;
+  guid: string;
+  note: string;
+  author: string;
+  source: string;
+  workflowState: string;
+}
+export interface PayerClaimDoctor {
+  name: string;
+  doctorProfile: DoctorProfile;
+}
+interface DoctorProfile {
+  practitionerRegistryId: string;
+  practitionerCadre: string;
+  practitionerLicenseBody: string;
+  practitionerRegistrationNumber: string;
+  practitionerLicenceNumber: string;
+  practitionerLicenceValidity: string; // date
+  practitionerQualifications: string;
+}

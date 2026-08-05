@@ -231,3 +231,8 @@ export const generateOrderBillButton = getAsyncLifecycle(
   () => import('./billing/extensions/generate-order-bill-button/generate-order-bill-button.extension'),
   options,
 );
+
+export const payerPreviewWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/claim-visits/payer-preview/payer-preview-workspace.component'),
+  options,
+);

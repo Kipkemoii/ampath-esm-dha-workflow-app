@@ -5,10 +5,10 @@ import ClaimInvoiceDetails from '../claim-invoice-details/claim-invoice-details.
 import ClaimInterventionDetails from '../claim-intervention-details/claim-intervention-details.component';
 import ClaimDiagnosisDetails from '../claim-diagnosis-details/claim-diagnosis-details.component';
 import { formatDate, launchWorkspace, parseDate, showSnackbar, useVisit } from '@openmrs/esm-framework';
-import { Button } from '@carbon/react';
+import { Button, InlineLoading, Tile } from '@carbon/react';
 import CloseClaimModal from '../modal/close-claim/close-claim.modal';
 import SubmitClaimModal from '../modal/submit-claim/submit-claim.modal';
-import { endVisit, useInvalidateProviderClaimPreview } from '../../../../billing-claims.resource';
+import { endVisit, useInvalidateProviderClaimPreview, usePayerClaimPreview } from '../../../../billing-claims.resource';
 import ClaimDocuments from '../claim-documents/claim-documents';
 import ClaimDoctors from '../claim-doctors/claim-doctors';
 import AddClaimDoctorModal from '../modal/claim-doctors/add-claim-doctor/add-claim-doctor.modal';
@@ -16,6 +16,7 @@ import { VisitTypeUuids } from '../../../../../shared/constants/visit-types';
 import { VisitType } from '../../../../../claims';
 import { canEditClaimContent } from '../../../v2/claim-statuses';
 import { interventionHasBlockingPreauth, usePreauthPreview } from '../../../../../claims/claims.resource';
+import PayerPreviewTile from '../payer-preview/payer-preview-tile.component';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -44,6 +45,8 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     }
     return '';
   }, [patientBillDetails]);
+
+  const { isLoading: isLoadingPayerPreview, payerPreviewResult } = usePayerClaimPreview(invoiceNumber, locationUuid);
 
   useEffect(() => {
     if (triggerEndVisit && activeVisit) {
@@ -145,6 +148,8 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     }),
   );
 
+  const canEditClaim = canEditClaimContent(claimsVisit.workflow_state) && !claimRefreshing;
+
   const handleSwitchIntervention = () => {
     if (!canSwitchIntervention || !hasSwitchableIntervention) {
       return;
@@ -162,6 +167,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
       },
     });
   };
+
   return (
     <>
       <div className={styles.cvLayout}>
@@ -170,10 +176,16 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <h4>Claim Visit Details</h4>
           </div>
           <div className={styles.headerAction}>
-            <Button kind="primary" onClick={displayCloseClaimModal}>
+            <Button
+              kind="primary"
+              onClick={displayCloseClaimModal}
+              disabled={!canEditClaim}>
               Close Claim
             </Button>
-            <Button kind="tertiary" onClick={displayCloseSubmitClaimModal}>
+            <Button
+              kind="tertiary"
+              onClick={displayCloseSubmitClaimModal}
+              disabled={!canEditClaim}>
               Submit claim
             </Button>
             <Button
@@ -185,52 +197,66 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             </Button>
           </div>
         </div>
-        <dl className={styles.detailsGrid}>
-          <div className={styles.detailRow}>
-            <dt>State</dt>
-            <dd>{claimsVisit.workflow_state}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Status</dt>
-            <dd>{claimsVisit.claim_auth_status}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Name</dt>
-            <dd>{claimsVisit.patient_name}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Member Number</dt>
-            <dd>{claimsVisit.member_number}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Scheme Code</dt>
-            <dd>{claimsVisit.scheme_code}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Scheme Name</dt>
-            <dd>{claimsVisit.scheme_name}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Service Type</dt>
-            <dd>{claimsVisit.service_type}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Provider</dt>
-            <dd>{claimsVisit.provider_name}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Visit Start</dt>
-            <dd>{formatDate(parseDate(claimsVisit.visit_start))}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Total Amount</dt>
-            <dd>{claimsVisit.total_claim_amount}</dd>
-          </div>
-          <div className={styles.detailRow}>
-            <dt>Total Net Amount</dt>
-            <dd>{claimsVisit.total_claim_net_amount}</dd>
-          </div>
-        </dl>
+
+        <Tile
+          id="provider-preview"
+        >
+          <dd>Provider preview</dd>
+          <br />
+          <br />
+          <dl className={styles.detailsGrid}>
+            <div className={styles.detailRow}>
+              <dt>State</dt>
+              <dd>{claimsVisit.workflow_state}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Status</dt>
+              <dd>{claimsVisit.claim_auth_status}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Name</dt>
+              <dd>{claimsVisit.patient_name}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Member Number</dt>
+              <dd>{claimsVisit.member_number}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Scheme Code</dt>
+              <dd>{claimsVisit.scheme_code}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Scheme Name</dt>
+              <dd>{claimsVisit.scheme_name}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Service Type</dt>
+              <dd>{claimsVisit.service_type}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Provider</dt>
+              <dd>{claimsVisit.provider_name}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Visit Start</dt>
+              <dd>{formatDate(parseDate(claimsVisit.visit_start))}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Total Amount</dt>
+              <dd>{claimsVisit.total_claim_amount}</dd>
+            </div>
+            <div className={styles.detailRow}>
+              <dt>Total Net Amount</dt>
+              <dd>{claimsVisit.total_claim_net_amount}</dd>
+            </div>
+          </dl>
+        </Tile>
+
+        {
+          !isLoadingPayerPreview && payerPreviewResult &&
+          <PayerPreviewTile isLoadingPayerPreview={isLoadingPayerPreview} payerPreviewResult={payerPreviewResult} />
+        }
+
         <div className={styles.cvContentSection}>
           <section className={styles.section}>
             <h6>Invoices</h6>
