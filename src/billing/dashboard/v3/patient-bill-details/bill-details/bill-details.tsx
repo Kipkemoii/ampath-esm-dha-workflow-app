@@ -195,6 +195,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
            onClose={handleCloseAddClaimItemModal}
            onSuccess={onSuccess}
            locationUuid={locationUuid}
+           consentToken={consentToken}
           />
         }
       </div>

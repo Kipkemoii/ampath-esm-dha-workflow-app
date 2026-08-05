@@ -11,8 +11,16 @@ interface addClaimLineModalProps {
   onSuccess: () => void;
   billItem: PatientFacilityBillDetails;
   locationUuid: string;
+  consentToken?: string;
 }
-const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({ open, onClose, onSuccess, billItem, locationUuid }) => {
+const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({
+  open,
+  onClose,
+  onSuccess,
+  billItem,
+  locationUuid,
+  consentToken: consentTokenProp,
+}) => {
    const [loading,setLoading] = useState<boolean>(false);
   async function handleAddClaimLineItem() {
     setLoading(true);
@@ -46,7 +54,7 @@ const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({ open, onClose, on
   }
   function getClaimLineDto(): AddClaimLineDto {
     return {
-      consentToken: billItem.consent_token,
+      consentToken: (consentTokenProp || billItem.consent_token || '').trim(),
       interventionCode: billItem.intervention_code,
       unitPrice: String(billItem.item_price),
       quantity: String(billItem.item_quantity),

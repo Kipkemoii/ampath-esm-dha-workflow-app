@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './patient-bill-details.scss';
-import { billPaymentModes, type PaymentModeDescriptor } from './payment-mode';
+import { billPaymentModes, resolveConsentTokenFromBillLines, type PaymentModeDescriptor } from './payment-mode';
 import {
   type PatientFacilityBillsDto,
   type PatientFacilityBillDetails,
@@ -155,7 +155,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({
       const data = await fetchPatientFacilityBillDetails(patientBillPayload);
       if (data) {
         setPatientBillDetails(data);
-        setConsentToken(data[0].consent_token);
+        setConsentToken(resolveConsentTokenFromBillLines(data));
       }
     } catch (error) {
       showSnackbar({

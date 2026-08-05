@@ -18,6 +18,7 @@ import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
 import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis,type AmrsMaternityDiagnosisDto } from '../../../types';
+import { resolveConsentTokenFromBillLines } from '../../v2/patient-bill-details/payment-mode';
 interface patientBillDetailsProps {
   patientUuid: string;
   locationUuid: string;
@@ -60,7 +61,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
       const data = await fetchPatientFacilityBillDetails(patientBillPayload);
       if (data) {
         setPatientBillDetails(data);
-        setConsentToken(data[0].consent_token);
+        setConsentToken(resolveConsentTokenFromBillLines(data));
       }
     } catch (error) {
       showSnackbar({

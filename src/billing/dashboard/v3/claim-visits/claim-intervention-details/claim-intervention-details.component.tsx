@@ -1,34 +1,51 @@
 import React from 'react';
 import { type PatientFacilityBillDetails, type VisitIntervention } from '../../types';
-import { Button, ButtonSet, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
+import {
+  MenuButton,
+  MenuItem,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+} from '@carbon/react';
 import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framework';
 
-import styles from './claim-intervention-details.component.scss';
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
+import {
+  interventionHasBlockingPreauth,
+  usePreauthPreview,
+} from '../../../../../claims/claims.resource';
 
 interface claimInterventionDetailsProps {
   claimInterventions: VisitIntervention[];
   patientBillDetails: PatientFacilityBillDetails;
   consentToken: string;
   visitUuid: string;
+  canSwitchIntervention?: boolean;
+  onSwitchSuccess?: () => void;
 }
+
+const isActiveIntervention = (iv: VisitIntervention) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE';
+
 const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   claimInterventions,
   patientBillDetails,
   consentToken,
   visitUuid,
+  canSwitchIntervention = false,
+  onSwitchSuccess,
 }) => {
+  const session = useSession();
+  const locationUuid = session?.sessionLocation?.uuid;
+  const { preview: preauthPreview } = usePreauthPreview(consentToken, locationUuid);
+
   if (!claimInterventions || claimInterventions.length === 0) {
     return <>No Intervention data</>;
   }
-  function formatPreAuthText(preAuth: boolean) {
-    if (preAuth) {
-      return 'YES';
-    }
-    return 'NO';
-  }
-  const session = useSession();
-  const locationUuid = session?.sessionLocation?.uuid;
+
   const handleAddAttachment = (ci: any) => {
     launchWorkspace('upload-intervention-attachments-workspace', {
       consentToken: consentToken,
@@ -44,10 +61,11 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       bill: patientBillDetails,
     });
   };
+
   const handleSwitchIntervention = (intervention: VisitIntervention) => {
-    // if (!canSwitchIntervention) {
-    //   return;
-    // }
+    if (!canSwitchIntervention || !isActiveIntervention(intervention)) {
+      return;
+    }
     launchWorkspace('switch-intervention-workspace', {
       consentToken: consentToken,
       currentInterventions: [intervention],
@@ -56,16 +74,23 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       visitUuid: visitUuid,
       billDate: patientBillDetails?.bill_date,
       onSwitchSuccess: () => {
-        // invalidateProviderClaimPreview();
+        onSwitchSuccess?.();
       },
     });
   };
 
+  const canActOnIntervention = (intervention: VisitIntervention) =>
+    canSwitchIntervention && isActiveIntervention(intervention);
+
+  const canRaisePreauthFor = (intervention: VisitIntervention) => {
+    const alreadyRaised = interventionHasBlockingPreauth(preauthPreview, intervention.intervention_code);
+    return canActOnIntervention(intervention) && Boolean(intervention.needs_preauth) && !alreadyRaised;
+  };
+
   const handleRaisePreauth = (intervention: VisitIntervention) => {
-    // if (!canSwitchIntervention) {
-    //   return;
-    // }
-    // const consentToken = claimsVisit.authorization_code;
+    if (!canSwitchIntervention) {
+      return;
+    }
     if (!consentToken) {
       showSnackbar({
         kind: 'error',
@@ -74,9 +99,9 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       });
       return;
     }
-    // if (!intervention.needs_preauth) {
-    //   return;
-    // }
+    if (!canRaisePreauthFor(intervention)) {
+      return;
+    }
 
     const requiredDocs = parseDocTypes(
       Array.isArray(intervention.required_preauth_document_types)
@@ -110,10 +135,11 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       },
       onSuccess: async () => {
         await invalidatePreauthPreview(consentToken, locationUuid!);
-        // invalidateProviderClaimPreview();
+        onSwitchSuccess?.();
       },
     });
   };
+
   return (
     <>
       <Table size="sm">
@@ -133,55 +159,45 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
         </TableHead>
         <TableBody>
           {claimInterventions &&
-            claimInterventions.map((ci, index) => {
+            claimInterventions.map((ci) => {
+              const canAct = canActOnIntervention(ci);
+              const canRaise = canRaisePreauthFor(ci);
+              const hasAttachments = (ci.applicable_document_types ?? []).length > 0;
               return (
-                <>
-                  <TableRow key={ci.id}>
-                    <TableCell>{ci.intervention_code}</TableCell>
-                    <TableCell>{ci.intervention_payment_mechanism}</TableCell>
-                    <TableCell>{ci.intervention_name}</TableCell>
-                    <TableCell>{ci.accrued_per_diem_amount}</TableCell>
-                    <TableCell>{ci.accrued_per_diem_days}</TableCell>
-                    <TableCell>{ci.workflow_state}</TableCell>
-                    <TableCell>{ci.sub_benefit_code}</TableCell>
-                    <TableCell>{ci.intervention_fund}</TableCell>
-                    <TableCell>
-                      {ci.applicable_document_types.length > 0 ? (
-                        <div className={styles.attachmentButtons}>
-                          <Button kind="primary" size="sm" onClick={() => handleGenerateAttachment(ci)}>
-                            Generate
-                          </Button>
-
-                          <Button kind="primary" size="sm" onClick={() => handleAddAttachment(ci)}>
-                            Upload
-                          </Button>
-                        </div>
-                      ) : (
-                        <Tag type="gray">Not Required</Tag>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className={styles.attachmentButtons}>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            handleRaisePreauth(ci);
-                          }}
-                        >
-                          Raise preauth
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            handleSwitchIntervention(ci);
-                          }}
-                        >
-                          Switch intervention
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                </>
+                <TableRow key={ci.id}>
+                  <TableCell>{ci.intervention_code}</TableCell>
+                  <TableCell>{ci.intervention_payment_mechanism}</TableCell>
+                  <TableCell>{ci.intervention_name}</TableCell>
+                  <TableCell>{ci.accrued_per_diem_amount}</TableCell>
+                  <TableCell>{ci.accrued_per_diem_days}</TableCell>
+                  <TableCell>{ci.workflow_state}</TableCell>
+                  <TableCell>{ci.sub_benefit_code}</TableCell>
+                  <TableCell>{ci.intervention_fund}</TableCell>
+                  <TableCell>
+                    {hasAttachments ? (
+                      <MenuButton label="Attachments" kind="ghost" size="sm">
+                        <MenuItem label="Generate" onClick={() => handleGenerateAttachment(ci)} />
+                        <MenuItem label="Upload" onClick={() => handleAddAttachment(ci)} />
+                      </MenuButton>
+                    ) : (
+                      <Tag type="gray">Not Required</Tag>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <MenuButton label="Actions" kind="ghost" size="sm">
+                      <MenuItem
+                        label="Raise preauth"
+                        onClick={() => handleRaisePreauth(ci)}
+                        disabled={!canRaise}
+                      />
+                      <MenuItem
+                        label="Switch intervention"
+                        onClick={() => handleSwitchIntervention(ci)}
+                        disabled={!canAct}
+                      />
+                    </MenuButton>
+                  </TableCell>
+                </TableRow>
               );
             })}
         </TableBody>

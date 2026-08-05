@@ -14,17 +14,22 @@ import ClaimDoctors from '../claim-doctors/claim-doctors';
 import AddClaimDoctorModal from '../modal/claim-doctors/add-claim-doctor/add-claim-doctor.modal';
 import { VisitTypeUuids } from '../../../../../shared/constants/visit-types';
 import { VisitType } from '../../../../../claims';
+import { canEditClaimContent } from '../../../v2/claim-statuses';
+
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
   locationUuid: string;
   patientBillDetails?: PatientFacilityBillDetails;
   onBillDetailsChange?: () => void;
+  /** True while claim preview is revalidating — stand down content edits. */
+  claimRefreshing?: boolean;
 }
 const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   claimsVisit,
   locationUuid,
   patientBillDetails,
   onBillDetailsChange,
+  claimRefreshing = false,
 }) => {
   const [showCloseClaimModal, setShowCloseClaimModal] = useState<boolean>();
   const [showSubmitClaimModal, setSubmitCloseClaimModal] = useState<boolean>(false);
@@ -127,7 +132,16 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     });
   };
 
+  // Same gates as v2: content edits only while claim is DRAFT / DRAFT_RESUBMIT and not refreshing.
+  const canSwitchIntervention = canEditClaimContent(claimsVisit.workflow_state) && !claimRefreshing;
+  const hasActiveIntervention = Boolean(
+    claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE'),
+  );
+
   const handleSwitchIntervention = () => {
+    if (!canSwitchIntervention || !hasActiveIntervention) {
+      return;
+    }
     launchWorkspace('switch-intervention-workspace', {
       consentToken: claimsVisit.authorization_code,
       currentInterventions: claimsVisit.interventions,
@@ -158,7 +172,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <Button
               kind="tertiary"
               onClick={handleSwitchIntervention}
-              disabled={!claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE')}
+              disabled={!canSwitchIntervention || !hasActiveIntervention}
             >
               Switch Intervention
             </Button>
@@ -231,6 +245,11 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                   claimInterventions={claimsVisit.interventions}
                   consentToken={claimsVisit.authorization_code}
                   visitUuid={activeVisit?.uuid}
+                  canSwitchIntervention={canSwitchIntervention}
+                  onSwitchSuccess={() => {
+                    invalidateProviderClaimPreview();
+                    onBillDetailsChange?.();
+                  }}
                 />
               )}
             </div>

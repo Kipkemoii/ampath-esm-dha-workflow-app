@@ -110,8 +110,15 @@ export function billPaymentModes(lines: PatientFacilityBillDetails[] = []): {
     }
   }
   const modes = [...byKey.values()];
-  // The payer of the most lines would be arbitrary on a two-line bill; the first is at
-  // least stable, and `mixed` is what the page actually reacts to.
-  const primary = modes[0] ?? paymentModeOf(null);
+  const primary =
+    modes.find((m) => m.hasClaim) ?? modes.find((m) => m.key === 'sha') ?? modes[0] ?? paymentModeOf(null);
   return { modes, primary, mixed: modes.length > 1 };
+}
+
+
+export function resolveConsentTokenFromBillLines(
+  lines: Array<Partial<PatientFacilityBillDetails> | null | undefined> = [],
+): string {
+  const shaLine = lines.find((l) => paymentModeOf(l).key === 'sha');
+  return (shaLine?.consent_token ?? '').trim();
 }

@@ -50,6 +50,7 @@ const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
             claimsVisit={claimVisit}
             locationUuid={locationUuid}
             onBillDetailsChange={onBillDetailsChange}
+            claimRefreshing={isValidating}
           />
         )
       }
