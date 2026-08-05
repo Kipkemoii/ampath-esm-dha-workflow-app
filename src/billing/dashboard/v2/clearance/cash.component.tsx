@@ -54,16 +54,6 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     return result;
   })();
 
-  //finalize bill
-
-  // https://o3.openmrs.org/openmrs/ws/rest/v1/billing/bill/9782ecd4-514a-4a92-be78-f7c7a2b2562c
-  // payload status: "POSTED"
-
-  // process payment
-
-  // https://o3.openmrs.org/openmrs/ws/rest/v1/billing/bill/9782ecd4-514a-4a92-be78-f7c7a2b2562c/payment
-  // payload amount: 500 amountTendered: 500 instanceType: "526bf278-ba81-4436-b867-c2f6641d060a"
-
   const handleGenerateBill = async (
     visit: ActiveCashVisit | PendingBillLineItems,
     patientUuid: string,
