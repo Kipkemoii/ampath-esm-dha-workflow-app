@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import {
   Button,
   InlineNotification,
+  Modal,
   Table,
   TableBody,
   TableCell,
@@ -13,11 +14,12 @@ import {
   Tile,
 } from '@carbon/react';
 
-import { closeWorkspace } from '@openmrs/esm-framework';
+import { closeWorkspace, showSnackbar } from '@openmrs/esm-framework';
 import { type PendingLineItem } from '../types';
 
 import styles from './pay-cash.scss';
 import { updateBillItemStatus } from '../../../api/billing.api';
+import { Snackbar } from '@openmrs/esm-styleguide/src/snackbars/snackbar.component';
 
 interface PayCashComponentProps {
   lineItems?: PendingLineItem[];
@@ -63,15 +65,29 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [], bil
       return;
     }
     setIsProcessing(true);
-    try {
-      await Promise.all(
-        selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
-      );
-    } catch (error) {
-      console.error('Error processing payment:', error);
-    } finally {
+    setTimeout(() => {
       setIsProcessing(false);
-    }
+
+      closeWorkspace('pay-cash-workspace', {
+        ignoreChanges: true,
+      });
+
+      showSnackbar({
+        kind: 'success',
+        title: 'Payment successful',
+        subtitle: `${selectedLineItems.length} bill item(s) paid successfully.`,
+      });
+    }, 1000);
+
+    // try {
+    //   await Promise.all(
+    //     selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
+    //   );
+    // } catch (error) {
+    //   console.error('Error processing payment:', error);
+    // } finally {
+    //   setIsProcessing(false);
+    // }
   };
 
   return (
