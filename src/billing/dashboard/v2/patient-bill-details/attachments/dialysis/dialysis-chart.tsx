@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './dialysis-chart.scss';
+import { useSession } from '@openmrs/esm-framework';
 
 const DEMO_SESSION = {
   facility: {
@@ -121,6 +122,9 @@ function SectionBlock({ number, title, children }) {
 const DialysisChart: React.FC<{ session?: typeof DEMO_SESSION }> = ({ session = DEMO_SESSION }) => {
   const s = session;
 
+  const sessionL = useSession();
+  const locationName = sessionL?.sessionLocation?.display;
+
   return (
     <div className={styles['dc-root']}>
       <div className={styles['dc-shell']}>
@@ -128,7 +132,7 @@ const DialysisChart: React.FC<{ session?: typeof DEMO_SESSION }> = ({ session = 
           <div className={styles['dc-header-bar']} />
           <div className={styles['dc-header-info']}>
             <h1 className={styles['dc-title']}>Renal Unit Haemodialysis Notes</h1>
-            <p className={styles['dc-hospital']}>{s.facility.hospital}</p>
+            <p className={styles['dc-hospital']}>{locationName}</p>
             <p className={styles['dc-hospital-meta']}>
               {s.facility.address} · Tel: {s.facility.phone} · {s.facility.email}
             </p>

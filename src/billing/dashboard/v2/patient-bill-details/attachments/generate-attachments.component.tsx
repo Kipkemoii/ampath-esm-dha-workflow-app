@@ -14,6 +14,9 @@ import jsPDF from 'jspdf';
 import html2canvas from 'html2canvas';
 import { sendClaimAttachment } from '../../../../../registry/hie.resource';
 import FinalBillComponent from './final-bill.component';
+import CaseSummary from '../../../v3/patient-bill-details/attachments/case-summary/case-summary';
+import DialysisChart from '../../../v3/patient-bill-details/attachments/dialysis/dialysis-chart';
+import GeneralDischargeSummary from '../../../v3/patient-bill-details/attachments/general-discharge-summary/general-discharge-summary';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -50,6 +53,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const finalBillRef = useRef<HTMLDivElement>(null);
   const dialysisRef = useRef<HTMLDivElement>(null);
   const caseSummaryRef = useRef<HTMLDivElement>(null);
+  const generalDischargeSummary = useRef<HTMLDivElement>(null);
 
   if (!claimInterventions) return null;
 
@@ -149,7 +153,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
     switch (document.name) {
       case 'INVOICE':
-        element = invoiceRef.current;
+        element = caseSummaryRef.current;
         break;
 
       case 'FINAL_BILL':
@@ -157,7 +161,17 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
 
       case 'DISCHARGE_SUMMARY':
-        element = dischargeRef.current;
+        element = generalDischargeSummary.current;
+        break;
+
+      case 'CASE_SUMMARY':
+        element = caseSummaryRef.current;
+        break;
+      case 'DIALYSIS_CHART':
+        element = dialysisRef.current;
+        break;
+      case 'GENERAL_DISCHARGE_SUMMARY':
+        element = generalDischargeSummary.current;
         break;
 
       default:
@@ -307,6 +321,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
         <FinalBillComponent ref={finalBillRef} bill={bill} />
+        <CaseSummary ref={caseSummaryRef} />
+        <DialysisChart ref={dialysisRef} />
+        <GeneralDischargeSummary ref={generalDischargeSummary} />
       </div>
     </>
   );

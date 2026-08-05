@@ -1,5 +1,6 @@
 import React from 'react';
 import styles from './case-summary.scss';
+import { useSession } from '@openmrs/esm-framework';
 
 const DEMO_PATIENT = {
   facility: 'Sample County Government',
@@ -123,6 +124,8 @@ function SectionBlock({ number, title, children }) {
 
 const CaseSummary = ({ patient = DEMO_PATIENT }) => {
   const p = patient;
+  const session = useSession();
+  const locationName = session.sessionLocation?.display;
 
   return (
     <div className={styles['cs-root']}>
@@ -130,7 +133,7 @@ const CaseSummary = ({ patient = DEMO_PATIENT }) => {
         <header className={styles['cs-header']}>
           <div className={styles['cs-header-bar']} />
           <div className={styles['cs-header-info']}>
-            <p className={styles['cs-org']}>{p.facility}</p>
+            <p className={styles['cs-org']}>{locationName}</p>
             <h1 className={styles['cs-title']}>Patient Clinical Summary</h1>
           </div>
           <div className={styles['cs-meta-right']}>
