@@ -17,6 +17,7 @@ interface ClaimsConsentExtensionProps {
   visitType: VisitType;
   consentToken?: string;
   isDischarge?: boolean;
+  isMinor?: boolean;
   onClientConsent: ({ otp, authGuid }: { otp?: string; authGuid?: string }) => void;
   onAuthGuidReceived?: (authGuid: string) => void;
 }
@@ -28,6 +29,7 @@ const ClaimsConsentExtension: React.FC<ClaimsConsentExtensionProps> = ({
   visitType,
   consentToken,
   isDischarge,
+  isMinor = false,
   onClientConsent,
   onAuthGuidReceived,
 }) => {
@@ -38,11 +40,6 @@ const ClaimsConsentExtension: React.FC<ClaimsConsentExtensionProps> = ({
   const [authGuid, setAuthGuid] = useState<string>();
   const { t } = useTranslation();
   const sessionLocation = useSession();
-
-  useEffect(() => {
-    // eslint-disable-next-line no-console
-    console.log('Grandparent received:', authGuid);
-  }, [authGuid]);
 
   useEffect(() => {
     if (authGuid) {
@@ -115,6 +112,7 @@ const ClaimsConsentExtension: React.FC<ClaimsConsentExtensionProps> = ({
             interventionCode={intervention?.code ?? ''}
             crId={patient.id}
             isDischarge={isDischarge}
+            isMinor={isMinor}
             onScanStatusChange={setAuthGuid}
           />
         </ModalBody>

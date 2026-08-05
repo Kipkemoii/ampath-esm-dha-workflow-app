@@ -10,6 +10,7 @@ import { CheckmarkFilled, Chat, CloudUpload, DocumentPdf, Renew, SendAlt, TrashC
 import { usePatient } from '../../../context/patient-context';
 import { useSession } from '@openmrs/esm-framework';
 import { type OTPWhitelistRequest } from '../../hie.types';
+import { HieIdentificationType } from '../../types';
 import styles from './otp-whitlisting-modal.scss';
 
 // Seconds a user must wait before the OTP can be resent.
@@ -60,6 +61,7 @@ interface OTPWhitlistingModalProps {
   otpSent: boolean;
   whitelistRequest: any;
   crId: string;
+  isMinor?: boolean;
 }
 
 const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
@@ -72,8 +74,9 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
   whitelistRequest,
   onOtpVerificationStatusChange,
   crId,
+  isMinor = false,
 }) => {
-  const [whitelisted, setWhitelisted] = useState<boolean | null>(null);
+  const [whitelisted, setWhitelisted] = useState<boolean | null>(isMinor ? true : null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [selectedReason, setSelectedReason] = useState('');
@@ -112,10 +115,14 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
     'TECHNICAL_ISSUES',
   ];
   useEffect(() => {
+    if (isMinor) {
+      onWhitelistStatusChange(true);
+      return;
+    }
     if (patient) {
       checkWhitelistStatus();
     }
-  }, [patient]);
+  }, [isMinor, patient]);
 
   useEffect(() => {
     if (!crId) return;
@@ -134,11 +141,11 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
   const checkWhitelistStatus = async () => {
     try {
       setLoadingWhitelistStatus(true);
-      const res = await getOtpWhitelistingStatus(
-        patient!.identification_number,
-        patient!.identification_type,
-        locationUuid,
-      );
+      // Default to the CR id rather than patient.identification_number — the latter is
+      // only ever the National ID passed in by whichever caller built the HieClient, and
+      // is frequently empty (no National ID on file), which sent identificationNumber=
+      // to the eligibility endpoint and always failed. The CR id is always populated.
+      const res = await getOtpWhitelistingStatus(crId, HieIdentificationType.Cr, locationUuid);
 
       let isWhitelisted = res?.whitelistedForOTP ?? false;
 

@@ -203,9 +203,6 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                 <strong>CR:</strong> {facilityPatientDetail.cr_no}
               </div>
               <div className={styles.pdCol}>
-                <strong>AMRS Universl ID:</strong> {facilityPatientDetail.amrs_universal_id}
-              </div>
-              <div className={styles.pdCol}>
                 <strong>Bill Status:</strong> {billStatus ?? ''}
               </div>
             </>

@@ -424,6 +424,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
 
     return (
         <>
+            {!showStartVisitModal && (
             <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
                 <div className={styles.formContainer}>
                     <Stack gap={3}>
@@ -625,6 +626,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                     </Button>
                 </ButtonSet>
             </Form>
+            )}
             {
                 showStartVisitModal && <SendToQueueModal
                     patientUuid={patientUuid}

@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import dayjs from 'dayjs';
 import { Button, Modal, ModalBody, Row, Select, SelectItem, TextInput } from '@carbon/react';
 import { submitClaim } from '../../../../../billing-claims.resource';
 import { Patient, showModal, showSnackbar } from '@openmrs/esm-framework';
@@ -66,8 +67,25 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
     const nationalId = useMemo(() => {
         if (patient) {
             const identifiers = patient.identifiers;
-            return identifiers.find(i => i.identifierType.uuid === IdentifierTypesUuids.NATIONAL_ID_UUID).identifier ?? "";
+            return identifiers.find(i => i.identifierType.uuid === IdentifierTypesUuids.NATIONAL_ID_UUID)?.identifier ?? "";
         }
+    }, [patient]);
+
+    // Under-18 clients skip biometric verification and whitelisting further down in
+    // ClaimsConsentExtension — mirrors send-to-queue.modal.tsx's isMinor check, but reads
+    // the OpenMRS REST person shape (person.age / person.birthdate) since this patient
+    // comes from searchPatientByCrNumber rather than the FHIR-shaped usePatient().
+    const isMinor = useMemo(() => {
+        const age = patient?.person?.age;
+        if (typeof age === 'number') {
+            return age < 18;
+        }
+        const birthdate = patient?.person?.birthdate;
+        if (!birthdate) {
+            return false;
+        }
+        const computedAge = dayjs().diff(dayjs(birthdate), 'year');
+        return Number.isFinite(computedAge) && computedAge < 18;
     }, [patient]);
 
     const consentPatient = useMemo<HieClient>(() => {
@@ -176,7 +194,7 @@ const SubmitClaimModal: React.FC<submitClaimModalProps> = ({ open, onClose, onSu
                     </Row>
                     {
                         (dischargeReason && notes) &&
-                        <ClaimsConsentExtension patient={consentPatient} intervention={getIntervention()} crIdentifierId={claimsVisit.member_number} visitType={visitType} onClientConsent={onClientConsent} consentToken={claimsVisit.authorization_code} isDischarge={true}/>
+                        <ClaimsConsentExtension patient={consentPatient} intervention={getIntervention()} crIdentifierId={claimsVisit.member_number} visitType={visitType} onClientConsent={onClientConsent} consentToken={claimsVisit.authorization_code} isDischarge={true} isMinor={isMinor}/>
                     }
                 </ModalBody>
             </Modal>

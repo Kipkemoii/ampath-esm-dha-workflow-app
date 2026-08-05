@@ -23,6 +23,7 @@ interface ClaimsConsentModalProps {
   interventionCode: string;
   crId: string;
   isDischarge?: boolean;
+  isMinor?: boolean;
   onScanStatusChange: (status: string) => void;
 }
 const ClaimsConsentModal: React.FC<ClaimsConsentModalProps> = ({
@@ -36,10 +37,12 @@ const ClaimsConsentModal: React.FC<ClaimsConsentModalProps> = ({
   interventionCode,
   crId,
   isDischarge = false,
+  isMinor = false,
   onScanStatusChange,
 }) => {
-  // Verify biometric-first; after MAX_BIOMETRIC_ATTEMPTS failures we default to OTP.
-  const [mode, setMode] = useState<'biometric' | 'otp'>('biometric');
+  // Under-18 clients skip biometric verification entirely and go straight to OTP
+  // (whitelisting is bypassed further down, in OTPWhitlistingModal).
+  const [mode, setMode] = useState<'biometric' | 'otp'>(isMinor ? 'otp' : 'biometric');
   const [attempts, setAttempts] = useState(0);
   const [bioStatus, setBioStatus] = useState<'connecting' | 'ready' | 'error'>('connecting');
   const [whiteListed, setIsWhitelisted] = useState<boolean>();
@@ -74,6 +77,7 @@ const ClaimsConsentModal: React.FC<ClaimsConsentModalProps> = ({
         onOtpVerified={onOtpVerified}
         onOtpVerificationStatusChange={setOtpVerified}
         crId={crId}
+        isMinor={isMinor}
       />
     );
   }

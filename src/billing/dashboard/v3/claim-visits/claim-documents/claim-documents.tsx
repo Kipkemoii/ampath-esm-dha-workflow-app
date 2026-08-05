@@ -10,23 +10,15 @@ const ClaimDocuments: React.FC<claimDocumentsProps> = ({claimAttachments})=>{
    }
   return <>
    <div className={styles.claimDocummentLayout}>
-
-          <div className={styles.claimRow}>
-            <div className={styles.claimRowHeader}>
-                <h6>Attachments</h6>
-            </div>
-            <div className={styles.claimRowContent}>
-                 {
-                    claimAttachments.map((at)=>{
-                         return <>
-                         <div>
-                            <span><a href={at.data}>{at.title} ({at.attachment_type} - {at.intervention_code})</a></span>
-                         </div>
-                         </>
-                    })
-                 }
-            </div>
-         </div>
+        {
+           claimAttachments.map((at)=>{
+                return <>
+                <div>
+                   <span><a href={at.data}>{at.title} ({at.attachment_type} - {at.intervention_code})</a></span>
+                </div>
+                </>
+           })
+        }
    </div>
   </>
 }

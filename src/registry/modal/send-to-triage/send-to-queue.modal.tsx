@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import dayjs from 'dayjs';
 import { Button, ButtonSet, ComboBox, InlineNotification, Select, SelectItem, Tag, TextInput } from '@carbon/react';
 import styles from './send-to-triage.modal.scss';
 import {
@@ -191,6 +192,16 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       } as unknown as HieClient;
     }
   }, [patient, patientIdentifiers]);
+
+  // Under-18 clients skip biometric verification and whitelisting; a missing or
+  // unparseable birthDate is treated as not-a-minor (normal biometric-first flow).
+  const isMinor = useMemo(() => {
+    if (!patient?.birthDate) {
+      return false;
+    }
+    const age = dayjs().diff(dayjs(patient.birthDate), 'year');
+    return Number.isFinite(age) && age < 18;
+  }, [patient?.birthDate]);
 
   const selectedPaymentMode = useMemo(() => {
     if (initialUnitPriceUuid) {
@@ -935,6 +946,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                   visitType={visitType}
                   onClientConsent={onClientConsent}
                   onAuthGuidReceived={setAuthGuid}
+                  isMinor={isMinor}
                 />
               </section>
             )}

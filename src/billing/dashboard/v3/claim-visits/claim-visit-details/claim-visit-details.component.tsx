@@ -160,60 +160,60 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
               onClick={handleSwitchIntervention}
               disabled={!claimsVisit.interventions?.some((iv) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE')}
             >
-              Switch Interventionnn
+              Switch Intervention
             </Button>
           </div>
         </div>
-        <div className={styles.cvContentSection}>
-          <div className={styles.cvRow}>
-            <div className={styles.cvWidth}>
-              <ul className={styles.claimList}>
-                <li>
-                  <strong>State :</strong> {claimsVisit.workflow_state}{' '}
-                </li>
-                <li>
-                  <strong>Status : </strong>
-                  {claimsVisit.claim_auth_status}
-                </li>
-                <li>
-                  <strong>Name :</strong> {claimsVisit.patient_name}
-                </li>
-                <li>
-                  <strong>Member Number :</strong> {claimsVisit.member_number}
-                </li>
-                <li>
-                  <strong>Scheme Code :</strong> {claimsVisit.scheme_code}
-                </li>
-                <li>
-                  <strong>Scheme Name :</strong> {claimsVisit.scheme_name}
-                </li>
-                <li>
-                  <strong>Service Type :</strong> {claimsVisit.service_type}
-                </li>
-                <li>
-                  <strong>Provider :</strong> {claimsVisit.provider_name}
-                </li>
-                <li>
-                  <strong>Visit Start :</strong> {formatDate(parseDate(claimsVisit.visit_start))}{' '}
-                </li>
-              </ul>
-            </div>
-            <div className={styles.cvWidth}>
-              <ul className={styles.claimList}>
-                <li>
-                  <strong>Total Amount :</strong> {claimsVisit.total_claim_amount}
-                </li>
-                <li>
-                  <strong>Total Net Amount :</strong> {claimsVisit.total_claim_net_amount}
-                </li>
-              </ul>
-            </div>
+        <dl className={styles.detailsGrid}>
+          <div className={styles.detailRow}>
+            <dt>State</dt>
+            <dd>{claimsVisit.workflow_state}</dd>
           </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <h6>Invoices</h6>
-            </div>
-            <div className={styles.cvRow}>
+          <div className={styles.detailRow}>
+            <dt>Status</dt>
+            <dd>{claimsVisit.claim_auth_status}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Name</dt>
+            <dd>{claimsVisit.patient_name}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Member Number</dt>
+            <dd>{claimsVisit.member_number}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Scheme Code</dt>
+            <dd>{claimsVisit.scheme_code}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Scheme Name</dt>
+            <dd>{claimsVisit.scheme_name}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Service Type</dt>
+            <dd>{claimsVisit.service_type}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Provider</dt>
+            <dd>{claimsVisit.provider_name}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Visit Start</dt>
+            <dd>{formatDate(parseDate(claimsVisit.visit_start))}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Total Amount</dt>
+            <dd>{claimsVisit.total_claim_amount}</dd>
+          </div>
+          <div className={styles.detailRow}>
+            <dt>Total Net Amount</dt>
+            <dd>{claimsVisit.total_claim_net_amount}</dd>
+          </div>
+        </dl>
+        <div className={styles.cvContentSection}>
+          <section className={styles.section}>
+            <h6>Invoices</h6>
+            <div className={styles.tableScroll}>
               {claimsVisit.invoices && (
                 <ClaimInvoiceDetails
                   claimInvoices={claimsVisit.invoices}
@@ -221,12 +221,10 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                 />
               )}
             </div>
-          </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <h6>Interventions</h6>
-            </div>
-            <div className={styles.cvRow}>
+          </section>
+          <section className={styles.section}>
+            <h6>Interventions</h6>
+            <div className={styles.tableScroll}>
               {claimsVisit.interventions && (
                 <ClaimInterventionDetails
                   patientBillDetails={patientBillDetails}
@@ -236,29 +234,23 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                 />
               )}
             </div>
-          </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <h6>Diagnosis</h6>
-            </div>
-            <div className={styles.cvRow}>
+          </section>
+          <section className={styles.section}>
+            <h6>Diagnosis</h6>
+            <div className={styles.tableScroll}>
               {claimsVisit.claim_diagnoses && <ClaimDiagnosisDetails claimDiagnosiss={claimsVisit.claim_diagnoses} />}
             </div>
-          </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <h6>Doctors</h6>
+          </section>
+          <section className={styles.section}>
+            <h6>Doctors</h6>
+            <div className={styles.tableScroll}>
+              <ClaimDoctors claimDoctors={claimsVisit.claim_doctors ?? []} />
             </div>
-            <div className={styles.cvRow}>{<ClaimDoctors claimDoctors={claimsVisit.claim_doctors ?? []} />}</div>
-          </div>
-          <div className={styles.cvRow}>
-            <div className={styles.cvRow}>
-              <h6>Attachments</h6>
-            </div>
-            <div className={styles.cvRow}>
-              {<ClaimDocuments claimAttachments={claimsVisit.claim_attachments ?? []} />}
-            </div>
-          </div>
+          </section>
+          <section className={styles.section}>
+            <h6>Attachments</h6>
+            <ClaimDocuments claimAttachments={claimsVisit.claim_attachments ?? []} />
+          </section>
         </div>
       </div>
       {showCloseClaimModal && (
