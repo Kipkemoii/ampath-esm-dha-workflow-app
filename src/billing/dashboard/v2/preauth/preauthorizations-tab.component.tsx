@@ -11,8 +11,8 @@ interface PreauthorizationsTabProps {
 }
 
 /**
- * Preauthorizations dashboard tab (option B):
- * - Needs raise: queue to start normal/special preauth (PreauthList)
+ * Preauthorizations dashboard tab:
+ * - Needs raise: queue of interventions still needing preauth (raise from facility bill details)
  * - Status: live HIE preview / doctor-consent resend (monitoring only)
  */
 const PreauthorizationsTab: React.FC<PreauthorizationsTabProps> = ({

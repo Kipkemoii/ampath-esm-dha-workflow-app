@@ -926,7 +926,22 @@ export function findPreauthPreviewForIntervention(
   const code = (interventionCode ?? '').trim();
   if (!code) return null;
   const items = unwrapPreauthPreviewItems(preview);
-  return items.find((item) => interventionCodeFromPreviewItem(item) === code) ?? null;
+  const direct =
+    items.find((item) => interventionCodeFromPreviewItem(item) === code) ?? null;
+  if (direct) return direct;
+
+  // Some payloads only stamp the code on nested preauthItems[].
+  return (
+    items.find((item) => {
+      const nested = item.preauthItems ?? item.preauth_items;
+      if (!Array.isArray(nested)) return false;
+      return nested.some((n) => {
+        if (!n || typeof n !== 'object') return false;
+        const row = n as Record<string, unknown>;
+        return String(row.interventionCode ?? row.intervention_code ?? '').trim() === code;
+      });
+    }) ?? null
+  );
 }
 
 export function extractPreauthStatusForIntervention(preview: unknown, interventionCode: string): string {
@@ -1061,7 +1076,8 @@ export async function checkPreauthStatus(
     const notes = extractPreauthNotesFromItem(item);
 
     if (!status) {
-      return { status: '', preview, kind: 'not_raised', preauthCode, notes };
+      // Row exists for this intervention but status blank — treat as already raised.
+      return { status: '', preview, kind: 'pending', preauthCode, notes };
     }
     if (isPreauthFinalised(status)) {
       return { status: 'FINALISED', preview, kind: 'finalised', preauthCode, notes };
@@ -1069,6 +1085,7 @@ export async function checkPreauthStatus(
     if (isPreauthTerminalFailure(status)) {
       return { status, preview, kind: 'failed', preauthCode, notes };
     }
+    // Includes CLARIFICATION_AFTER_AUTOMATIC_CHECKS and other in-flight payer states.
     return { status, preview, kind: 'pending', preauthCode, notes };
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e ?? 'Failed to get preauth preview');

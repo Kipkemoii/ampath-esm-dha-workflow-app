@@ -318,10 +318,6 @@
       "component": "claims"
     },
     {
-      "name": "preauths-modal",
-      "component": "preauthsModal"
-    },
-    {
       "name": "generate-order-bill-button-slot",
       "slot": "generate-order-bill-button-slot",
       "component": "generateOrderBillButton"

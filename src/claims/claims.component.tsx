@@ -224,7 +224,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
         title: t('missingConsentToken', 'No claim token on visit'),
         subtitle: t(
           'missingConsentTokenDetail',
-          'Start a claim visit first, then raise normal preauth from the Preauthorizations tab or here.',
+          'Start a claim visit first, then raise normal preauth from facility bill Claim details.',
         ),
       });
       return;
