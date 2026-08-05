@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { forwardRef } from 'react';
 import styles from './dialysis-chart.scss';
 
 const DEMO_SESSION = {
@@ -118,11 +118,15 @@ function SectionBlock({ number, title, children }) {
   );
 }
 
-const DialysisChart: React.FC<{ session?: typeof DEMO_SESSION }> = ({ session = DEMO_SESSION }) => {
+interface DialysisChartProps {
+  session?: typeof DEMO_SESSION;
+}
+
+const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session = DEMO_SESSION }, ref) => {
   const s = session;
 
   return (
-    <div className={styles['dc-root']}>
+    <div className={styles['dc-root']} ref={ref}>
       <div className={styles['dc-shell']}>
         <header className={styles['dc-header']}>
           <div className={styles['dc-header-bar']} />
@@ -260,6 +264,8 @@ const DialysisChart: React.FC<{ session?: typeof DEMO_SESSION }> = ({ session = 
       </div>
     </div>
   );
-};
+});
+
+DialysisChart.displayName = 'DialysisChart';
 
 export default DialysisChart;
