@@ -158,18 +158,22 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     }
   }, [visitTypeUuid, VisitTypeUuids]);
 
+  const isPerdiem = useMemo(() => {
+    if (intervention) {
+      return ["PER DIEM", "PER_DIEM"].includes(intervention?.paymentMechanism.trim().toUpperCase());
+    }
+    return false;
+  }, [intervention])
+
   const showBillableServices = useMemo(() => {
     if (preExistingInterventions && preExistingInterventions.length) {
       return false;
     }
-    if (intervention && visitType) {
-      const isPerdiem = ["PER DIEM", "PER_DIEM"].includes(intervention?.paymentMechanism.trim().toUpperCase());
-      if (isPerdiem) {
-        return false;
-      }
+    if (isPerdiem) {
+      return false;
     }
     return true;
-  }, [preExistingInterventions, intervention, visitType]);
+  }, [preExistingInterventions, intervention, isPerdiem]);
 
   const patientIdentifiers = useMemo(() => {
     if (patient) {
@@ -290,7 +294,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     subBenefit: ClientSubBenefit,
     usePreselectedIntervention: boolean,
   ) {
-    if (usePreselectedIntervention || !showBillableServices) {
+    if (usePreselectedIntervention) {
       setBillCreated(true);
       showAlert('success', 'Bill succesfully updated', '');
       dismiss(true);
@@ -337,13 +341,12 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     try {
       const newVisit: Visit = await createPatientVisit();
       if (newVisit) {
-        // const addToTriageQueueDto: QueueEntryDto = generateAddToTriageDto(newVisit);
-        // const queueEntryResp = await createQueueEntry(addToTriageQueueDto);
-
-        // if (queueEntryResp) {
-        //   showAlert('success', 'Patient has succesfully been moved to the Triage queue', '');
-        // }
-
+        if (isPerdiem) {
+          setBillCreated(true);
+          showAlert('success', 'Bill succesfully updated', '');
+          dismiss(true);
+          return;
+        }
         // add bill if it was a paying client
         let createBillResp = null;
         if (selectedPaymentDetail === PaymentDetail.Paying) {
@@ -926,7 +929,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                     otp,
                     authGuid,
                     visitType,
-                    onSelectChange: () => {},
+                    onSelectChange: () => { },
                     onClaimsVisitStart,
                     onInterventionChange,
                     onError,

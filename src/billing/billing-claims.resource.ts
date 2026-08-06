@@ -889,7 +889,7 @@ export function usePayerClaimPreview(invoiceNo: string, locationUuid: string) {
   });
 
   const results = data?.data?.results;
-  const result = results && results?.length ? results[0] : {} as PayerPreviewResult;
+  const result = results && results?.length ? results[0] : null;
 
   return {
     payerPreviewResult: result,
