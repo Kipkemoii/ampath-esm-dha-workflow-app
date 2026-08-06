@@ -171,7 +171,7 @@ const GeneralDischargeSummary = forwardRef<HTMLDivElement, GeneralDischargeSumma
               <Field label="Clinical Findings" value={s.clinical.findings} />
               <Field label="Treatment" value={s.clinical.treatment} />
               <Field label="Operations / Procedures" value={s.clinical.operations} />
-              <Field label="Laboratory Findings" value={dischargeSummary?.labOrders} />
+              {dischargeSummary?.labOrders ? <Field label="Laboratory Findings" value={''} /> : <></>}
               <Field label="Imaging Findings" value={s.clinical.imagingFindings} />
               <Field
                 label="Referrals / Other Instructions"
