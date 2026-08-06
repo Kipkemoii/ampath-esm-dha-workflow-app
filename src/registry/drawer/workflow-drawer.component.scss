@@ -503,6 +503,17 @@ $header-height: 3rem;
   @include type.type-style('label-01');
 }
 
+.pomsfBenefitsSection {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-02;
+}
+
+// A scroll container only: the table's own row rules carry the structure.
+.tableWrapper {
+  overflow-x: auto;
+}
+
 
 /* Confirmed consent shown as a clear, visible checked info row (not a greyed checkbox) */
 .consentConfirmed {

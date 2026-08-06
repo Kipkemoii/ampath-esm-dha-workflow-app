@@ -11,6 +11,12 @@ import {
   ProgressStep,
   RadioButton,
   RadioButtonGroup,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
   Tag,
 } from '@carbon/react';
 import {
@@ -43,6 +49,9 @@ import {
 import { fetchServiceQueuesByLocationUuid } from '../../resources/queue.resource';
 import { fetchCashPoints, fetchPaymentModes } from '../../shared/services/billing.resource';
 import { getReadableErrorMessage } from '../utils/error-handler';
+import { fetchPomsfBalance } from '../../claims/claims.resource';
+import { type PomsfBalance } from '../../claims';
+import { formatKes, getAllPomsfBenefitBalances, getPomsfDisplayBalance, isPomsfActive } from './pomsf-balance.util';
 
 type Phase =
   | 'biometric'
@@ -243,6 +252,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   const [schemes, setSchemes] = useState<Scheme[]>([]);
   const [loadingEligibility, setLoadingEligibility] = useState(false);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
+  const [pomsfBalance, setPomsfBalance] = useState<PomsfBalance | null>(null);
   const [insuranceError, setInsuranceError] = useState('');
   // Required fields only flag once the user has actually been in them, so the step
   // doesn't open pre-painted red. Each clears the moment its field has a value.
@@ -318,6 +328,38 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       active = false;
     };
   }, [open, client?.id, locationUuid]);
+
+  // POMSF's balance lives behind a separate HIE endpoint (/pomsf-balance) from
+  // the /eligibility call above, so it's fetched independently — gated only on
+  // POMSF being Active (regardless of which scheme is selected in the dropdown,
+  // since the Eligibility row below lists every active scheme unconditionally),
+  // and never on Visit type. That means switching Visit type afterwards just
+  // re-picks a benefit line out of the response already in state (see
+  // pomsf-balance.util.ts) rather than re-fetching. Uses a plain fetch rather
+  // than the usePomsfBalance hook, which pulls in useConfig({ externalModuleName
+  // }) and has been observed to throw here.
+  const pomsfActive = isPomsfActive(schemes);
+  useEffect(() => {
+    if (!open || !pomsfActive || !client?.id || !locationUuid) {
+      setPomsfBalance(null);
+      return;
+    }
+    let active = true;
+    fetchPomsfBalance(client.id, locationUuid)
+      .then((balance) => {
+        if (active) {
+          setPomsfBalance(balance);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setPomsfBalance(null);
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [open, pomsfActive, client?.id, locationUuid]);
 
   // Load triage service queues for the LOGGED-IN location only (queues whose
   // name contains "triage"), so rooms from other locations aren't shown.
@@ -693,6 +735,15 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
 
   // A scheme is active/eligible when its coverage status is '1'.
   const isActiveScheme = (s: Scheme) => s.coverage?.status === '1';
+
+  // Balance for the benefit line matching the current Visit type, picked from
+  // the POMSF balance response fetched above — see pomsf-balance.util.ts for the
+  // PMF-07/PMF-12 mapping and the rest of the gating rules.
+  const pomsfDisplayBalance = getPomsfDisplayBalance(schemes, visitType, pomsfBalance);
+  // The full breakdown (every benefit line, not just the one for the current
+  // Visit type) — shown underneath so staff can see all of a patient's POMSF
+  // benefits at a glance, not just the auto-picked one.
+  const pomsfAllBenefits = pomsfActive ? getAllPomsfBenefitBalances(pomsfBalance) : [];
 
   // Every eligible scheme the registry returns for the patient (all active
   // schemes) — shown in full on the consent summary.
@@ -1311,15 +1362,53 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       <></>
                     )}
 
+                    {method === 'insurance' && /pomsf/i.test(insurance) && pomsfDisplayBalance !== null ? (
+                      <div className={styles.eligibilityRow}>
+                        <span className={styles.eligibilityRowLabel}>Eligibility</span>
+                        <Tag size="sm" type="green">
+                          {`POMSF · Active · ${formatKes(pomsfDisplayBalance)}`}
+                        </Tag>
+                      </div>
+                    ) : null}
+
                     {method === 'insurance' && /sha|shif/i.test(insurance) ? (
                       <div className={styles.eligibilityRow}>
                         <span className={styles.eligibilityRowLabel}>Eligibility</span>
                         {shaEligibilityTag}
                         {eligibleSchemes.map((s, i) => (
                           <Tag key={`${s.schemeName}-${i}`} size="sm" type="green">
-                            {`${s.schemeName} · Active`}
+                            {/* POMSF's tag additionally carries its balance for the current Visit
+                                type (see pomsf-balance.util.ts), once one is picked — this row
+                                lists every active scheme regardless of which one is selected above. */}
+                            {/pomsf/i.test(s.schemeName) && pomsfDisplayBalance !== null
+                              ? `${s.schemeName} · Active · ${formatKes(pomsfDisplayBalance)}`
+                              : `${s.schemeName} · Active`}
                           </Tag>
                         ))}
+                      </div>
+                    ) : null}
+
+                    {method === 'insurance' && pomsfAllBenefits.length > 0 ? (
+                      <div className={styles.pomsfBenefitsSection}>
+                        <span className={styles.eligibilityRowLabel}>POMSF benefits</span>
+                        <div className={styles.tableWrapper}>
+                          <Table size="sm" aria-label="POMSF benefits">
+                            <TableHead>
+                              <TableRow>
+                                <TableHeader>Benefit</TableHeader>
+                                <TableHeader>Balance</TableHeader>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {pomsfAllBenefits.map((benefit) => (
+                                <TableRow key={benefit.code}>
+                                  <TableCell>{benefit.name}</TableCell>
+                                  <TableCell>{benefit.balance !== null ? formatKes(benefit.balance) : '—'}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        </div>
                       </div>
                     ) : null}
                   </div>

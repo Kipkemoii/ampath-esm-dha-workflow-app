@@ -215,6 +215,26 @@ export const usePomsfBalance = (clientRegistryId: string, isPomsf: boolean) => {
   };
 };
 
+// Promise-based counterpart to usePomsfBalance, for callers that already run
+// their own useEffect (e.g. components inside this same module, which don't
+// need useHie's useConfig({ externalModuleName }) lookup — that path has been
+// observed to throw React error #310 when invoked from certain call sites).
+export async function fetchPomsfBalance(clientRegistryId: string, locationUuid: string): Promise<PomsfBalance | null> {
+  if (!clientRegistryId || !locationUuid) {
+    return null;
+  }
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const url = `${hieBaseUrl}/pomsf-balance?patient_id=${clientRegistryId}&locationUuid=${locationUuid}`;
+  const response = await openmrsFetch<PomsfBalance>(url);
+  const results = response?.data;
+
+  if (results && 'error' in results && 'message' in results) {
+    return null;
+  }
+
+  return results ?? null;
+}
+
 export async function createClaimsVisit(
   interventionCode: string,
   crIdentifier: string,
