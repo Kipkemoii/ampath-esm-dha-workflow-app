@@ -22,6 +22,7 @@ interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
   bill: any;
   consentToken: string;
+  patientUuid: string;
 }
 
 const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
@@ -30,6 +31,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   claimInterventions,
   bill,
   consentToken,
+  patientUuid,
 }) => {
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
@@ -79,6 +81,16 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+    let remainingHeight = imgHeight - pageHeight;
+    let position = -pageHeight;
+
+    while (remainingHeight > 0) {
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      remainingHeight -= pageHeight;
+      position -= pageHeight;
+    }
 
     return pdf.output('blob');
   };
@@ -153,7 +165,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
     switch (document.name) {
       case 'INVOICE':
-        element = caseSummaryRef.current;
+        element = invoiceRef.current;
         break;
 
       case 'FINAL_BILL':
@@ -255,12 +267,14 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
                 <Button kind="ghost" size="sm" onClick={() => generateDocument(document)}>
                   Generate
                 </Button>
-              ) : !document.uploaded ? (
-                <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
-                  Upload
-                </Button>
               ) : (
-                <>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                  }}
+                >
                   <Button
                     kind="ghost"
                     size="sm"
@@ -270,13 +284,19 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
                       setPreviewOpen(true);
                     }}
                   >
-                    View
+                    Preview
                   </Button>
+
+                  {!document.uploaded && (
+                    <Button kind="primary" size="sm" onClick={() => handleSubmit(document)}>
+                      Upload
+                    </Button>
+                  )}
 
                   <Button kind="ghost" size="sm" renderIcon={TrashCan} onClick={() => deleteDocument(document.id)}>
                     Delete
                   </Button>
-                </>
+                </div>
               )}
             </div>
           ))}
@@ -321,9 +341,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
         <FinalBillComponent ref={finalBillRef} bill={bill} />
-        <CaseSummary ref={caseSummaryRef} />
-        <DialysisChart ref={dialysisRef} />
-        <GeneralDischargeSummary ref={generalDischargeSummary} />
+        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} />
+        <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
+        <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
       </div>
     </>
   );

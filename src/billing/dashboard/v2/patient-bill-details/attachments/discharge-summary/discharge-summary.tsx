@@ -4,6 +4,7 @@ import { type DischargeSummary } from '../type';
 import { getDischargeSummary } from '../../../../../maternity-discharge.resource';
 
 import styles from './discharge-summary.scss';
+import { useSession } from '@openmrs/esm-framework';
 
 interface DischargeSummaryComponentProps {
   bill: any;
@@ -14,7 +15,8 @@ const DischargeSummaryComponent = forwardRef<HTMLDivElement, DischargeSummaryCom
   ({ bill, claimIntervention }, ref) => {
     const [summary, setSummary] = useState<DischargeSummary | null>(null);
     const [loading, setLoading] = useState(true);
-
+    const session = useSession();
+    const locationName = session?.sessionLocation?.display;
     useEffect(() => {
       const loadSummary = async () => {
         try {
@@ -45,7 +47,7 @@ const DischargeSummaryComponent = forwardRef<HTMLDivElement, DischargeSummaryCom
 
             <div className={styles.department}>Department of Health Services</div>
 
-            <div className={styles.hospitalName}>Kesses Sub-County Hospital</div>
+            <div className={styles.hospitalName}>{locationName}</div>
 
             <div className={styles.encounterType}>POST NATAL DISCHARGE SUMMARY</div>
           </div>

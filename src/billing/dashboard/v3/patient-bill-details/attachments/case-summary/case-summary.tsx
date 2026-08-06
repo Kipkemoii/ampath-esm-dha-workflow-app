@@ -1,105 +1,9 @@
-import React, { forwardRef, useState } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import styles from './case-summary.scss';
 import { fetchCaseSummary } from '../../../../../billing-claims.resource';
-import { useSession } from '@openmrs/esm-framework';
-
-const DEMO_PATIENT = {
-  facility: 'Sample County Government',
-  patientName: 'Jane A. Doe',
-  dob: '01-01-1990',
-  age: 36,
-  gender: 'Female',
-  patientId: 'SAMPLE-ID-0000000',
-  nationalId: '00000000',
-  insuranceNo: '00000000',
-  printedBy: 'Demo User',
-  printedAt: '2026-01-01 00:00:00',
-  alert: 'No active clinical alerts on file.',
-  allergies: [{ label: 'No Known Allergies (NKA)' }],
-  diagnoses: [
-    {
-      date: '01-Jan-2026',
-      code: 'A00Z',
-      description: 'Sample diagnosis, unspecified',
-      status: 'Active',
-      primary: true,
-    },
-    {
-      date: '01-Jan-2026',
-      code: 'B00Z',
-      description: 'Sample secondary condition',
-      status: 'Active',
-      primary: false,
-    },
-  ],
-  vitals: {
-    takenAt: '01-Jan-2026 00:00',
-    tewScore: 0,
-    readings: [
-      { label: 'Temp', value: '36.8', unit: '°C', trend: 'flat' },
-      { label: 'Pulse', value: '76', unit: 'bpm', trend: 'down' },
-      { label: 'BP', value: '112/67', unit: 'mmHg', trend: 'down' },
-      { label: 'RR', value: '18', unit: '/min', trend: 'up' },
-      { label: 'SpO2', value: '99', unit: '%', trend: 'flat' },
-      { label: 'Wt', value: '62.0', unit: 'kg', trend: 'flat' },
-      { label: 'Ht', value: '—', unit: 'cm', trend: 'flat' },
-      { label: 'BMI', value: '—', unit: '', trend: 'flat' },
-    ],
-  },
-  medications: [
-    {
-      date: '05-Jan-2026',
-      drug: 'SAMPLE DRUG 500 MG',
-      tag: 'Discharge',
-      detail: '(1) SAMPLE DRUG 500 MG BID for 5 Day Oral',
-      dose: '1',
-      route: 'Oral',
-      frequency: 'BID',
-      duration: '5 Day',
-    },
-    {
-      date: '03-Jan-2026',
-      drug: 'SAMPLE IV MEDICATION 1000 MG',
-      tag: null,
-      detail: '(1) SAMPLE IV MEDICATION 1000 MG BID for 3 Day IV',
-      dose: '1',
-      route: 'IV',
-      frequency: 'BID',
-      duration: '3 Day',
-    },
-  ],
-  labs: [],
-  soap: {
-    date: '01-Jan-2026',
-    subjective: 'Sample presenting complaint, duration and character as documented at intake.',
-    objective: 'General appearance and exam findings as documented.',
-    assessment: 'Clinical impression as documented by attending clinician.',
-    plan: 'Admit / treat / follow-up as documented.',
-  },
-  admission: {
-    date: '01-Jan-2026 00:00:00',
-    status: 'Admitted',
-    diagnosis: 'Sample admission diagnosis',
-    doctor: 'Dr. Sample Physician',
-    ward: 'WARD-00 - Sample Ward',
-  },
-  encounters: [
-    {
-      date: '01-Jan-2026',
-      time: '00:00',
-      clinician: 'Dr. Sample Physician',
-      labOrders: 'Sample Lab Panel',
-      prescriptions: 'Sample Rx A; Sample Rx B',
-    },
-    {
-      date: '30-Dec-2025',
-      time: '17:02',
-      clinician: 'Dr. Sample Physician B',
-      labOrders: 'Sample Lab Panel B',
-      prescriptions: 'Sample Rx C; Sample Rx D; Sample Rx E',
-    },
-  ],
-};
+import { showSnackbar, useSession } from '@openmrs/esm-framework';
+import { VisitSummaryResponse, VitalReading } from '../type';
+import { normalizeVitals } from './case-summary-helper';
 
 const TREND_GLYPH = { up: '↑', down: '↓', flat: '→' };
 
@@ -124,24 +28,46 @@ function SectionBlock({ number, title, children }) {
 }
 
 interface CaseSummaryProps {
-  patient?: typeof DEMO_PATIENT;
+  patientUuid: string;
 }
 
-const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DEMO_PATIENT }, ref) => {
-  const p = patient;
+const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid }, ref) => {
+  const [caseSummary, setCasesummary] = useState<VisitSummaryResponse>();
+  const [vitals, setVitals] = useState<VitalReading[]>();
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
+  const locationName = session?.sessionLocation?.display;
+  const user = session?.user?.display;
+  const formatDate = (date?: string | Date | null): string => {
+    if (!date) return '—';
 
-  const [caseSummary, setCasesummary] = useState();
+    return new Intl.DateTimeFormat('en-KE', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    }).format(new Date(date));
+  };
 
-  const getCaseSummary = async () => {
+  const getCaseSummary = async (locationUuid: string) => {
     try {
-      const res = await fetchCaseSummary(locationUuid!, '');
-      console.log('RESULTS ONE: ', res);
+      const res: VisitSummaryResponse = await fetchCaseSummary(locationUuid!, patientUuid);
+      setCasesummary(res);
+      const normalizedVitals = normalizeVitals(res.vitals);
+      setVitals(normalizedVitals);
     } catch (err) {
       console.log(err);
+      showSnackbar({
+        kind: 'error',
+        title: 'An error occured while fetching Case summary',
+        subtitle: 'An error occured while fetching Case summary. Please try again!',
+      });
     }
   };
+
+  useEffect(() => {
+    if (!locationUuid) return;
+    getCaseSummary(locationUuid);
+  }, [locationUuid, session]);
 
   return (
     <div className={styles['cs-root']} ref={ref}>
@@ -149,32 +75,37 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
         <header className={styles['cs-header']}>
           <div className={styles['cs-header-bar']} />
           <div className={styles['cs-header-info']}>
-            <p className={styles['cs-org']}>{p.facility}</p>
+            <p className={styles['cs-org']}>{locationName}</p>
             <h1 className={styles['cs-title']}>Patient Clinical Summary</h1>
           </div>
           <div className={styles['cs-meta-right']}>
-            Printed by {p.printedBy}
+            Printed by {user}
             <br />
-            {p.printedAt}
+            {formatDate()}
           </div>
         </header>
 
         <div className={styles['cs-identity']}>
           <div className={styles['cs-field']}>
             <div className={styles['cs-field-label']}>Patient Name</div>
-            <div className={`${styles['cs-field-value']} ${styles['cs-name-value']}`}>{p.patientName}</div>
+            <div className={`${styles['cs-field-value']} ${styles['cs-name-value']}`}>
+              {caseSummary?.demographics.name}
+            </div>
           </div>
-          <Field label="DOB" value={p.dob} />
-          <Field label="Age / Gender" value={`${p.age}y · ${p.gender}`} />
-          <Field label="Patient ID" value={p.patientId} />
-          <Field label="National ID" value={p.nationalId} />
-          <Field label="Insurance No." value={p.insuranceNo} />
+          <Field label="DOB" value={caseSummary?.demographics.birthDate} />
+          <Field
+            label="Age / Gender"
+            value={`${caseSummary?.demographics.age}y · ${caseSummary?.demographics.gender}`}
+          />
+          <Field label="Patient ID" value={caseSummary?.demographics.patientId} />
+          <Field label="National ID" value={caseSummary?.demographics.nationalId} />
+          <Field label="CR Identifier." value={caseSummary?.demographics.crNumber} />
         </div>
 
-        {p.alert && <div className={styles['cs-alert']}>{p.alert}</div>}
+        {/* {p.alert && <div className={styles['cs-alert']}>{p.alert}</div>} */}
 
         <SectionBlock number="1" title="Allergies">
-          {p.allergies.map((a, i) => (
+          {caseSummary?.allergies.map((a, i) => (
             <div key={i} className={styles['cs-field-value']}>
               ✓ {a.label}
             </div>
@@ -192,15 +123,15 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
               </tr>
             </thead>
             <tbody>
-              {p.diagnoses.map((d, i) => (
+              {caseSummary?.conditions.map((d, i) => (
                 <tr key={i}>
-                  <td>{d.date}</td>
+                  <td>{formatDate(d.onsetDate)}</td>
                   <td>{d.code}</td>
                   <td>
                     {d.description}
                     {d.primary && <span className={styles['cs-pill']}>Primary</span>}
                   </td>
-                  <td>{d.status}</td>
+                  <td>{d.certainty}</td>
                 </tr>
               ))}
             </tbody>
@@ -209,21 +140,21 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
 
         <SectionBlock number="3" title="Latest Vitals">
           <div className={styles['cs-vitals-grid']}>
-            {p.vitals.readings.map((v, i) => (
+            {vitals?.map((v, i) => (
               <div className={styles['cs-vital']} key={i}>
                 <div className={styles['cs-vital-value']}>
                   {v.value}
                   <span className={styles['cs-vital-unit']}> {v.unit}</span>
                 </div>
                 <div className={styles['cs-vital-label']}>
-                  {v.label} <span className={styles['cs-vital-trend']}>{TREND_GLYPH[v.trend]}</span>
+                  {v.label} <span className={styles['cs-vital-trend']}></span>
                 </div>
               </div>
             ))}
           </div>
           <div className={styles['cs-vitals-foot']}>
-            <span>Taken: {p.vitals.takenAt}</span>
-            <span>TEW Score: {p.vitals.tewScore}</span>
+            <span>Taken: {''}</span>
+            <span>TEW Score: {''}</span>
           </div>
         </SectionBlock>
 
@@ -239,7 +170,7 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
               </tr>
             </thead>
             <tbody>
-              {p.medications.map((m, i) => (
+              {caseSummary?.medications.map((m, i) => (
                 <tr key={i}>
                   <td>
                     <div className={styles['cs-drug-name']}>
@@ -259,41 +190,58 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
         </SectionBlock>
 
         <SectionBlock number="5" title="Latest Lab Results">
-          {p.labs.length === 0 ? (
+          {caseSummary?.labOrders.length === 0 ? (
             <div className={styles['cs-empty']}>No lab results available</div>
           ) : (
-            <ul>
-              {p.labs.map((l, i) => (
-                <li key={i}>{l}</li>
-              ))}
-            </ul>
+            <table className={styles['cs-table']}>
+              <thead>
+                <tr>
+                  <th>Test</th>
+                  <th>Order Date</th>
+                  <th>Pending</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {caseSummary?.labOrders.map((m, i) => (
+                  <tr key={i}>
+                    <td>
+                      <div className={styles['cs-drug-name']}>{m.test}</div>
+                    </td>
+                    <td>{formatDate(m.orderedDate)}</td>
+                    <td>{m.pending}</td>
+                    <td>{m.action}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </SectionBlock>
 
-        <SectionBlock number="6" title={`SOAP Note — ${p.soap.date}`}>
+        <SectionBlock number="6" title={`SOAP Note`}>
           <dl className={styles['cs-soap']}>
             <dt>Subjective</dt>
-            <dd>{p.soap.subjective}</dd>
+            <dd>{caseSummary?.soapNote.subjective}</dd>
             <dt>Objective</dt>
-            <dd>{p.soap.objective}</dd>
+            <dd>{caseSummary?.soapNote.objective}</dd>
             <dt>Assessment</dt>
-            <dd>{p.soap.assessment}</dd>
+            <dd>{caseSummary?.soapNote.assessment}</dd>
             <dt>Plan</dt>
-            <dd>{p.soap.plan}</dd>
+            <dd>{caseSummary?.soapNote.plan}</dd>
           </dl>
         </SectionBlock>
 
         <SectionBlock number="7" title="Admission Details">
           <div className={styles['cs-field-grid']}>
-            <Field label="Status" value={p.admission.status} />
-            <Field label="Admission Date" value={p.admission.date} />
-            <Field label="Admission Diagnosis" value={p.admission.diagnosis} />
-            <Field label="Primary Doctor" value={p.admission.doctor} />
-            <Field label="Ward / Bed" value={p.admission.ward} />
+            <Field label="Status" value={caseSummary?.admissionDetails?.status} />
+            <Field label="Admission Date" value={formatDate(caseSummary?.admissionDetails?.admissionDate)} />
+            <Field label="Admission Diagnosis" value={caseSummary?.admissionDetails?.diagnosis} />
+            <Field label="Primary Doctor" value={caseSummary?.admissionDetails?.admittingDoctor} />
+            <Field label="Ward / Bed" value={caseSummary?.admissionDetails?.ward} />
           </div>
         </SectionBlock>
 
-        <SectionBlock number="8" title="Encounter Log">
+        {/* <SectionBlock number="8" title="Encounter Log">
           {p.encounters.map((e, i) => (
             <div className={styles['cs-encounter']} key={i}>
               <div className={styles['cs-encounter-head']}>
@@ -311,7 +259,7 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patient = DE
               )}
             </div>
           ))}
-        </SectionBlock>
+        </SectionBlock> */}
 
         <div className={styles['cs-footer']}>Confidential — For authorized clinical use only</div>
       </div>

@@ -60,6 +60,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       consentToken: consentToken,
       claimInterventions: ci,
       bill: patientBillDetails,
+      patientUuid: patientBillDetails?.patient_uuid,
     });
   };
 

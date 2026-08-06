@@ -1,5 +1,9 @@
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect, useState } from 'react';
 import styles from './dialysis-chart.scss';
+import { VisitSummaryResponse, VitalReading } from '../type';
+import { showSnackbar, useSession } from '@openmrs/esm-framework';
+import { fetchCaseSummary } from '../../../../../billing-claims.resource';
+import { normalizeVitals } from '../case-summary/case-summary-helper';
 
 const DEMO_SESSION = {
   facility: {
@@ -120,10 +124,49 @@ function SectionBlock({ number, title, children }) {
 
 interface DialysisChartProps {
   session?: typeof DEMO_SESSION;
+  patientUuid: string;
 }
 
-const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session = DEMO_SESSION }, ref) => {
+const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session = DEMO_SESSION, patientUuid }, ref) => {
   const s = session;
+
+  const [dialysisSummary, setDialysisSummary] = useState<VisitSummaryResponse>();
+  const [vitals, setVitals] = useState<VitalReading[]>();
+  // const p = patient;
+  const sessionL = useSession();
+  const locationUuid = sessionL?.sessionLocation?.uuid;
+  const locationName = sessionL?.sessionLocation?.display;
+  const user = sessionL?.user?.display;
+  const formatDate = (date?: string | Date | null): string => {
+    if (!date) return '—';
+
+    return new Intl.DateTimeFormat('en-KE', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    }).format(new Date(date));
+  };
+
+  const getDialysisSummary = async (locationUuid: string) => {
+    try {
+      const res: VisitSummaryResponse = await fetchCaseSummary(locationUuid!, patientUuid);
+      setDialysisSummary(res);
+      const normalizedVitals = normalizeVitals(res.vitals);
+      setVitals(normalizedVitals);
+    } catch (err) {
+      console.log(err);
+      showSnackbar({
+        kind: 'error',
+        title: 'An error occured while fetching Case summary',
+        subtitle: 'An error occured while fetching Case summary. Please try again!',
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!locationUuid) return;
+    getDialysisSummary(locationUuid);
+  }, [locationUuid, session]);
 
   return (
     <div className={styles['dc-root']} ref={ref}>
@@ -132,34 +175,34 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
           <div className={styles['dc-header-bar']} />
           <div className={styles['dc-header-info']}>
             <h1 className={styles['dc-title']}>Renal Unit Haemodialysis Notes</h1>
-            <p className={styles['dc-hospital']}>{s.facility.hospital}</p>
+            <p className={styles['dc-hospital']}>{locationName}</p>
             <p className={styles['dc-hospital-meta']}>
-              {s.facility.address} · Tel: {s.facility.phone} · {s.facility.email}
+              {/* {s.facility.address} · Tel: {s.facility.phone} · {s.facility.email} */}
             </p>
           </div>
         </header>
 
         <div className={styles['dc-identity']}>
-          <Field label="Patient Name" value={s.patient.name} />
-          <Field label="OP No" value={s.patient.opNo} />
-          <Field label="Insurance No" value={s.patient.insuranceNo} />
-          <Field label="Date" value={s.patient.date} />
-          <Field label="Age" value={s.patient.age} />
-          <Field label="Sex" value={s.patient.sex} />
-          <Field label="Contact" value={s.patient.contact} />
-          <Field label="Clinic" value={s.patient.clinic} />
-          <Field label="Diagnosis" value={s.patient.diagnosis} />
-          <Field label="Address" value={s.patient.address} />
+          <Field label="Patient Name" value={dialysisSummary?.demographics.name} />
+          <Field label="OP No" value={''} />
+          <Field label="Insurance No" value={dialysisSummary?.demographics.crNumber} />
+          <Field label="Date" value={dialysisSummary?.demographics.birthDate} />
+          <Field label="Age" value={dialysisSummary?.demographics.age} />
+          <Field label="Sex" value={dialysisSummary?.demographics.gender} />
+          <Field label="Contact" value={dialysisSummary?.demographics.contact} />
+          <Field label="Clinic" value={dialysisSummary?.demographics.clinic} />
+          <Field label="Diagnosis" value={dialysisSummary?.demographics.diagnosis} />
+          <Field label="Address" value={dialysisSummary?.demographics.address} />
         </div>
 
         <SectionBlock number="1" title="Pre-Dialysis Assessment">
           <div className={styles['dc-field-grid']}>
             <Field label="Weight Before" value={s.preAssessment.weightBefore} />
-            <Field label="Temperature" value={s.preAssessment.temperature} />
-            <Field label="Pulse" value={s.preAssessment.pulse} />
-            <Field label="BP" value={s.preAssessment.bp} />
-            <Field label="Resp. Rate" value={s.preAssessment.respRate} />
-            <Field label="Oxygen Sat." value={s.preAssessment.oxygenSat} />
+            <Field label="Temperature" value={dialysisSummary?.vitals?.temperature} />
+            <Field label="Pulse" value={dialysisSummary?.vitals?.pulse} />
+            <Field label="BP" value={dialysisSummary?.vitals?.bloodPressure} />
+            <Field label="Resp. Rate" value={dialysisSummary?.vitals?.respiratoryRate} />
+            <Field label="Oxygen Sat." value={dialysisSummary?.vitals?.spo2} />
             <Field label="Blood Sugar" value={s.preAssessment.bloodSugar} />
             <Field label="Access Type" value={s.preAssessment.accessType} />
             <Field label="Access Site" value={s.preAssessment.accessSite} />
