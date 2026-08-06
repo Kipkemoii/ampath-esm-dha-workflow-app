@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Link,
   OverflowMenu,
   OverflowMenuItem,
   Table,
@@ -150,7 +151,13 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
             <TableRow key={row.key}>
               <TableCell>{index + 1}</TableCell>
               <TableCell>{row.bedNumber}</TableCell>
-              <TableCell>{row.name}</TableCell>
+              <TableCell>
+                {row.patientUuid ? (
+                  <Link href={`${window.spaBase}/patient/${row.patientUuid}/chart/`}>{row.name}</Link>
+                ) : (
+                  row.name
+                )}
+              </TableCell>
               <TableCell>{row.gender}</TableCell>
               <TableCell>{row.age}</TableCell>
               <TableCell>{row.identifier}</TableCell>
