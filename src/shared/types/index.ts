@@ -60,6 +60,7 @@ export type CreateBillDto = {
   lineItems: LineItem[];
   cashPoint: string;
   patient: string;
+  visit: string;
   status: PaymentStatus;
   payments: any[];
 };
