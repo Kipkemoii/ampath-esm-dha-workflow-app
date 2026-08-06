@@ -49,7 +49,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     }));
   });
   const session = useSession();
-  const locationUuid = session.sessionLocation?.uuid;
+  const locationUuid = session?.sessionLocation?.uuid;
 
   const invoiceRef = useRef<HTMLDivElement>(null);
   const dischargeRef = useRef<HTMLDivElement>(null);
