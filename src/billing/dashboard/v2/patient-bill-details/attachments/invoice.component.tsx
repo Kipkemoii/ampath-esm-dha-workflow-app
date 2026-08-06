@@ -97,7 +97,6 @@ const InvoiceComponent = forwardRef<HTMLDivElement, InvoiceComponentProps>(({ bi
               <thead>
                 <tr>
                   <th>Description</th>
-                  <th>Intervention Code</th>
                   <th>Order No</th>
                   <th>Service Type</th>
                   <th>Payer</th>
@@ -114,7 +113,6 @@ const InvoiceComponent = forwardRef<HTMLDivElement, InvoiceComponentProps>(({ bi
                   return (
                     <tr key={i}>
                       <td className={styles.invServiceName}>{item.billable_service || '—'}</td>
-                      <td>{item.intervention_code || '—'}</td>
                       <td>{item.order_no || '—'}</td>
                       <td>{item.service_type || '—'}</td>
                       <td>{item.payment_scheme || '—'}</td>
