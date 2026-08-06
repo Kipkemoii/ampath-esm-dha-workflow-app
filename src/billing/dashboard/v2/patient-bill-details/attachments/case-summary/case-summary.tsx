@@ -1,6 +1,7 @@
 import React from 'react';
 import styles from './case-summary.scss';
 import { useSession } from '@openmrs/esm-framework';
+import { fetchCaseSummary } from '../../../../../billing-claims.resource';
 
 const DEMO_PATIENT = {
   facility: 'Sample County Government',
@@ -126,6 +127,23 @@ const CaseSummary = ({ patient = DEMO_PATIENT }) => {
   const p = patient;
   const session = useSession();
   const locationName = session.sessionLocation?.display;
+  const locationUuid = session?.sessionLocation?.uuid;
+  const provider = session?.user?.display;
+
+  const formattedDate = new Intl.DateTimeFormat('en-KE', {
+    year: 'numeric',
+    month: 'short',
+    day: '2-digit',
+  }).format(new Date());
+
+  const getCaseSummary = async () => {
+    try {
+      const res = await fetchCaseSummary(locationUuid, '');
+      console.log('CASE SUMMARY RESPONSE: ', res);
+    } catch (err) {
+      console.log(err);
+    }
+  };
 
   return (
     <div className={styles['cs-root']}>
@@ -137,9 +155,9 @@ const CaseSummary = ({ patient = DEMO_PATIENT }) => {
             <h1 className={styles['cs-title']}>Patient Clinical Summary</h1>
           </div>
           <div className={styles['cs-meta-right']}>
-            Printed by {p.printedBy}
+            Printed by {provider}
             <br />
-            {p.printedAt}
+            {formattedDate}
           </div>
         </header>
 

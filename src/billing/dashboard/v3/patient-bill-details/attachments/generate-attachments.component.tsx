@@ -22,6 +22,7 @@ interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
   bill: any;
   consentToken: string;
+  patientUuid: string;
 }
 
 const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
@@ -30,6 +31,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   claimInterventions,
   bill,
   consentToken,
+  patientUuid,
 }) => {
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
@@ -74,11 +76,20 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
 
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-
     const imgWidth = pageWidth;
     const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
     pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
+
+    let remainingHeight = imgHeight - pageHeight;
+    let position = -pageHeight;
+
+    while (remainingHeight > 0) {
+      pdf.addPage();
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      remainingHeight -= pageHeight;
+      position -= pageHeight;
+    }
 
     return pdf.output('blob');
   };
@@ -321,9 +332,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
         <FinalBillComponent ref={finalBillRef} bill={bill} />
-        <CaseSummary ref={caseSummaryRef} />
-        <DialysisChart ref={dialysisRef} />
-        <GeneralDischargeSummary ref={generalDischargeSummary} />
+        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} />
+        <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
+        <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
       </div>
     </>
   );

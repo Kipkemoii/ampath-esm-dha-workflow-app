@@ -54,6 +54,8 @@ export interface VisitSummaryResponse {
   clinicalNotes: ClinicalNote[];
   soapNote: SoapNote;
   labOrders: LabOrder[];
+  admissionDetails?: VisitSummaryAdmissionDetails;
+  dialysis?: VisitSummaryDialysis;
 }
 
 export interface VisitInfo {
@@ -71,6 +73,10 @@ export interface PatientDemographics {
   patientId: string;
   nationalId: string;
   crNumber: string;
+  contact: string;
+  clinic: string;
+  diagnosis: string;
+  address: string;
 }
 
 export interface Allergy {
@@ -133,4 +139,121 @@ export interface LabOrder {
 
 export interface LabResult {
   [key: string]: any;
+}
+
+export type VitalReading = {
+  label: string;
+  value: string;
+  unit: string;
+  trend: 'up' | 'down' | 'flat';
+};
+
+export interface VisitSummaryAdmissionDetails {
+  admissionNumber?: string;
+  admissionDate?: string;
+  dischargeDate?: string | null;
+  ward?: string;
+  bed?: string;
+  room?: string;
+  admittingDoctor?: string;
+  referringFacility?: string;
+  admissionReason?: string;
+  status?: 'ADMITTED' | 'DISCHARGED' | 'TRANSFERRED' | 'PENDING' | string;
+  diagnosis?: string;
+}
+export interface VisitSummaryDialysis {
+  facility: VisitSummaryDialysisFacility;
+  patient: VisitSummaryDialysisPatient;
+  preAssessment: VisitSummaryDialysisPreAssessment;
+  prescription: VisitSummaryDialysisPrescription;
+  monitoring: VisitSummaryDialysisMonitoringEntry[];
+  postAssessment: VisitSummaryDialysisPostAssessment;
+  summary: VisitSummaryDialysisSummary;
+  signoff: VisitSummaryDialysisSignoff;
+}
+
+export interface VisitSummaryDialysisFacility {
+  name: string;
+  hospital: string;
+  address: string;
+  phone: string;
+  email: string;
+}
+
+export interface VisitSummaryDialysisPatient {
+  name: string;
+  opNo: string;
+  insuranceNo: string;
+  date: string;
+  age: string;
+  sex: string;
+  contact: string;
+  clinic: string;
+  diagnosis: string;
+  address: string;
+}
+
+export interface VisitSummaryDialysisPreAssessment {
+  weightBefore: string;
+  temperature: string;
+  pulse: string;
+  bp: string;
+  respRate: string;
+  oxygenSat: string;
+  bloodSugar: string;
+  accessType: string;
+  accessSite: string;
+  doctor: string;
+}
+
+export interface VisitSummaryDialysisPrescription {
+  dialyzerType: string;
+  bfr: string;
+  dfr: string;
+  duration: string;
+  ufGoal: string;
+  heparinDose: string;
+  dialysateComposition: string;
+}
+
+export interface VisitSummaryDialysisMonitoringEntry {
+  time: string;
+  bp: string;
+  pulse: string;
+  temp: string;
+  ufRemoved: string;
+  heparin: string;
+  remarks: string;
+}
+
+export interface VisitSummaryDialysisPostAssessment {
+  weightAfter: string;
+  totalUfAchieved: string;
+  bp: string;
+  pulse: string;
+  temperature: string;
+  accessSite: string;
+  condition: string;
+  complications: string;
+}
+
+export interface VisitSummaryDialysisSummary {
+  prescribedDuration: string;
+  actualDuration: string;
+  adequacyAchieved: string;
+  toleratedProcedure: string;
+  comments: string;
+  nextSessionDate: string;
+  additionalRemarks: string;
+}
+
+export interface VisitSummaryDialysisSignoff {
+  nurse: VisitSummaryDialysisSignatory;
+  doctor: VisitSummaryDialysisSignatory;
+}
+
+export interface VisitSummaryDialysisSignatory {
+  name: string;
+  regNo: string;
+  date: string;
 }

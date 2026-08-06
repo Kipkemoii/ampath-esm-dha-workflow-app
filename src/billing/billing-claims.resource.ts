@@ -856,20 +856,16 @@ export async function fetchFacilityBedOccupancy(locationUuid: string): Promise<B
   return data;
 }
 
-export async function fetchCaseSummary(
-  locationUuid: string,
-  patientUuid: string = '124233ca-3b45-48cf-b396-8a25912bb1d3',
-): Promise<VisitSummaryResponse> {
+export async function fetchCaseSummary(locationUuid: string, patientUuid: string): Promise<VisitSummaryResponse> {
   const { hieBaseUrl } = await getHieBaseUrl();
   try {
     const url =
-      `${hieBaseUrl}/hie/case-summary` +
+      `${hieBaseUrl}/case-summary` +
       `?patientUuid=${encodeURIComponent(patientUuid)}` +
       `&locationUuid=${encodeURIComponent(locationUuid)}`;
 
     const response = await openmrsFetch(url);
     const data = await response.json();
-    console.log('CASE SUMMARY RESPONSE DATA: ', data);
     return data ?? null;
   } catch (err) {
     console.error(err);
