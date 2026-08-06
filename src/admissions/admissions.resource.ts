@@ -17,6 +17,7 @@ import {
   type TransferPatientDto,
   type UnAssignBedDto,
   type AdmissionLocationData,
+  type AwaitingDischargePatientList,
 } from './types';
 import { getEtlBaseUrl } from '../shared/utils/get-base-url';
 
@@ -219,6 +220,14 @@ export async function fetchAdmittedPatients(locationUuid: string): Promise<Admit
   const etlBaseUrl = await getEtlBaseUrl();
   const admittedListUrl = `${etlBaseUrl}/admissions/admitted?locationUuid=${locationUuid}`;
   const resp = await openmrsFetch(admittedListUrl);
+  const data = await resp.json();
+  return data.results ?? [];
+}
+
+export async function fetchPatientsAwaitingDischarge(locationUuid: string): Promise<AwaitingDischargePatientList[]> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  const awaitingDaischargeListUrl = `${etlBaseUrl}/admissions/awaiting-dicharge?locationUuid=${locationUuid}`;
+  const resp = await openmrsFetch(awaitingDaischargeListUrl);
   const data = await resp.json();
   return data.results ?? [];
 }

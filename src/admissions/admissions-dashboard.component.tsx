@@ -211,7 +211,13 @@ const AdmissionsDashboard: React.FC = () => {
               <Tabs>
                 <TabList contained>
                   <Tab>Admission Requests</Tab>
-                  <Tab>Bed Assignment Requests</Tab>
+                  {
+                    /*
+
+                     <Tab>Bed Assignment Requests</Tab>
+                    */
+                  }
+                
                   <Tab>Admitted</Tab>
                   <Tab>Awaiting Discharge</Tab>
                   <Tab>Discharged</Tab>
@@ -228,9 +234,15 @@ const AdmissionsDashboard: React.FC = () => {
                       <></>
                     )}
                   </TabPanel>
-                  <TabPanel>
+                  {
+                    /* 
+                      <TabPanel>
                    <BedAssignmentRequestList locationUuid={locationUuid} refresh={handleRefresh}/>
                   </TabPanel>
+
+                    */
+                  }
+                
                   <TabPanel>
                     {admittedPatientsData ? (
                        <AdmittedPatientsList admittedPatientsData={admitted} refresh={handleRefresh} />
@@ -240,7 +252,7 @@ const AdmissionsDashboard: React.FC = () => {
                   </TabPanel>
                   <TabPanel>
                     {admittedPatientsData ? (
-                      <AwaitingDischargeList admittedPatientsData={awaiting} refresh={handleRefresh} facilityBills={facilityBills}/>
+                      <AwaitingDischargeList locationUuid={locationUuid} refresh={handleRefresh} facilityBills={facilityBills}/>
                     ) : (
                       <></>
                     )}

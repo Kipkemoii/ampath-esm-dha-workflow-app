@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   OverflowMenu,
   OverflowMenuItem,
@@ -10,23 +10,37 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { BillStatus, FacilityEncounterBill, type BedLayout } from '../types';
+import { type BillStatus, type FacilityEncounterBill, type BedLayout, type AwaitingDischargePatientList } from '../types';
 import DischargeModal from '../modal/discharge/discharge-patient.modal';
+import { fetchPatientsAwaitingDischarge } from '../admissions.resource';
+import { type FacilityBill } from '../../billing/dashboard/v3/types';
+import AddBillItemsModal from '../modal/add-bill-items/add-bill-items.modal';
 
 interface AwaitingDischargeListProps {
-  admittedPatientsData: BedLayout[];
+  locationUuid: string;
   facilityBills: FacilityEncounterBill[];
   refresh: () => void;
 }
 
-const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ admittedPatientsData, facilityBills, refresh }) => {
+const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ locationUuid, facilityBills, refresh }) => {
   const [showDischargeModal, setShowDischargeModal] = useState<boolean>(false);
-  const [selectedLayout, setSelectedLayout] = useState<any>();
-  if (!admittedPatientsData) {
+  const [selectedDischargePatient, setSelectedDischargePatient] = useState<AwaitingDischargePatientList & {}>();
+  const [awaitingDischargePatientList,setAwaitingDischargePatientList] = useState<AwaitingDischargePatientList[]>([]);
+  const [showAddBillItemsModal,setShowBillItemsModal] = useState<boolean>(false);
+  useEffect(()=>{
+    getPatientsAwaitingDischarge()
+  },[]);
+  const rows = useMemo(()=>{
+    return awaitingDischargePatientList?.map((p) => {
+      return {
+        ...p,
+        billStatus: getBillStatus(facilityBills.find(fB => fB.patient_uuid === p?.person_uuid)?.bill_status) ?? 'PENDING'
+      }})},[awaitingDischargePatientList, facilityBills])
+  if (!locationUuid) {
     return <>No data to display</>;
   }
-  const handleDischargeRequest = (layout: BedLayout) => {
-    setSelectedLayout(layout);
+  const handleDischargeRequest = (dischargePatient: AwaitingDischargePatientList) => {
+    setSelectedDischargePatient(dischargePatient);
     setShowDischargeModal(true);
   };
   const handleDischargeModalClose = () => {
@@ -35,7 +49,7 @@ const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ admittedP
   const handleSuccessfullDischarge = () => {
     refresh();
   };
-  const getBillStatus = (billStatus: string): BillStatus => {
+  function getBillStatus(billStatus: string): BillStatus{
     if (!billStatus) {
       return "NOT_BILLED";
     }
@@ -46,26 +60,28 @@ const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ admittedP
       return "PENDING";
     }
   }
-  const rows = useMemo(() =>
-    admittedPatientsData?.flatMap((layout) =>
-      (layout.patients ?? []).map((patient) => ({
-        key: `${layout.bedUuid}-${patient.uuid}`,
-        bedNumber: layout.bedNumber,
-        bedId: layout.bedId,
-        status: layout.status,
-        location: layout.location,
-        name: patient.person.display,
-        gender: patient.person.gender,
-        age: patient.person.age,
-        identifier: patient.identifiers?.[0]?.identifier ?? 'N/A',
-        person: patient.person,
-        billStatus: getBillStatus(facilityBills.find(fB => fB.patient_uuid === patient.uuid)?.bill_status)
-      })),
-    ) ?? []
-    , [admittedPatientsData, facilityBills]);
+  
 
   if (!rows.length) {
     return <>No Data</>;
+  }
+
+  async function getPatientsAwaitingDischarge(){
+    const resp = await fetchPatientsAwaitingDischarge(locationUuid);
+    if(resp){
+     setAwaitingDischargePatientList(resp)
+    }
+  }
+
+  function handleAddBillItems(data: any){
+     setSelectedDischargePatient(data);
+     setShowBillItemsModal(true);
+  }
+  function handleSuccessFullAddBillItems(){
+      setShowBillItemsModal(false);
+  }
+  function handleAddBillItemsClose(){
+   setShowBillItemsModal(false);
   }
 
   return (
@@ -86,24 +102,29 @@ const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ admittedP
         </TableHead>
         <TableBody>
           {rows.map((row, index) => (
-            <TableRow key={row.key}>
+            <TableRow key={row.bed_id}>
               <TableCell>{index + 1}</TableCell>
-              <TableCell>{row.bedNumber}</TableCell>
-              <TableCell>{row.name}</TableCell>
-              <TableCell>{row.gender}</TableCell>
-              <TableCell>{row.age}</TableCell>
-              <TableCell>{row.identifier}</TableCell>
+              <TableCell></TableCell>
+              <TableCell>{row.patient_name}</TableCell>
+              <TableCell></TableCell>
+              <TableCell></TableCell>
+              <TableCell>{row.cr_id} {row.national_id}</TableCell>
               <TableCell><BillStatusTag status={row.billStatus} /></TableCell>
               <TableCell>{row.location}</TableCell>
               <TableCell>
                 <>
                   {
-                    row.billStatus === "PAID" &&
+                    row.billStatus === "PAID" ?
                     (
                       <OverflowMenu aria-label="overflow-menu">
                         <OverflowMenuItem itemText="Discharge" onClick={() => handleDischargeRequest(row as any)} />
                       </OverflowMenu>
-                    )
+                    ): (<>
+                      <OverflowMenu aria-label="overflow-menu">
+                         <OverflowMenuItem itemText="Discharge" onClick={() => handleDischargeRequest(row as any)} />
+                        <OverflowMenuItem itemText="Add Bill Items" onClick={() => handleAddBillItems(row as any)} />
+                      </OverflowMenu>
+                    </>)
                   }
                 </>
               </TableCell>
@@ -111,14 +132,28 @@ const AwaitingDischargeList: React.FC<AwaitingDischargeListProps> = ({ admittedP
           ))}
         </TableBody>
       </Table>
-
-      {showDischargeModal && selectedLayout ? (
+      
+      
+      {
+        showAddBillItemsModal && selectedDischargePatient ? (<>
+          <AddBillItemsModal 
+            crId={selectedDischargePatient.cr_id ?? ''}
+            patientUuid={selectedDischargePatient.person_uuid}
+            onModalClose={handleAddBillItemsClose}
+            onAddBillItems={handleSuccessFullAddBillItems}
+            open={showAddBillItemsModal}
+          />
+        </>): (<></>)
+      }
+      {showDischargeModal && selectedDischargePatient ? (
         <>
           <DischargeModal
             open={showDischargeModal}
             onModalClose={handleDischargeModalClose}
             onDischarge={handleSuccessfullDischarge}
-            admissionRequest={selectedLayout}
+            patientUuid={selectedDischargePatient.person_uuid}
+            locationUuid={selectedDischargePatient.location_uuid}
+            bedId={selectedDischargePatient.bed_id}
           />
         </>
       ) : (

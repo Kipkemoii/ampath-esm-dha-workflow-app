@@ -247,3 +247,17 @@ export type AdmittedListData = {
   bed_status: string | null;
   bed_id: string | null;
 };
+
+export type AwaitingDischargePatientList = {
+  location: string;
+  bed_id: number;
+  patient_name: string;
+  national_id: number | null;
+  cr_id: string | null;
+  person_uuid: string;
+  admission_date: string;
+  location_uuid: string;
+  encounter_type: string;
+  discharge_date: string;
+  bill_status: string;
+};

@@ -24,6 +24,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
   const [showBedSwapModal, setShowBedSwapModal] = useState<boolean>(false);
   const [selectedLayout, setSelectedLayout] = useState<any>();
   const { maternityDischargeFormUuid } = useConfig<ConfigObject>();
+  const generalDischargeFormUuid = 'b4218b80-22da-3299-af36-c865fdf07696';
 
   if (!admittedPatientsData) {
     return <>No data to display</>;
@@ -57,6 +58,39 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
         {
           workspaceTitle: 'Maternity Discharge Form',
           formUuid: maternityDischargeFormUuid,
+          patientUuid,
+        },
+        {
+          patient: patientData,
+          patientUuid,
+        },
+      );
+    } catch (error) {
+      console.error('Failed to fetch patient data:', error);
+    }
+  };
+  const handleGeneralDischargeRequest = async (layout: any) => {
+    setSelectedLayout(layout);
+
+    if (!layout) {
+      console.error('Layout is null');
+      return;
+    }
+
+    const patientUuid = layout.patientUuid || layout.uuid;
+    if (!patientUuid) {
+      console.error('No patientUuid', layout);
+      return;
+    }
+
+    try {
+      const patientData = await getPatientByUuid(patientUuid);
+
+      await launchWorkspace2(
+        'admissions-form-entry',
+        {
+          workspaceTitle: 'POC Inpatient Discharge Form v1.0',
+          formUuid: generalDischargeFormUuid,
           patientUuid,
         },
         {
@@ -128,8 +162,8 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
                     <OverflowMenuItem itemText="Transfer" onClick={() => handleTransferRequest(row as any)} />
                     <OverflowMenuItem itemText="Bed Swap" onClick={() => handleBedSwapRequest(row as any)} />
                     <OverflowMenuItem
-                      itemText="Fill Discharge Form"
-                      onClick={() => handleDischargeRequest(row as any)}
+                      itemText="Fill General Discharge Form"
+                      onClick={() => handleGeneralDischargeRequest(row as any)}
                     />
                   </OverflowMenu>
                 </>
@@ -138,7 +172,13 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
           ))}
         </TableBody>
       </Table>
-      {showBedSwapModal && selectedLayout ? (
+    </>
+  );
+};
+
+/*
+
+ {showBedSwapModal && selectedLayout ? (
         <>
           <BedSwapModal
             open={showBedSwapModal}
@@ -152,8 +192,8 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
       ) : (
         <></>
       )}
-    </>
-  );
-};
+
+
+*/
 
 export default AdmittedPatientsList;

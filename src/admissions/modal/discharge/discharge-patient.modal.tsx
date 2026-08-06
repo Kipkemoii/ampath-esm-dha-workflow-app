@@ -7,11 +7,13 @@ import { type Person, showSnackbar, useSession } from '@openmrs/esm-framework';
 import { dischargePatientFromWard, unassignBed } from '../../admissions.resource';
 interface DischargeModalProps {
   open: boolean;
-  admissionRequest: Disposition & { bedId: number; person: Person };
+  bedId: number;
+  patientUuid: string;
+  locationUuid: string;
   onModalClose: () => void;
   onDischarge: () => void;
 }
-const DischargeModal: React.FC<DischargeModalProps> = ({ open, admissionRequest, onModalClose, onDischarge }) => {
+const DischargeModal: React.FC<DischargeModalProps> = ({ open, bedId, patientUuid, locationUuid, onModalClose, onDischarge }) => {
   const session = useSession();
   const location = session.sessionLocation;
   const handleDischarge = async () => {
@@ -31,7 +33,7 @@ const DischargeModal: React.FC<DischargeModalProps> = ({ open, admissionRequest,
       showSnackbar({
         kind: 'success',
         title: 'Bed Unassigned successfull',
-        subtitle: `Bed ${admissionRequest.bedId} successfully unassigned`,
+        subtitle: `Bed ${bedId} successfully unassigned`,
       });
       onDischarge();
     } catch (error) {
@@ -44,18 +46,18 @@ const DischargeModal: React.FC<DischargeModalProps> = ({ open, admissionRequest,
   };
   const generateDischargePatientRequestDto = (): DischargePatientDto => {
     return {
-      patient: admissionRequest.person.uuid,
+      patient: patientUuid,
       encounterType: {
         uuid: AdmissionEncounterTypeUuids.DISCHARGE_ENCOUNTER_TYPE_UUID,
       },
-      location: location.uuid,
+      location: locationUuid,
       obs: [],
     };
   };
   const generateUnassignBedDto = (): UnAssignBedDto => {
     return {
-      patientUuid: admissionRequest.person.uuid,
-      bedId: admissionRequest.bedId,
+      patientUuid: patientUuid,
+      bedId: bedId,
     };
   };
   return (
