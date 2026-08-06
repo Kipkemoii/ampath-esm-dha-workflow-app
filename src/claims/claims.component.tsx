@@ -138,9 +138,9 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   const isPmsf = useMemo(() => {
     if (!schemes || !pmfSchemeNames) return false;
 
-    const pmfSet = new Set(pmfSchemeNames);
+    const pmfSet = new Set(pmfSchemeNames.map((name) => name.trim().toUpperCase()));
     return schemes.some(({ schemeName }) => {
-      const baseName = schemeName.split('-')[0];
+      const baseName = schemeName.split('-')[0].trim().toUpperCase();
       return pmfSet.has(baseName);
     });
   }, [schemes, pmfSchemeNames]);
