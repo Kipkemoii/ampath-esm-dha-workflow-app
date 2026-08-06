@@ -38,6 +38,7 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
   const locationUuid = session?.sessionLocation?.uuid;
   const locationName = session?.sessionLocation?.display;
   const user = session?.user?.display;
+  const documentTitle = caseSummary?.visit?.visitType === 'OPD Visit' ? 'Case Summary' : 'Medical Report';
   const formatDate = (date?: string | Date | null): string => {
     if (!date) return '—';
 
@@ -76,7 +77,7 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
           <div className={styles['cs-header-bar']} />
           <div className={styles['cs-header-info']}>
             <p className={styles['cs-org']}>{locationName}</p>
-            <h1 className={styles['cs-title']}>Patient Clinical Summary</h1>
+            <h1 className={styles['cs-title']}>{documentTitle}</h1>
           </div>
           <div className={styles['cs-meta-right']}>
             Printed by {user}

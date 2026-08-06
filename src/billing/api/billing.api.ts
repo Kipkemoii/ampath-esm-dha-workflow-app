@@ -4,9 +4,8 @@ import { getClaimsUrl, getClaimsKey } from '../../shared/utils/get-base-url';
 async function claimsFetch(path: string, method: string = 'GET', body?: any) {
   try {
     const [baseUrl, claimsKey] = await Promise.all([getClaimsUrl(), getClaimsKey()]);
-    const url = 'https://kibana.ampath.or.ke/etl-claims/api/hie';
 
-    const res = await openmrsFetch(`${url}${path}`, {
+    const res = await openmrsFetch(`${baseUrl}${path}`, {
       method,
       headers: {
         'AMPATH-CLAIMS-KEY': claimsKey,

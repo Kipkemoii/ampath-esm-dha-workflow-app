@@ -177,6 +177,10 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         element = generalDischargeSummary.current;
         break;
 
+      case 'MEDICAL_REPORT':
+        element = caseSummaryRef.current;
+        break;
+
       case 'CASE_SUMMARY':
         element = caseSummaryRef.current;
         break;
