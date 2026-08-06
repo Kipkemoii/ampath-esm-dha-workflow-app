@@ -1,8 +1,9 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { PayerPreviewResult } from "../../../../types";
 import { Button, InlineLoading, Tile } from "@carbon/react";
 import styles from "./index.scss";
 import { launchWorkspace } from "@openmrs/esm-framework";
+import { AccessibilityColor } from "@carbon/react/icons";
 
 interface PayerPreviewTileProps {
     isLoadingPayerPreview: boolean;
@@ -16,6 +17,14 @@ const PayerPreviewTile: React.FC<PayerPreviewTileProps> = ({ isLoadingPayerPrevi
         });
     }
 
+    if (isLoadingPayerPreview) {
+        return <InlineLoading title='Loading payer preview...' />;
+    }
+
+    if (!isLoadingPayerPreview && !payerPreviewResult) {
+        return;
+    }
+
     return (
         <Tile
             id="payer-preview"
@@ -24,9 +33,7 @@ const PayerPreviewTile: React.FC<PayerPreviewTileProps> = ({ isLoadingPayerPrevi
             <br />
             <br />
             {
-                isLoadingPayerPreview ? (
-                    <InlineLoading title='Loading payer preview...' />
-                ) : (!isLoadingPayerPreview && payerPreviewResult) ?
+                (!isLoadingPayerPreview && payerPreviewResult) ?
                     <>
                         <dl className={styles.detailsGrid}>
                             <div className={styles.detailRow}>
@@ -37,7 +44,7 @@ const PayerPreviewTile: React.FC<PayerPreviewTileProps> = ({ isLoadingPayerPrevi
                                 <dt>Workflow display name</dt>
                                 <dd>{payerPreviewResult.workflowDisplayName}</dd>
                             </div>
-                            <Button kind='tertiary' onClick={handlePayerPreview}>Preview</Button>
+                            <Button kind='tertiary' size="md" renderIcon={AccessibilityColor} onClick={handlePayerPreview}>View</Button>
                         </dl>
                     </> : <></>
             }

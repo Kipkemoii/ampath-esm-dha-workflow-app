@@ -252,10 +252,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
           </dl>
         </Tile>
 
-        {
-          !isLoadingPayerPreview && payerPreviewResult &&
-          <PayerPreviewTile isLoadingPayerPreview={isLoadingPayerPreview} payerPreviewResult={payerPreviewResult} />
-        }
+        <PayerPreviewTile isLoadingPayerPreview={isLoadingPayerPreview} payerPreviewResult={payerPreviewResult} />
 
         <div className={styles.cvContentSection}>
           <section className={styles.section}>

@@ -38,9 +38,14 @@
   flex-direction: column;
   height: 100%;
 }
+
+.tiles {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 $spacing-05;
+}
  
 .summaryTile {
-  margin: $spacing-05;
   margin-bottom: $spacing-03;
 }
  
@@ -81,24 +86,7 @@
   @include type-style('body-compact-01');
   word-break: break-word;
 }
- 
-.accordion {
-  flex: 1;
-  overflow-y: auto;
-  padding: 0 $spacing-05;
-}
- 
-.nestedTile {
-  margin-bottom: $spacing-04;
-}
- 
-.tagGroup {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $spacing-02;
-  margin-top: $spacing-04;
-}
- 
+
 .timeline {
   list-style: none;
   margin: 0;
@@ -121,13 +109,25 @@
     width: 1px;
   }
 }
- 
+
 .timelineDot {
   flex-shrink: 0;
   width: 8px;
   height: 8px;
   border-radius: 50%;
   margin-top: $spacing-02;
+}
+
+ 
+.nestedTile {
+  margin-bottom: $spacing-04;
+}
+ 
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-02;
+  margin-top: $spacing-04;
 }
  
 .footer {
