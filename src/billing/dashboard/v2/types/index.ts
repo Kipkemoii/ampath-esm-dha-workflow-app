@@ -128,6 +128,9 @@ export enum ApplicableDocumentType {
   DISCHARGE_SUMMARY = 'DISCHARGE_SUMMARY',
   INVOICE = 'INVOICE',
   FINAL_BILL = 'FINAL_BILL',
+  CASE_SUMMARY = 'CASE_SUMMARY',
+  DIALYSIS_CHART = 'DIALYSIS_CHART',
+  MEDICAL_REPORT = 'MEDICAL_REPORT',
 }
 
 export type VisitIntervention = {
