@@ -19,12 +19,13 @@ import {
   CheckmarkOutline,
   Close,
 } from '@carbon/react/icons';
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import styles from './registry.component.scss';
 import {
   type ClientRegistrySearchRequest,
   type CreateVisitDto,
   type HieClient,
+  HieIdentificationType,
   IDENTIFIER_TYPES,
   type IdentifierType,
   type QueueEntryDto,
@@ -77,6 +78,53 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   const locationUuid = session?.sessionLocation?.uuid;
   const { setPatient } = usePatient();
   const { cashPaymentModeUuid, shaPaymentModeUuid } = useConfig<ConfigObject>();
+  const emtHandoffConsumed = useRef(false);
+
+  // Arriving from an EMT handover (`?emtCrId=...`): skip straight to the
+  // found-patient view instead of making staff re-search by an identifier
+  // type this form doesn't even offer (CR id isn't one of IDENTIFIER_TYPES
+  // here). This component is mounted as a bare extension with no React
+  // Router ancestor, so the handoff travels via a plain URL query param —
+  // not router `state` — and is read via `window.location`, not `useLocation`.
+  useEffect(() => {
+    if (emtHandoffConsumed.current || !locationUuid) {
+      return;
+    }
+    const crId = new URLSearchParams(window.location.search).get('emtCrId');
+    if (!crId) {
+      return;
+    }
+    emtHandoffConsumed.current = true;
+    // Drop the param so a later refresh of this screen doesn't repeat the fetch.
+    window.history.replaceState(null, '', window.location.pathname);
+    (async () => {
+      try {
+        const results = await fetchClientRegistryData({
+          identificationNumber: crId,
+          identificationType: HieIdentificationType.Cr,
+          locationUuid,
+        });
+        const handoffClient = Array.isArray(results) && results.length > 0 ? (results[0] as HieClient) : null;
+        if (handoffClient) {
+          setPatient(handoffClient);
+          setPrincipal(handoffClient);
+          setSelectedPatient('principal');
+        } else {
+          showSnackbar({
+            kind: 'warning',
+            title: 'Could not locate handed-over patient',
+            subtitle: `CR ${crId} was not found in the Client Registry — search manually to continue.`,
+          });
+        }
+      } catch {
+        showSnackbar({
+          kind: 'warning',
+          title: 'Could not locate handed-over patient',
+          subtitle: `We couldn't reach the Client Registry for CR ${crId} — search manually to continue.`,
+        });
+      }
+    })();
+  }, [locationUuid, setPatient]);
 
   const validateForm = (): string => {
     const value = identifierValue.trim();

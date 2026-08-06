@@ -16,9 +16,10 @@ interface OverviewProps {
   triageCount?: QueueEntryResult[];
   consultationCount?: QueueEntryResult[];
   dashboardSummary?: any;
+  emtCount?: number;
 }
 
-const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount, dashboardSummary }) => {
+const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount, dashboardSummary, emtCount }) => {
   const totalPatients: QueueEntryResult[] = [...triageCount, ...consultationCount];
   const patientsInQueue = totalPatients.filter(
     (patient) => patient.status === 'WAITING' || patient.status === 'IN SERVICE',
@@ -72,6 +73,7 @@ const Overview: React.FC<OverviewProps> = ({ triageCount, consultationCount, das
     { key: 'labs', title: 'Labs', unit: 'Orders', value: dashboardSummary?.labs ?? 0 },
     { key: 'pharmacy', title: 'Pharmacy', unit: 'Orders', value: dashboardSummary?.pharmacy ?? 0 },
     { key: 'emergencies', title: 'Emergencies', unit: 'Patients', value: dashboardSummary?.emergencies ?? 0 },
+    { key: 'emt', title: 'EMT Referrals', unit: 'Pending', value: emtCount ?? 0 },
     {
       key: 'waiting',
       title: 'Avg. Waiting Time',

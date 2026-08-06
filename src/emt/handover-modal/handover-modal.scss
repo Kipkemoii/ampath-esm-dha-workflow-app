@@ -1,0 +1,74 @@
+.confirmBody,
+.otpBody,
+.doctorBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding-top: 0.5rem;
+}
+
+.searchBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.row {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.fieldHint {
+  margin: 0;
+  color: #6f6f6f;
+  font-size: 0.75rem;
+  line-height: 1.125rem;
+}
+
+.confirmText {
+  margin: 0;
+  color: #525252;
+  font-size: 0.875rem;
+  line-height: 1.4rem;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: minmax(8rem, 35%) 1fr;
+  row-gap: 0.5rem;
+  column-gap: 1rem;
+  padding: 0.75rem 0;
+}
+
+.detailLabel {
+  color: #6f6f6f;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.02rem;
+  align-self: center;
+}
+
+.detailValue {
+  color: #161616;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.errorText {
+  margin: 0;
+  color: #da1e28;
+  font-size: 0.8125rem;
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
