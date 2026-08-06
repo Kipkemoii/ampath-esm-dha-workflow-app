@@ -1,7 +1,7 @@
 import React, { forwardRef, useEffect, useState } from 'react';
 import styles from './general-discharge-summary.scss';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { VisitSummaryResponse, VitalReading } from '../type';
+import { type VisitSummaryResponse, type VitalReading } from '../type';
 import { normalizeVitals } from '../case-summary/case-summary-helper';
 import { fetchCaseSummary } from '../../../../../billing-claims.resource';
 

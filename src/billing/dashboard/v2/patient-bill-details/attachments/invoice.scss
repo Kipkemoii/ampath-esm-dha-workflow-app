@@ -1,0 +1,225 @@
+.invRoot {
+  --ink: #16211c;
+  --ink-soft: #4b5a52;
+  --paper: #f6f4ee;
+  --panel: #ffffff;
+  --line: #dcd6c8;
+  --accent: #1f5f4e;
+  --accent-soft: #e4efe9;
+  --mono: 'IBM Plex Mono', 'SFMono-Regular', Menlo, monospace;
+  --serif: 'Source Serif 4', Georgia, serif;
+  --sans: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+
+  display: block;
+  width: 190mm;
+  padding: 10mm;
+  box-sizing: border-box;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 11px;
+
+  * {
+    box-sizing: border-box;
+  }
+}
+
+.invEmpty {
+  padding: 40px;
+  text-align: center;
+  color: var(--ink-soft);
+  font-style: italic;
+}
+
+.invShell {
+  max-width: 100%;
+}
+
+.invHeader {
+  margin-bottom: 16px;
+}
+
+.invHeaderBar {
+  height: 6px;
+  background: var(--accent);
+  border-radius: 2px 2px 0 0;
+  margin-bottom: 12px;
+}
+
+.invHeaderInfo {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.invOrg {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 2px;
+}
+
+.invTitle {
+  font-family: var(--serif);
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.invMetaRight {
+  text-align: right;
+  font-family: var(--mono);
+  font-size: 9px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+}
+
+.invClaimNumber {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.invIdentity {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 20px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.invField {
+  min-width: 0;
+}
+
+.invFieldLabel {
+  font-family: var(--mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink-soft);
+  margin-bottom: 2px;
+}
+
+.invFieldValue {
+  font-size: 12px;
+}
+
+.invNameValue {
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.invSection {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 14px;
+}
+
+.invSectionTitle {
+  font-family: var(--mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--line);
+}
+
+.invSectionNum {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  margin-right: 4px;
+  font-size: 8px;
+}
+
+.invTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10px;
+
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--ink-soft);
+    padding: 6px 6px;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper);
+  }
+
+  td {
+    padding: 6px 6px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  tbody tr:last-child td {
+    border-bottom: 1px solid var(--line);
+  }
+}
+
+.invNumCol {
+  text-align: right;
+}
+
+.invServiceName {
+  font-weight: 600;
+}
+
+.invStatusPill {
+  display: inline-block;
+  font-family: var(--mono);
+  font-size: 8px;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.invTotalLabel {
+  text-align: right;
+  font-weight: 600;
+  padding-top: 10px;
+  border-top: 2px solid var(--ink);
+  border-bottom: none;
+}
+
+.invTable tfoot .invNumCol {
+  padding-top: 10px;
+  border-top: 2px solid var(--ink);
+  border-bottom: none;
+}
+
+.invFooter {
+  font-family: var(--mono);
+  font-size: 8px;
+  color: var(--ink-soft);
+  text-align: center;
+  margin-top: 16px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+@media print {
+  .invRoot {
+    padding: 0;
+  }
+}

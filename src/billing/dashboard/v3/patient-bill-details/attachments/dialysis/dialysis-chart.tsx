@@ -1,6 +1,6 @@
 import React, { forwardRef, useEffect, useState } from 'react';
 import styles from './dialysis-chart.scss';
-import { VisitSummaryResponse, VitalReading } from '../type';
+import { type VisitSummaryResponse, type VitalReading } from '../type';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
 import { fetchCaseSummary } from '../../../../../billing-claims.resource';
 import { normalizeVitals } from '../case-summary/case-summary-helper';

@@ -2,7 +2,7 @@ import React, { forwardRef, useEffect, useState } from 'react';
 import styles from './case-summary.scss';
 import { fetchCaseSummary } from '../../../../../billing-claims.resource';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
-import { VisitSummaryResponse, VitalReading } from '../type';
+import { type VisitSummaryResponse, type VitalReading } from '../type';
 import { normalizeVitals } from './case-summary-helper';
 
 const TREND_GLYPH = { up: '↑', down: '↓', flat: '→' };

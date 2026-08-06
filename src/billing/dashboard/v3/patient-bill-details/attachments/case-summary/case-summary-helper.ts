@@ -1,4 +1,4 @@
-import { PatientVitals, VitalReading } from '../type';
+import { type PatientVitals, type VitalReading } from '../type';
 
 export const normalizeVitals = (vitals?: PatientVitals): VitalReading[] => [
   {
