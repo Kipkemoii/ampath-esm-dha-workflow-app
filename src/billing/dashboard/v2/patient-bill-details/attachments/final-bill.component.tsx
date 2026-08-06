@@ -95,7 +95,7 @@ const FinalBillComponent = forwardRef<HTMLDivElement, FinalBillComponentProps>((
             <table className={styles.fbTable}>
               <thead>
                 <tr>
-                  <th>Bill Item</th>
+                  <th>Description</th>
                   <th>Intervention Code</th>
                   <th>Order No</th>
                   <th>Service Type</th>
