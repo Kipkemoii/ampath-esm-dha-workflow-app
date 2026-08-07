@@ -105,3 +105,35 @@ export async function processPayment(billId: string, payload: any) {
     body: payload,
   });
 }
+
+export async function updateBillItemStatus(
+  billUuid: string,
+  billItemUuid: string,
+  cashModeUuid: string = '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+) {
+  if (!billUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill UUID is required',
+    };
+  }
+
+  if (!billItemUuid) {
+    return {
+      success: false,
+      data: null,
+      message: 'Bill Item UUID is required',
+    };
+  }
+
+  const payload = {
+    billUuid: billUuid,
+    billItemsUuid: [billItemUuid],
+    cashModeUuid: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+  };
+
+  const res = claimsFetch(`/bill-item/status`, 'POST', payload);
+
+  return res;
+}

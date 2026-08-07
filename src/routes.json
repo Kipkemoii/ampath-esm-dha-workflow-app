@@ -21,6 +21,9 @@
       "name": "dha-workflow-dashboard-link",
       "component": "dhaWorkflowDashboardLink",
       "slot": "homepage-dashboard-slot",
+      "privileges": [
+        "O3 View Facility Dashboard"
+      ],
       "meta": {
         "name": "dashboard",
         "slot": "dha-workflow-dashboard-slot",
@@ -28,7 +31,7 @@
       },
       "online": true,
       "offline": true,
-      "order": 0
+      "order": 1
     },
     {
       "component": "dhaWorkflowDashboard",
@@ -39,27 +42,30 @@
       "name": "registry-dashboard-link",
       "component": "registryDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Client Registry Dashboard"],
       "meta": {
-        "name": "registry",
+        "name": "registration",
         "slot": "client-registry-dashboard-slot",
-        "title": "Registry"
+        "title": "Registration"
       },
       "online": true,
       "offline": true,
-      "order": 1
+      "order": 0
     },
     {
       "component": "registryExtension",
       "name": "registry",
       "slot": "client-registry-dashboard-slot",
-      "privileges": ["O3 View Client Registry Dashboard"]
+      "privileges": [
+        "O3 View Client Registry Dashboard"
+      ]
     },
     {
       "name": "triage-dashboard-link",
       "component": "triageDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Triage Dashboard"],
+      "privileges": [
+        "O3 View Triage Dashboard"
+      ],
       "meta": {
         "name": "triage",
         "slot": "triage-queue-dashboard-slot",
@@ -72,13 +78,17 @@
       "component": "triageQueueExtension",
       "name": "triage",
       "slot": "triage-queue-dashboard-slot",
-      "privileges": ["O3 View Triage Dashboard"]
+      "privileges": [
+        "O3 View Triage Dashboard"
+      ]
     },
     {
       "name": "consultation-dashboard-link",
       "component": "consultationDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Consultation Dashboard"],
+      "privileges": [
+        "O3 View Consultation Dashboard"
+      ],
       "meta": {
         "name": "consultation",
         "slot": "consultation-dashboard-slot",
@@ -91,13 +101,17 @@
       "component": "consultationQueue",
       "name": "consultation",
       "slot": "consultation-dashboard-slot",
-      "privileges": ["O3 View Consultation Dashboard"]
+      "privileges": [
+        "O3 View Consultation Dashboard"
+      ]
     },
     {
       "name": "mnch-dashboard-link",
       "component": "mnchQueueDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View MNCH Dashboard"],
+      "privileges": [
+        "O3 View MNCH Dashboard"
+      ],
       "meta": {
         "name": "mnch",
         "slot": "mnch-dashboard-slot",
@@ -110,13 +124,36 @@
       "component": "MNCHRoot",
       "name": "mnch",
       "slot": "mnch-dashboard-slot",
-      "privileges": ["O3 View MNCH Dashboard"]
+      "privileges": [
+        "O3 View MNCH Dashboard"
+      ]
+    },
+    {
+      "name": "specialized-clinics-dashboard-link",
+      "component": "specializedClinicsDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "privileges": [],
+      "meta": {
+        "name": "specialized-clinics",
+        "slot": "specialized-clinics-dashboard-slot",
+        "title": "Specialized Clinics"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "SpecializedClinicsRoot",
+      "name": "specialized-clinics",
+      "slot": "specialized-clinics-dashboard-slot",
+      "privileges": []
     },
     {
       "name": "pharmacy-dashboard-link",
       "component": "pharmacyDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Pharmacy Dashboard"],
+      "privileges": [
+        "O3 View Pharmacy Dashboard"
+      ],
       "meta": {
         "name": "dispensing",
         "slot": "dispensing-dashboard-slot",
@@ -129,7 +166,9 @@
       "name": "bookings-dashboard-link",
       "component": "bookingsDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Bookings Dashboard"],
+      "privileges": [
+        "O3 View Bookings Dashboard"
+      ],
       "meta": {
         "name": "bookings",
         "slot": "bookings-dashboard-slot",
@@ -142,12 +181,16 @@
       "component": "bookings",
       "name": "bookings",
       "slot": "bookings-dashboard-slot",
-      "privileges": ["O3 View Bookings Dashboard"]
+      "privileges": [
+        "O3 View Bookings Dashboard"
+      ]
     },
     {
       "name": "service-queue-admin-dashboard-link",
       "component": "serviceQueuesAdminLink",
-      "privileges": ["O3 View Service Queue Admin Panel"],
+      "privileges": [
+        "O3 View Service Queue Admin Panel"
+      ],
       "slot": "app-menu-slot",
       "meta": {
         "name": "service-queue-admin",
@@ -161,13 +204,17 @@
       "component": "serviceQueueAdmin",
       "name": "service-queue-admin",
       "slot": "service-queue-admin-dashboard-slot",
-      "privileges": ["O3 View Service Queue Admin Panel"]
+      "privileges": [
+        "O3 View Service Queue Admin Panel"
+      ]
     },
     {
       "name": "admissions-dashboard-link",
       "component": "admissionsDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Admissions Dashboard"],
+      "privileges": [
+        "O3 View Admissions Dashboard"
+      ],
       "meta": {
         "name": "admissions-dashboard",
         "slot": "admissions-dashboard-slot",
@@ -180,7 +227,9 @@
       "component": "admissionsDashboard",
       "name": "admissions-dashboard",
       "slot": "admissions-dashboard-slot",
-      "privileges": ["O3 View Admissions Dashboard"]
+      "privileges": [
+        "O3 View Admissions Dashboard"
+      ]
     },
     {
       "component": "serviceQueueBannerComponent",
@@ -212,10 +261,36 @@
       "offline": true
     },
     {
+      "name": "case-summary-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "caseSummaryLink",
+      "meta": {
+        "slot": "patient-chart-case-summary-dashboard-slot",
+        "path": "case-summary",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "case-summary-details",
+      "slot": "patient-chart-case-summary-dashboard-slot",
+      "component": "caseSummary",
+      "order": 1,
+      "meta": {
+        "title": "Visit Case Summary",
+        "view": "case-summary"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
       "name": "ampath-billing-dashboard-link",
       "component": "billingDashboardLink",
       "slot": "homepage-dashboard-slot",
-      "privileges": ["O3 View Accounting Dashboard"],
+      "privileges": [
+        "O3 View Accounting Dashboard"
+      ],
       "meta": {
         "name": "billing",
         "slot": "ampath-billing-dashboard-slot",
@@ -228,12 +303,24 @@
       "component": "billingRoot",
       "name": "billing",
       "slot": "ampath-billing-dashboard-slot",
-      "privileges": ["O3 View Accounting Dashboard"]
+      "privileges": [
+        "O3 View Accounting Dashboard"
+      ]
     },
-     {
+    {
       "name": "ampath-billing-checkin-form",
       "slot": "extra-visit-attribute-slot",
       "component": "visitBillingForm"
+    },
+    {
+      "name": "claims",
+      "slot": "billing-claims-slot",
+      "component": "claims"
+    },
+    {
+      "name": "generate-order-bill-button-slot",
+      "slot": "generate-order-bill-button-slot",
+      "component": "generateOrderBillButton"
     }
   ],
   "workspaces": [
@@ -242,6 +329,118 @@
       "component": "createOrderBillFormWorkspace",
       "title": "Create order Bill",
       "type": "other-form"
+    },
+    {
+      "name": "upload-intervention-attachments-workspace",
+      "title": "Upload Attachments",
+      "component": "uploadInterventionAttachmentsWorkspace",
+      "type": "upload-intervention-attachments",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "generate-intervention-attachments-workspace",
+      "title": "GenerateAttachments",
+      "component": "generateInterventionAttachmentsWorkspace",
+      "type": "generate-intervention-attachments",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "bill-item-payment-workspace",
+      "title": "Bill item payment",
+      "component": "billItemPaymentWorkspace",
+      "type": "bill-item-payment",
+      "canHide": true,
+      "width": "narrow"
+    },
+    {
+      "name": "add-claim-line-workspace",
+      "title": "Add claim line",
+      "component": "addClaimLineWorkspace",
+      "type": "add-claim-line",
+      "canHide": true,
+      "width": "narrow"
+    },
+    {
+      "name": "switch-intervention-workspace",
+      "title": "Switch Intervention",
+      "component": "switchInterventionWorkspace",
+      "type": "switch-intervention",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "preauth-form-workspace",
+      "title": "Raise Preauth",
+      "component": "preauthFormWorkspace",
+      "type": "preauth-form",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "pay-cash-workspace",
+      "title": "Pay Cash",
+      "component": "payCashWorkspace",
+      "type": "workspace",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "narrow"
+    },
+    {
+      "name": "record-details-workspace",
+      "title": "Details",
+      "component": "recordDetailsWorkspace",
+      "type": "record-details",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "send-to-queue-workspace",
+      "title": "Initiate SHA claim",
+      "component": "sendToQueueWorkspace",
+      "type": "send-to-queue",
+      "canHide": true,
+      "canMaximize": true,
+      "width": "wider"
+    },
+    {
+      "name": "payer-preview-workspace",
+      "component": "payerPreviewWorkspace",
+      "title": "Payer preview details",
+      "type": "payer-preview",
+      "canMaximize": true,
+      "canHide": true,
+      "width": "wider",
+      "preferredWindowSize": "maximized"
+    }
+  ],
+  "workspaces2": [
+    {
+      "name": "admissions-form-entry",
+      "component": "formEntryWorkspace",
+      "window": "admissions-form-window"
+    }
+  ],
+  "workspaceWindows2": [
+    {
+      "name": "admissions-form-window",
+      "group": "admissions-form-group",
+      "canMaximize": true,
+      "width": "extra-wide"
+    }
+  ],
+  "workspaceGroups2": [
+    {
+      "name": "admissions-form-group",
+      "scopePattern": "/admissions-clinical-forms",
+      "persistence": "closable",
+      "overlay": false
     }
   ],
   "modals": [

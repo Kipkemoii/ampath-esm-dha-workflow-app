@@ -1,0 +1,70 @@
+// Stack the claim fields with clear spacing between them.
+.claimFields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.preExistingInterventionsHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.field {
+  position: relative;
+}
+
+// Interventions field with its eligibility / preauth tags: field on its own row,
+// tags wrapping neatly below with breathing room.
+.interventionRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+
+  .field {
+    flex: 1 1 100%;
+  }
+}
+
+// Keep the eligibility spinner inline (Carbon defaults it to full width) so it
+// sits on the same row as the Needs Preauth tag.
+.checkingEligibility {
+  width: auto;
+  min-width: 0;
+}
+
+// A small spinner sitting inside the ComboBox's input row, just left of its chevron.
+//
+// The field is the containing block and the input is the last thing in it, so anchoring
+// to the bottom puts the spinner on the input row whatever the label above does — it
+// stays put if the label wraps to two lines, which it does in a narrow panel. 0.75rem up
+// from that edge centres a 1rem spinner on the 2.5rem row.
+//
+// z-index because the list-box paints its own background and border over anything sharing
+// its space; without it the spinner sits behind the field it is meant to be inside.
+.fieldSpinner {
+  position: absolute;
+  inset-inline-end: 2.5rem;
+  inset-block-end: 0.75rem;
+  z-index: 1;
+  width: 1rem;
+  height: 1rem;
+}
+
+// The spinner floats over the input, so the placeholder underneath has to stop short of
+// it — 2.5rem to clear the chevron, 1rem for the spinner, and a little air. Without this
+// the loading text ran under the spinner and the field read as garbled. Only applied
+// while the spinner is actually there.
+.field:has(.fieldSpinner) {
+  :global(.cds--text-input),
+  :global(.cds--list-box__field input) {
+    padding-inline-end: 4.25rem;
+    text-overflow: ellipsis;
+  }
+}

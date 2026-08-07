@@ -1,0 +1,209 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+/* Marks a tab as having an explanation behind it. This is the Carbon Tooltip's own popover
+   container, which is a block by default and would push the icon onto a line of its own
+   inside the tab's label. */
+.tabHint {
+  display: inline-flex;
+  align-items: center;
+  margin-left: layout.$spacing-02;
+  vertical-align: middle;
+}
+
+/* Carbon wraps the trigger in a div of its own between the container and the icon; it has
+   to carry the inline layout through or the same wrapping happens one level down. */
+.tabHint :global(.cds--tooltip-trigger__wrapper) {
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The bubble that appears on hover.
+ *
+ * Carbon caps tooltip text at 288px, which turns a couple of sentences into a narrow
+ * column — widened to 22rem so a hint sets as three or four full lines.
+ *
+ * `overflow-wrap: break-word` is Carbon's default and made sense at 288px, where a long
+ * word could exceed the whole bubble. At this width nothing does, and all it achieves is
+ * hyphen-less breaks mid-word; `normal` keeps words whole. `text-wrap: pretty` then evens
+ * the rag and stops the last line being a single orphaned word.
+ *
+ * The height cap and scrollbar that were here are gone with the long copy that needed
+ * them — and `overflow-y: auto` computes `overflow-x` to `auto` as well, which was a
+ * clipping risk for no benefit now the hints are short. */
+.tabHint :global(.cds--tooltip-content) {
+  max-inline-size: 22rem;
+  padding-block: layout.$spacing-04;
+  padding-inline: layout.$spacing-05;
+  text-align: start;
+  line-height: 1.45;
+  overflow-wrap: normal;
+  text-wrap: pretty;
+}
+
+/* The icon itself. `cursor: help` is what says it is hoverable — there is no other
+   affordance on a mark that can't be clicked, and it darkens on hover so the pointer
+   landing on it is confirmed before the bubble has appeared. */
+.tabHintIcon {
+  display: inline-flex;
+  align-items: center;
+  color: colors.$gray-50;
+  cursor: help;
+  transition: color 70ms ease-out;
+
+  &:hover {
+    color: colors.$gray-80;
+  }
+}
+
+/* Header: icon + title + subtitle (matches the facility dashboard header). */
+.hwrSection {
+  width: 100%;
+  margin-bottom: layout.$spacing-04;
+  padding-bottom: layout.$spacing-04;
+  border-bottom: 1px solid $ui-03;
+}
+
+.bcHeader {
+  display: flex;
+  align-items: flex-start;
+  column-gap: layout.$spacing-04;
+  padding-bottom: layout.$spacing-05;
+  border-bottom: 1px solid $ui-03;
+}
+
+/* The icon sits beside the title, unboxed — no disc behind it. */
+.bcHeaderIcon {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  color: colors.$blue-60;
+}
+
+/* Top summary: at-a-glance counts (shared MetricsCard style, as on the lab dashboard). */
+.summaryRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: layout.$spacing-04;
+  width: 100%;
+  padding-bottom: layout.$spacing-05;
+  margin-bottom: layout.$spacing-03;
+  border-bottom: 1px solid $ui-03;
+}
+
+/* Reset the button wrapper so the MetricsCard stays clickable, and keep the card compact. */
+.metricButton {
+  all: unset;
+  display: block;
+  cursor: pointer;
+
+  &:focus-visible {
+    outline: 2px solid var(--brand-03);
+    outline-offset: 1px;
+  }
+
+  :global(.cds--tile) {
+    min-height: 0;
+    padding: layout.$spacing-03 layout.$spacing-05;
+
+    /* Tighten the header row — Carbon forces a 2rem-tall label row. */
+    > div:first-child {
+      margin-bottom: layout.$spacing-02;
+
+      > div {
+        height: auto;
+      }
+    }
+
+    /* Slimmer value. */
+    p {
+      @include type.type-style('heading-03');
+    }
+  }
+}
+
+.bcTitle {
+  @include type.type-style('heading-03');
+  color: $ui-05;
+  margin: 0 0 layout.$spacing-02;
+}
+
+.bcSubtitle {
+  @include type.type-style('body-01');
+  color: $text-02;
+  margin: 0;
+}
+
+/* Page inset on the spacing scale rather than a percentage: 2% was ~28px on a desktop and
+   ~20px on a laptop, so the dashboard sat at a different distance from the edge on every
+   screen and matched none of the spacing inside it. */
+.bcLayout {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: layout.$spacing-06;
+    row-gap: layout.$spacing-05;
+
+    .bcContent {
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        row-gap: layout.$spacing-05;
+
+        .bcContentFilters {
+            display: flex;
+            flex-direction: row;
+            justify-content: flex-end;
+        }
+
+        .bcContentTabs {
+            position: relative;
+
+            // Single date filter aligned to the right of the tab bar, on the
+            // same row as the Pending clearance / Bills / Claims tabs.
+            .tabRowDate {
+                position: absolute;
+                top: 0;
+                right: 0;
+                z-index: 2;
+            }
+
+            // Remove the default Carbon tab-panel padding so the bordered panel
+            // content (e.g. the clearance card) sits flush against the
+            // Pending clearance / Bills / Claims tab bar on all sides.
+            :global(.cds--tab-content) {
+                padding-top: 0;
+                padding-left: 0;
+                padding-right: 0;
+            }
+        }
+
+        // Bordered card for the Bills panel so it matches the Pending clearance
+        // (clearance) and Claims panels.
+        .panelCard {
+            padding: layout.$spacing-05;
+            border: 1px solid $ui-03;
+            background-color: $ui-01;
+        }
+    }
+}
+
+.tab {
+    min-width: 8.875rem;
+
+    &:active,
+    &:focus {
+        outline: 2px solid var(--brand-03) !important;
+    }
+
+    &[aria-selected='true'] {
+        box-shadow: inset 0 2px 0 0 var(--brand-03) !important;
+    }
+}
+/* Hides the tab bar while a bill's details take over the page (the panels stay
+   mounted, so FacilityBills keeps its state). */
+.hiddenTabList {
+    display: none;
+}

@@ -51,7 +51,7 @@ export type LineItem = {
   priceName: string;
   priceUuid: string;
   lineItemOrder: number;
-  paymentStatus: PaymentStatus;
+  status: PaymentStatus;
   voided?: boolean;
   voidedReason?: string;
 };
@@ -60,6 +60,7 @@ export type CreateBillDto = {
   lineItems: LineItem[];
   cashPoint: string;
   patient: string;
+  visit: string;
   status: PaymentStatus;
   payments: any[];
 };
@@ -136,11 +137,12 @@ export type Order = {
   patient: string;
   careSetting: string;
   orderer: string;
-  encounter: string;
   concept: string;
-  accessionNumber: string;
   urgency: OrderUrgency;
-  scheduledDate: null;
+  orderType?: { uuid: string };
+  encounter?: string;
+  accessionNumber?: string;
+  scheduledDate?: null;
 };
 
 export type CreateOrderEncounterDto = {
@@ -150,4 +152,5 @@ export type CreateOrderEncounterDto = {
   visit: string;
   obs: any[];
   orders: Order[];
+  encounterDatetime?: string;
 };

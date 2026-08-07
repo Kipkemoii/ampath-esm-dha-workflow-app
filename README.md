@@ -17,6 +17,25 @@ yarn start  # to run the dev server
 
 Once it is running, a browser window should open running the O3 reference application. Log in and then navigate to `/openmrs/spa/root`.
 
+## Local development — HIE / preauth
+
+Claims and preauth API calls use config key `hieBaseUrl` (see `src/config-schema.ts`), resolved by `getHieBaseUrl()`. That URL should point at **amrs-integrations `hie-saf`**, which then calls DHA via its own `HIE_CLIAMS_BASE_URL`.
+
+`yarn dev` uses the remote o3-config only. To point HIE/preauth at local hie-saf, run `yarn dev:local`, which loads [`local-config.json`](./local-config.json):
+
+```json
+{
+  "@ampath/esm-dha-workflow-app": {
+    "hieBaseUrl": "http://localhost:3000"
+  }
+}
+```
+
+So with `dev:local`, preauth and other HIE proxy calls go to local hie-saf on port 3000.
+Keep `HIE_CLIAMS_BASE_URL` in `amrs-integrations/packages/hie-saf/.env` pointed at DHA UAT (or a mock). See that package’s `.env.example` and README.
+
+Do not commit localhost as the schema `_default` for `hieBaseUrl`.
+
 ## Adapting the code
 
 1. Replace all instances of "template" with your frontend module's name

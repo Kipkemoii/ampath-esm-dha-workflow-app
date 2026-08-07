@@ -1,0 +1,277 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+  background: white;
+  border-radius: 8px;
+  width: 100%;
+  // max-width: 450px;
+  box-sizing: border-box;
+}
+
+.container h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  color: #161616;
+}
+
+.container > p {
+  margin: 0;
+  font-size: 14px;
+  color: #525252;
+}
+
+.scannerZone {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.scannerCircle {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  border: 1px solid #d0d7de;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f4f4f4;
+}
+
+.scannerCircle svg {
+  width: 56px;
+  height: 56px;
+  color: green;
+}
+
+
+
+.statusLabel {
+  text-align: center;
+  font-size: 13px;
+  color: #6f6f6f;
+}
+
+.statusLabel.active {
+  color: #0f62fe;
+}
+
+.button {
+  height: 40px;
+  border: none;
+  border-radius: 4px;
+  background: green;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s ease;
+  align-self: center;
+}
+
+.button:hover:not(:disabled) {
+  background: green;
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.result {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.qualityRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  color: #525252;
+}
+
+.qualityBar {
+  width: 100%;
+  height: 6px;
+  background: #e0e0e0;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.qualityBarInner {
+  height: 100%;
+  background: #24a148;
+}
+
+.fingerprintImage {
+  width: 100px;
+  height: 100px;
+  object-fit: cover;
+  align-self: center;
+  border-radius: 8px;
+  border: 1px solid #dcdcdc;
+}
+
+.error {
+  padding: 12px;
+  background: #fff1f1;
+  border: 1px solid #ffd7d9;
+  border-radius: 4px;
+  color: #da1e28;
+  font-size: 13px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.modal {
+  width: 100%;
+  max-width: 500px;
+  margin: 16px;
+}
+
+.closeButton {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: #525252;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.closeButton:hover {
+  background: #f4f4f4;
+}
+
+.centerText {
+  text-align: center;
+}
+
+.iframe {
+  width: 100%;
+  height: 700px;
+  border: none;
+}
+
+/* ---- Neat, colour-coded biometric status ---- */
+.bioWrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bioStatus {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.bioIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.bioText {
+  flex: 1;
+  min-width: 0;
+}
+
+.bioTitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #161616;
+}
+
+.bioSubtitle {
+  margin: 0.125rem 0 0;
+  font-size: 0.8125rem;
+  color: #525252;
+}
+
+.bioDot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+// Ready — everything OK (green)
+.bioReady {
+  border-color: #a7f0ba;
+  background: #defbe6;
+
+  .bioIcon {
+    background: #a7f0ba;
+    color: #0e6027;
+  }
+  .bioDot {
+    background: #24a148;
+  }
+}
+
+// Not active / not detected (red)
+.bioError {
+  border-color: #ffd7d9;
+  background: #fff1f1;
+
+  .bioIcon {
+    background: #ffd7d9;
+    color: #a2191f;
+  }
+  .bioDot {
+    background: #da1e28;
+  }
+}
+
+// Connecting / detecting (neutral)
+.bioConnecting {
+  border-color: #e0e0e0;
+  background: #f4f4f4;
+
+  .bioIcon {
+    background: #e0e0e0;
+    color: #525252;
+  }
+  .bioDot {
+    background: #8d8d8d;
+  }
+}
+
+.bioLoading {
+  padding-left: 0.25rem;
+}
+
+.bioRetry {
+  flex-shrink: 0;
+  min-height: 2rem;
+}
+
+.retryButton {
+  margin-top: 1rem;
+  align-self: center;
+}

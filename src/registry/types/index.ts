@@ -1,13 +1,14 @@
 import { type Location, type Patient } from '@openmrs/esm-framework';
 
-export type IdentifierType = 'National ID' | 'Alien ID' | 'Passport' | 'Mandate Number' | 'Refugee ID' | 'Birth Certificate';
+export type IdentifierType =
+  | 'National ID'
+  | 'Alien ID'
+  | 'Passport'
+  | 'Mandate Number'
+  | 'Refugee ID'
+  | 'Birth Certificate';
 
-export const IDENTIFIER_TYPES: IdentifierType[] = [
-  'National ID',
-  'Alien ID',
-  'Mandate Number',
-  'Refugee ID'
-];
+export const IDENTIFIER_TYPES: IdentifierType[] = ['National ID', 'Alien ID', 'Mandate Number', 'Refugee ID'];
 
 export enum OtpStatus {
   Draft = 'DRAFT',
@@ -399,3 +400,19 @@ export enum RequestIdTypes {
   BirthCertificate2 = 10,
   HouseholdNumber = 11,
 }
+
+export type UpdateVisitDto = {
+  attributes?: VisitAttribute[];
+};
+
+export type RegistrationQueueList = {
+  patient_id: number;
+  reg_date: string;
+  location: string;
+  patient_uuid: string;
+  patient_name: string;
+  visit_uuid: string;
+  phone_number: string;
+  age: number;
+  identifiers: string;
+};

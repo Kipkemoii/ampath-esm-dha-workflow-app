@@ -1,4 +1,4 @@
-import { Concept, Encounter, Obs, Patient, Visit, type Location } from "@openmrs/esm-framework";
+import { Concept, Encounter, Obs, Patient, Visit, type Location } from '@openmrs/esm-framework';
 
 export type DispositionType = 'ADMIT' | 'TRANSFER';
 export type DispositionResponse = {
@@ -13,7 +13,7 @@ export type Disposition = {
   patient: Patient;
   dispositionObsGroup: Obs;
   visit: Visit;
-}
+};
 
 export interface BedTag {
   id: number;
@@ -64,33 +64,28 @@ export interface EncounterDto {
   patient: string;
   encounterType: {
     uuid: string;
-  },
+  };
   location: string;
   obs: any[];
   visit?: string;
 }
 
-export interface AdmitPatientDto extends EncounterDto{
-}
+export interface AdmitPatientDto extends EncounterDto {}
 export type AssignBedToPatientDto = {
- patientUuid:string;
- encounterUuid: string;
-}
+  patientUuid: string;
+  encounterUuid: string;
+};
 
-export interface CancelAdmissionDto extends EncounterDto{
-}
+export interface CancelAdmissionDto extends EncounterDto {}
 
-export interface BedSwapDto extends EncounterDto {
-}
+export interface BedSwapDto extends EncounterDto {}
 
-export interface DischargePatientDto extends EncounterDto {
-}
-export interface TransferPatientDto extends EncounterDto {
-}
+export interface DischargePatientDto extends EncounterDto {}
+export interface TransferPatientDto extends EncounterDto {}
 export type UnAssignBedDto = {
   patientUuid: string;
   bedId: number;
-}
+};
 
 export interface FhirEncounterBundle {
   resourceType: 'Bundle';
@@ -122,7 +117,6 @@ export interface FhirBundleEntry<TResource> {
   fullUrl: string;
   resource: TResource;
 }
-
 
 export interface FhirEncounter {
   resourceType: 'Encounter';
@@ -159,7 +153,6 @@ export interface FhirCoding {
   display?: string;
 }
 
-
 export interface FhirEncounterParticipant {
   individual: FhirParticipantIndividual;
 }
@@ -181,7 +174,6 @@ export interface FhirEncounterLocationComponent {
   location: FhirReferenceWithDisplay<'Location'>;
 }
 
-
 export interface FhirReference<TType extends string> {
   reference: string; // e.g. "Encounter/..."
   type: TType;
@@ -190,3 +182,82 @@ export interface FhirReference<TType extends string> {
 export interface FhirReferenceWithDisplay<TType extends string> extends FhirReference<TType> {
   display: string;
 }
+
+export type BillStatus = 'PAID' | 'PENDING' | 'NOT_BILLED';
+
+export type FacilityEncounterBill = {
+  encounter_datetime: string;
+  date_created: string;
+  bill_uuid: string;
+  receipt_number: string;
+  patient_name: string;
+  bill_status: string;
+  patient_uuid: string;
+  date_started: string | null;
+  date_stopped: string | null;
+  bed_number: string | null;
+};
+
+export type FacilityBillsEncounterResponse = {
+  results: FacilityEncounterBill[];
+};
+
+export type FacilityAdmissionRequest = {
+  admission_request_date: string;
+  admission_location: string;
+  identifiers: string;
+  patient_name: string;
+  age: number;
+  gender: string;
+  location_uuid: string;
+  patient_uuid: string;
+  visit_uuid: string;
+  visit_type: string;
+};
+
+export type FacilityAdmissionRequestsResp = {
+  results: FacilityAdmissionRequest[];
+};
+
+export const SERVICE_POINT_NAME = 'ADMISSION';
+export const CLAIM_VISIT_START_SERVICE_POINTS_UUID = '49df844d-79c0-40fc-8ca9-c27d6391f647';
+export type LocationAttribute = {
+  uuid: string;
+  display: string;
+  value: string;
+  attributeType: {
+    uuid: string;
+    display: string;
+    resourceVersion: string;
+  };
+  resourceVersion: string;
+};
+
+export type AdmittedListData = {
+  patient_name: string;
+  national_id: string;
+  cr_id: string;
+  admision_date: string;
+  encounter_type: string;
+  location: string;
+  location_uuid: string;
+  gender: string;
+  age: number;
+  bed_number: string | null;
+  bed_status: string | null;
+  bed_id: string | null;
+};
+
+export type AwaitingDischargePatientList = {
+  location: string;
+  bed_id: number;
+  patient_name: string;
+  national_id: number | null;
+  cr_id: string | null;
+  person_uuid: string;
+  admission_date: string;
+  location_uuid: string;
+  encounter_type: string;
+  discharge_date: string;
+  bill_status: string;
+};

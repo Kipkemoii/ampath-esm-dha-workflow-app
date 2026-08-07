@@ -1,0 +1,140 @@
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+/* Boxed panel matching the Consultation clearance section. */
+.panel {
+  padding: layout.$spacing-05;
+  border: 1px solid $ui-03;
+  background-color: $ui-01;
+}
+
+/* Carbon pads a tab panel on all four sides, which inside an already-padded box reads as
+   the table having drifted away from its tabs. Dropped entirely: every panel here opens
+   with a TableToolbar, and that carries the gap under the tab row itself — so it is set
+   once, in one place, rather than added here and again there. */
+.panel :global(.cds--tab-content) {
+  padding: 0;
+}
+
+/* A view nested inside a `.panel` that a parent already drew — the Preauthorizations tab
+   boxes itself, so its Status view must not box itself again or the table ends up inside
+   two borders. It takes only the top gap the box's own padding would have given it, since
+   what sits above it here is another row of tabs rather than the edge of the card. */
+.subPanel {
+  padding-top: layout.$spacing-05;
+}
+
+/* The status tabs lead the panel now that the payer bar above them is gone, so they carry
+   no margin of their own: the box's padding sets them off at the top, and the tab panel's
+   own padding sets them off from the toolbar below. Both margins were spacing against a
+   row that no longer exists, and the lower one doubled the gap under the tabs. */
+.statusTabs {
+  margin: 0;
+}
+
+/* Count pill on each status sub-tab, matching the Consultation clearance tabs. */
+.pill {
+  display: inline-block;
+  margin-left: layout.$spacing-03;
+  min-width: 1.15rem;
+  padding: 0 layout.$spacing-02;
+  border-radius: 999px;
+  background-color: var(--brand-01);
+  color: #ffffff;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+/* Says whether the claim statuses on screen are still being confirmed against the HIE,
+   and admits it when some of them couldn't be. */
+/* Sits above the status tabs, so it spaces itself from what follows rather than from the
+   box edge it is now flush against. */
+.statusNotice {
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  margin-bottom: layout.$spacing-04;
+  font-size: 0.75rem;
+  color: #525252;
+}
+
+.statusNoticeWarning {
+  color: #8e6a00;
+}
+
+/* Matches the other billing tables (clearance / active visits). */
+.tableCard {
+  overflow-x: auto;
+}
+
+/* Patient name as a neat inline link-button. */
+.clickableData {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brand-01);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+.clickableData:hover {
+  color: var(--brand-02);
+  text-decoration: underline;
+}
+
+/* Bill details view: flat, no border, background or extra padding — the surrounding
+   page padding already insets it. */
+.detailsView {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+  padding: 0;
+  border: none;
+  background-color: transparent;
+}
+
+/* Breadcrumb on the left, reload action on the right. Kept a light, backgroundless
+   bar so it takes minimal vertical space. */
+.detailsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  padding: 0 0 layout.$spacing-02;
+  background-color: transparent;
+  border: none;
+  border-bottom: 1px solid $ui-03;
+}
+
+/* Breadcrumb stays clearly visible, larger text. */
+.breadcrumb {
+  margin-bottom: 0;
+
+  :global(.cds--breadcrumb-item),
+  :global(.cds--link) {
+    font-size: 0.9375rem;
+  }
+  /* Current page ("Bill details") — dark and bold so it stands out. */
+  :global(.cds--breadcrumb-item--current) {
+    color: #161616;
+    font-weight: 700;
+  }
+}
+
+/* The clickable "Facility bills" crumb rendered as a link-styled button. */
+.breadcrumbLink {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.9375rem;
+  color: var(--brand-01);
+  font-weight: 600;
+  cursor: pointer;
+}
+.breadcrumbLink:hover {
+  color: var(--brand-02);
+  text-decoration: underline;
+}

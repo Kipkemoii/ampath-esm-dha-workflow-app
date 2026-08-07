@@ -1,3 +1,10 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+$header-height: 3rem;
+
 .formSection{
     display: flex;
     flex-direction: column;
@@ -9,12 +16,12 @@
    display: flex;
    flex-direction: row;
    width: 100%;
-   column-gap: 5px;
+   column-gap: layout.$spacing-05;
 }
 .formControl{
    display: flex;
    flex-direction: column;
-   width: 45%;
+   width: 100%;
    row-gap: 5px;
 }
 .actionSection{
@@ -36,4 +43,145 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+}
+
+/* ---- Workspace shell ---- */
+/* The overlay, the sliding panel and its title bar are the platform's now — this is a
+   registered O3 workspace, so all this component owns is a column that fills whatever
+   height the workspace gives it, with a scrolling body and a pinned action bar. */
+.workspace {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+/* Between the platform's two sizes. O3 offers "wider" and "extra-wide" and nothing in
+   between, and this panel wants the gap: wider than the former, not as wide as the latter.
+   "wider" stays registered as the floor, and this widens the container from there.
+
+   Matched on a substring of the container's class rather than its full name. An exact
+   guess at that name was tried before and silently matched nothing — the @openmrs packages
+   are runtime shared modules, not in node_modules, so the name cannot be checked from
+   here. `[class*='workspace-container']` survives whatever the rest of it is, and the
+   `:has()` restricts it to a container holding this panel, so no other workspace is
+   touched. If it still misses, nothing breaks — the registered "wider" stands. */
+:global([class*='workspace-container']):has(.workspace) {
+  /* 50rem plus 2cm. CSS resolves 1cm as 96/2.54 px regardless of the actual display, so
+     this is ~4.7rem more rather than a measured 2cm on the glass — but it is the figure
+     that was asked for, and writing it in cm keeps that legible. */
+  inline-size: min(calc(50rem + 2cm), 75vw);
+  max-inline-size: min(calc(50rem + 2cm), 75vw);
+}
+
+/* Who the panel is for, under the workspace's own title bar. */
+.patientBanner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: layout.$spacing-02 layout.$spacing-03;
+  flex-shrink: 0;
+  padding: layout.$spacing-04 layout.$spacing-05;
+  border-block-end: 1px solid $ui-03;
+  background-color: $ui-02;
+}
+.drawerPatient {
+  @include type.type-style('body-compact-01');
+  font-weight: 600;
+  color: $ui-05;
+}
+.drawerCr {
+  @include type.type-style('label-01');
+  color: $text-02;
+  padding: 1px layout.$spacing-02;
+  border-radius: 4px;
+  background-color: $ui-03;
+}
+.drawerBody {
+  flex: 1 1 auto;
+  // min-height:0 lets this flex child shrink below its content so the tall
+  // biometric iframe scrolls inside the drawer instead of overflowing it.
+  min-height: 0;
+  overflow-y: auto;
+  padding: layout.$spacing-05;
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+}
+.drawerSection {
+  border: 1px solid $ui-03;
+  border-radius: 4px;
+  background-color: $ui-02;
+  padding: layout.$spacing-05;
+}
+.drawerSectionTitle {
+  @include type.type-style('heading-compact-01');
+  font-weight: 600;
+  color: $ui-05;
+  margin: 0 0 layout.$spacing-03;
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+}
+.drawerSectionHint {
+  @include type.type-style('label-01');
+  color: $text-02;
+  margin: 0 0 layout.$spacing-04;
+}
+// Same card treatment as the other drawer sections; the "Client consent" title
+// is rendered as a uniform drawerSectionTitle, so the extension's own Carbon
+// ModalHeader is hidden.
+.consentSection {
+  border: 1px solid $ui-03;
+  border-radius: 4px;
+  background-color: $ui-02;
+  padding: layout.$spacing-05;
+
+  // Cap the (700px) biometric capture iframe in this drawer context only.
+  iframe {
+    height: 480px !important;
+    max-height: 480px;
+  }
+
+  // ClaimsConsentExtension renders Carbon ModalHeader/ModalBody. Outside a real
+  // Modal these impose their own height/scroll, which clips the consent content.
+  // Let them flow (the section already provides the padding).
+  :global(.cds--modal-content) {
+    max-height: none;
+    overflow: visible;
+    padding: 0;
+    margin-bottom: 0;
+  }
+
+  // Hide the extension's own header (and its close X) — we show a uniform h5.
+  :global(.cds--modal-header) {
+    display: none;
+  }
+}
+/* The O3 workspace action bar: the two buttons split the panel's full width between them
+   and sit flush against its edges — no padding, no gap, no rule above. Carbon caps a
+   button at 20rem and sizes it to its label, so both have to be overridden or they bunch
+   up at the left instead of meeting in the middle. */
+.drawerFooter {
+  display: flex;
+  flex-shrink: 0;
+  inline-size: 100%;
+  /* Below the ComboBox menus. Those are positioned by floating-ui at the document level,
+     so they are no longer clipped by the scrolling body — but a footer that established
+     its own stacking context above them would paint over the open list instead, which is
+     the same complaint by another route. */
+  position: relative;
+  z-index: 0;
+
+  :global(.cds--btn) {
+    flex: 1 1 50%;
+    max-inline-size: none;
+    /* Medium buttons, so the bar keeps to the height of one rather than the 4rem an O3
+       footer usually stands at. They still split the width and sit flush to the edges,
+       which is what makes the bar read as part of the panel — the label is centred rather
+       than pinned to the top, since at this height there is no room below it. */
+    min-block-size: 3rem;
+    align-items: center;
+    padding-block: 0;
+  }
 }

@@ -1,0 +1,140 @@
+@use '@carbon/layout';
+@use '@carbon/styles/scss/spacing' as *;
+@use '@carbon/styles/scss/type' as *;
+@use '@carbon/colors' as *;
+
+.detailsGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: layout.$spacing-05 layout.$spacing-06;
+    margin: 0;
+}
+
+.detailRow {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+
+    dt {
+        font-size: 0.6875rem;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        color: #6f6f6f;
+    }
+
+    dd {
+        margin: 0;
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: #161616;
+        overflow-wrap: anywhere;
+    }
+}
+
+.workspaceContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.tiles {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 $spacing-05;
+}
+ 
+.summaryTile {
+  margin-bottom: $spacing-03;
+}
+ 
+.summaryHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-03;
+}
+ 
+.memberName {
+  @include type-style('heading-compact-02');
+}
+ 
+.memberMeta {
+  @include type-style('body-compact-01');
+  margin-top: $spacing-02;
+}
+ 
+.workflowNotification {
+  margin-top: $spacing-04;
+  max-width: 100%;
+}
+ 
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-04;
+  margin-top: $spacing-05;
+}
+ 
+.label {
+  @include type-style('label-01');
+  margin-bottom: $spacing-02;
+}
+ 
+.value {
+  @include type-style('body-compact-01');
+  word-break: break-word;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+ 
+.timelineItem {
+  display: flex;
+  align-items: flex-start;
+  gap: $spacing-04;
+  padding-bottom: $spacing-05;
+  position: relative;
+ 
+  &:not(:last-child)::before {
+    content: '';
+    position: absolute;
+    left: 3px;
+    top: $spacing-05;
+    bottom: 0;
+    width: 1px;
+  }
+}
+
+.timelineDot {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  margin-top: $spacing-02;
+}
+
+ 
+.nestedTile {
+  margin-bottom: $spacing-04;
+}
+ 
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-02;
+  margin-top: $spacing-04;
+}
+ 
+.footer {
+  display: flex;
+}
+ 
+.footerButton {
+  flex: 1;
+  max-width: none;
+}

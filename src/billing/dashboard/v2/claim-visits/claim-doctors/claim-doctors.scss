@@ -1,0 +1,28 @@
+@use '../shared/empty-state' as empty;
+
+/* Plain names, run together — no chips, no avatars. */
+.doctors {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: #161616;
+  overflow-wrap: anywhere;
+}
+
+/* Compact inline note — doctors don't warrant a full empty-state tile. */
+.empty {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: #6f6f6f;
+}
+
+/* Unless the claim can still be worked on, when the same gap is something to act on.
+   Shares its look with the diagnoses callout, which is rendered by a different component
+   entirely — see the partial. */
+.emptyDanger {
+  @include empty.blocking-callout;
+}
+
+.emptyDangerIcon {
+  @include empty.blocking-callout-icon;
+}

@@ -13,7 +13,7 @@ import { bookingsDashboardMeta } from './dashboard-meta/bookings-dashboard.meta'
 import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-admin.meta';
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
-import { billingDashboardMeta } from './dashboard-meta/billing-dashboard.meta';
+import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -76,7 +76,7 @@ export const workflowRegistryLink = getAsyncLifecycle(() => import('./widgets/wo
 
 export const registryDashboardLink = getSyncLifecycle(createDashboardLink(registryDashboardMeta), options);
 
-export const registryExtension = getAsyncLifecycle(() => import('./registry/registry.component'), options);
+export const registryExtension = getAsyncLifecycle(() => import('./registry/registry-entry'), options);
 
 export const queueDashboardLink = getSyncLifecycle(createDashboardLink(queueDashboardMeta), options);
 
@@ -109,7 +109,17 @@ export const bookings = getAsyncLifecycle(() => import('./bookings/bookings.comp
 
 export const mnchQueueDashboardLink = getAsyncLifecycle(() => import('./side-nav-menu/mnch-nav-links'), options);
 
+export const specializedClinicsDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/specialized-clinics-nav-links'),
+  options,
+);
+
 export const MNCHRoot = getAsyncLifecycle(() => import('./mnch/mnch-root'), options);
+
+export const SpecializedClinicsRoot = getAsyncLifecycle(
+  () => import('./specialized-clinics/specialized-clinics-root'),
+  options,
+);
 
 export const serviceQueueAdmin = getAsyncLifecycle(
   () => import('./service-queues/admin/service-queue-admin-dashboard.component'),
@@ -136,7 +146,14 @@ export const patientAdmissionSummary = getAsyncLifecycle(
   () => import('./admissions/inpatient/inpatient-admissions.component'),
   options,
 );
-export const billingDashboardLink = getSyncLifecycle(createDashboardLink(billingDashboardMeta), options);
+
+export const caseSummaryLink = getSyncLifecycle(openMrsCreateDashboardLink(caseSummaryMeta as any), options);
+
+export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
+export const billingDashboardLink = getAsyncLifecycle(
+  () => import('./billing/billing-dashboard-link.component'),
+  options,
+);
 
 export const billingDashboard = getAsyncLifecycle(
   () => import('./billing/dashboard/billingDashboard.component'),
@@ -152,5 +169,70 @@ export const createOrderBillFormWorkspace = getAsyncLifecycle(
 
 export const visitBillingForm = getAsyncLifecycle(
   () => import('./billing/extensions/visit-billing/visit-billing.extension'),
+  options,
+);
+
+export const claims = getAsyncLifecycle(() => import('./claims/claims.component'), options);
+
+export const formEntryWorkspace = getAsyncLifecycle(
+  () => import('./admissions/form-entry-workspace/form-entry-workspace'),
+  {
+    featureName: 'admissions-form-entry',
+    moduleName,
+  },
+);
+
+export const uploadInterventionAttachmentsWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/patient-bill-details/attachments/add-attachments.component'),
+  options,
+);
+
+export const generateInterventionAttachmentsWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/patient-bill-details/attachments/generate-attachments.component'),
+  options,
+);
+
+export const billItemPaymentWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/patient-bill-details/workspaces/bill-item-payment/bill-item-payment.workspace'),
+  options,
+);
+
+export const addClaimLineWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/patient-bill-details/workspaces/add-claim-line/add-claim-line.workspace'),
+  options,
+);
+
+export const switchInterventionWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/claim-visits/switch-intervention/switch-intervention.workspace'),
+  options,
+);
+
+export const preauthFormWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/preauth/preauth.workspace'),
+  options,
+);
+
+export const recordDetailsWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/claim-visits/shared/record-details.workspace'),
+  options,
+);
+
+export const payCashWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v2/clearance/pay-cash.component'),
+  options,
+);
+
+export const sendToQueueWorkspace = getAsyncLifecycle(
+  () => import('./registry/modal/send-to-triage/send-to-queue.modal'),
+  options,
+);
+
+export const generateOrderBillButton = getAsyncLifecycle(
+  () => import('./billing/extensions/generate-order-bill-button/generate-order-bill-button.extension'),
+  options,
+);
+
+export const payerPreviewWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/claim-visits/payer-preview/payer-preview-workspace.component'),
   options,
 );

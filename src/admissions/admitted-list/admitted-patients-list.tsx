@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Link,
   OverflowMenu,
   OverflowMenuItem,
   Table,
@@ -11,7 +12,9 @@ import {
 } from '@carbon/react';
 import { type BedLayout } from '../types';
 import BedSwapModal from '../modal/bed-swap/bed-swap.modal';
-import DischargeModal from '../modal/discharge/discharge-patient.modal';
+import { launchWorkspace2, useConfig } from '@openmrs/esm-framework';
+import { type ConfigObject } from '../../config-schema';
+import { getPatientByUuid } from '../admissions.resource';
 
 interface AdmittedPatientsListProps {
   admittedPatientsData: BedLayout[];
@@ -20,8 +23,10 @@ interface AdmittedPatientsListProps {
 
 const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPatientsData, refresh }) => {
   const [showBedSwapModal, setShowBedSwapModal] = useState<boolean>(false);
-  const [showDischargeModal, setShowDischargeModal] = useState<boolean>(false);
   const [selectedLayout, setSelectedLayout] = useState<any>();
+  const { maternityDischargeFormUuid } = useConfig<ConfigObject>();
+  const generalDischargeFormUuid = 'b4218b80-22da-3299-af36-c865fdf07696';
+
   if (!admittedPatientsData) {
     return <>No data to display</>;
   }
@@ -32,21 +37,77 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
     setSelectedLayout(layout);
     setShowBedSwapModal(true);
   };
-  const handleDischargeRequest = (layout: BedLayout) => {
+  const handleDischargeRequest = async (layout: any) => {
     setSelectedLayout(layout);
-    setShowDischargeModal(true);
+
+    if (!layout) {
+      console.error('Layout is null');
+      return;
+    }
+
+    const patientUuid = layout.patientUuid || layout.uuid;
+    if (!patientUuid) {
+      console.error('No patientUuid', layout);
+      return;
+    }
+
+    try {
+      const patientData = await getPatientByUuid(patientUuid);
+
+      await launchWorkspace2(
+        'admissions-form-entry',
+        {
+          workspaceTitle: 'Maternity Discharge Form',
+          formUuid: maternityDischargeFormUuid,
+          patientUuid,
+        },
+        {
+          patient: patientData,
+          patientUuid,
+        },
+      );
+    } catch (error) {
+      console.error('Failed to fetch patient data:', error);
+    }
+  };
+  const handleGeneralDischargeRequest = async (layout: any) => {
+    setSelectedLayout(layout);
+
+    if (!layout) {
+      console.error('Layout is null');
+      return;
+    }
+
+    const patientUuid = layout.patientUuid || layout.uuid;
+    if (!patientUuid) {
+      console.error('No patientUuid', layout);
+      return;
+    }
+
+    try {
+      const patientData = await getPatientByUuid(patientUuid);
+
+      await launchWorkspace2(
+        'admissions-form-entry',
+        {
+          workspaceTitle: 'POC Inpatient Discharge Form v1.0',
+          formUuid: generalDischargeFormUuid,
+          patientUuid,
+        },
+        {
+          patient: patientData,
+          patientUuid,
+        },
+      );
+    } catch (error) {
+      console.error('Failed to fetch patient data:', error);
+    }
   };
   const handleBedSwapModalClose = () => {
     setShowBedSwapModal(false);
     refresh();
   };
-  const handleDischargeModalClose = () => {
-    setShowDischargeModal(false);
-  };
-  const handleSuccessfullDischarge = () => {
-    handleBedSwapModalClose();
-    refresh();
-  };
+
   const rows =
     admittedPatientsData?.flatMap((layout) =>
       (layout.patients ?? []).map((patient) => ({
@@ -60,6 +121,8 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
         age: patient.person.age,
         identifier: patient.identifiers?.[0]?.identifier ?? 'N/A',
         person: patient.person,
+        patientUuid: patient.uuid,
+        patient: patient,
       })),
     ) ?? [];
 
@@ -88,7 +151,13 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
             <TableRow key={row.key}>
               <TableCell>{index + 1}</TableCell>
               <TableCell>{row.bedNumber}</TableCell>
-              <TableCell>{row.name}</TableCell>
+              <TableCell>
+                {row.patientUuid ? (
+                  <Link href={`${window.spaBase}/patient/${row.patientUuid}/chart/`}>{row.name}</Link>
+                ) : (
+                  row.name
+                )}
+              </TableCell>
               <TableCell>{row.gender}</TableCell>
               <TableCell>{row.age}</TableCell>
               <TableCell>{row.identifier}</TableCell>
@@ -99,7 +168,10 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
                   <OverflowMenu aria-label="overflow-menu">
                     <OverflowMenuItem itemText="Transfer" onClick={() => handleTransferRequest(row as any)} />
                     <OverflowMenuItem itemText="Bed Swap" onClick={() => handleBedSwapRequest(row as any)} />
-                    <OverflowMenuItem itemText="Discharge" onClick={() => handleDischargeRequest(row as any)} />
+                    <OverflowMenuItem
+                      itemText="Fill General Discharge Form"
+                      onClick={() => handleGeneralDischargeRequest(row as any)}
+                    />
                   </OverflowMenu>
                 </>
               </TableCell>
@@ -107,7 +179,13 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
           ))}
         </TableBody>
       </Table>
-      {showBedSwapModal && selectedLayout ? (
+    </>
+  );
+};
+
+/*
+
+ {showBedSwapModal && selectedLayout ? (
         <>
           <BedSwapModal
             open={showBedSwapModal}
@@ -122,20 +200,7 @@ const AdmittedPatientsList: React.FC<AdmittedPatientsListProps> = ({ admittedPat
         <></>
       )}
 
-      {showDischargeModal && selectedLayout ? (
-        <>
-          <DischargeModal
-            open={showDischargeModal}
-            onModalClose={handleDischargeModalClose}
-            onDischarge={handleSuccessfullDischarge}
-            admissionRequest={selectedLayout}
-          />
-        </>
-      ) : (
-        <></>
-      )}
-    </>
-  );
-};
+
+*/
 
 export default AdmittedPatientsList;

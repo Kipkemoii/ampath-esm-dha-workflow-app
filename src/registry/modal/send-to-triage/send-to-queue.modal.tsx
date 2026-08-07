@@ -1,0 +1,980 @@
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import dayjs from 'dayjs';
+import { Button, ButtonSet, ComboBox, InlineNotification, Select, SelectItem, Tag, TextInput } from '@carbon/react';
+import styles from './send-to-triage.modal.scss';
+import {
+  useSession,
+  showSnackbar,
+  type Visit,
+  useConfig,
+  ExtensionSlot,
+  Encounter,
+  usePatient,
+  useVisit,
+  OpenmrsResource,
+  type DefaultWorkspaceProps,
+} from '@openmrs/esm-framework';
+import {
+  type HieClient,
+  type CreateVisitDto,
+  type QueueEntryDto,
+  type ServiceQueue,
+  PaymentDetail,
+  type VisitAttribute,
+  HieIdentificationType,
+  UpdateVisitDto,
+} from '../../types';
+import { createQueueEntry, getFacilityServiceQueues } from '../../../resources/queue.resource';
+import { QUEUE_PRIORITIES_UUIDS, QUEUE_STATUS_UUIDS } from '../../../shared/constants/concepts';
+import { updateVisit } from '../../../resources/visit.resource';
+import {
+  createBill,
+  createOrderBillInHie,
+  fetchBillableServices,
+  fetchCashPoints,
+  fetchPaymentModes,
+} from '../../../shared/services/billing.resource';
+import {
+  type PayableBillableService,
+  type ServicePrice,
+  type BillableService,
+  type PaymentMode,
+  type CreateBillDto,
+  type CashPoint,
+  type CreateOrderEncounterDto,
+} from '../../../shared/types';
+import { PatientCategories } from '../../../shared/constants/patient-category';
+import { VisitTypeUuids } from '../../../shared/constants/visit-types';
+import { type Bill } from '../../../billing/types';
+import { fetchPatientBills } from '../../../billing/invoice/bill.resource';
+import { type QueueEntry } from '../../../types/types';
+import { getActiveQueueEntryByPatientUuid } from '../../../service-queues/service-queues.resource';
+import { createOrderEncounter, getOrder } from '../../../shared/services/encounters.resource';
+import { type ConfigObject } from '../../../config-schema';
+import {
+  ClientSubBenefit,
+  PreExistingIntervention,
+  type ClaimResult,
+  type Intervention,
+  type VisitType,
+} from '../../../claims';
+import { getServiceType } from '../../../shared/services/claims.resource';
+import PaymentMethodComponent from './payment-method.component';
+import ClaimsConsentExtension from '../otp-verification-modal/extension/claims-consent.extension';
+import { Order } from '@openmrs/esm-patient-common-lib';
+
+/** Registration name, shared with whoever opens this panel. */
+export const SEND_TO_QUEUE_WORKSPACE = 'send-to-queue-workspace';
+
+/**
+ * `DefaultWorkspaceProps` minus the bits a caller supplies — the platform passes
+ * `closeWorkspace` and friends in itself, so a caller only ever provides the fields below.
+ */
+export interface SendToQueueWorkspaceProps {
+  patientUuid: string;
+  visitUuid: string;
+  visitTypeUuid: string;
+  /** Called when the panel closes. `success` says whether a claim visit was actually
+      started, which is what tells a caller to refresh its list. */
+  onModalClose?: (modalCloseResp?: { success: boolean }) => void;
+  addSHAClaimVisit?: boolean;
+  isCash?: boolean;
+  order?: Order;
+  billableItem?: OpenmrsResource | null;
+  quantity?: number;
+  initialUnitPriceUuid?: string;
+}
+
+type SendToQueueModalProps = SendToQueueWorkspaceProps & Partial<DefaultWorkspaceProps>;
+
+// Select the field's text on focus so typing replaces the (preselected) value.
+const selectInputText = (e: React.FocusEvent<HTMLElement>) => {
+  const input = e.target as HTMLInputElement;
+  if (input?.tagName === 'INPUT') {
+    input.select();
+  }
+};
+
+const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
+  patientUuid,
+  visitUuid,
+  visitTypeUuid,
+  onModalClose,
+  addSHAClaimVisit,
+  isCash,
+  order,
+  billableItem,
+  quantity = 1,
+  closeWorkspace,
+  initialUnitPriceUuid,
+}) => {
+  const { patient } = usePatient(patientUuid);
+  const [selectedPatientType, setSelectedPatientType] = useState<string>();
+  const [cashPoints, setCashPoints] = useState<CashPoint[]>([]);
+  const [selectedCashPoint, setSelectedCashPoint] = useState<CashPoint>(null);
+  const [servicePrices, setServicePrices] = useState<ServicePrice[]>([]);
+  const [filteredBillableServices, setFilteredBillableServices] = useState<ServicePrice[]>(null);
+  const [selectedBillableService, setSelectedBillableService] = useState<ServicePrice | null>(null);
+  const [selectedPatientCategory, setSelectedPatientCategory] = useState<string>('');
+  const [patientBills, setPatientBills] = useState<Bill[]>([]);
+  const [billCreated, setBillCreated] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [claimResult, setClaimResult] = useState<ClaimResult>();
+  const [intervention, setIntervention] = useState<Intervention>();
+  const [selectedSubBenefit, setSelectedSubBenefit] = useState<ClientSubBenefit>();
+  const [triggerCreateVisit, setTriggerCreateVisit] = useState<boolean>(false);
+  const session = useSession();
+  const locationUuid = session?.sessionLocation?.uuid;
+  const [otpVerified, setOtpVerified] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [authGuid, setAuthGuid] = useState('');
+  const { activeVisit } = useVisit(patientUuid);
+  const [preExistingInterventions, setPreExistingInterventions] = useState<PreExistingIntervention[]>();
+  // False until the billable-service ComboBox has reported a selection once. Carbon fires
+  // its onChange as it initialises, and that first report is the panel settling rather
+  // than a choice anyone made — see `billableServicesHandler`.
+  const userPickedService = useRef(false);
+
+  const {
+    registrationBillableServices,
+    cashConsulationConceptUuid,
+    shaConsulationConceptUuid,
+    outPatientCareSettingUuid,
+    orderEncounterTypeUuid,
+    registrationServicequeues,
+    shaPaymentModeUuid,
+  } = useConfig<ConfigObject>();
+
+  const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
+
+  const visitType: VisitType = useMemo(() => {
+    if (visitTypeUuid) {
+      if (visitTypeUuid === VisitTypeUuids.OPD_VISIT_TYPE_UUID) {
+        return 'OUTPATIENT';
+      }
+      if (visitTypeUuid === VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID) {
+        return 'INPATIENT';
+      }
+    }
+  }, [visitTypeUuid, VisitTypeUuids]);
+
+  const isPerdiem = useMemo(() => {
+    if (intervention) {
+      return ["PER DIEM", "PER_DIEM"].includes(intervention?.paymentMechanism.trim().toUpperCase());
+    }
+    return false;
+  }, [intervention])
+
+  const showBillableServices = useMemo(() => {
+    if (preExistingInterventions && preExistingInterventions.length) {
+      return false;
+    }
+    if (isPerdiem) {
+      return false;
+    }
+    return true;
+  }, [preExistingInterventions, intervention, isPerdiem]);
+
+  const patientIdentifiers = useMemo(() => {
+    if (patient) {
+      return {
+        crIdentifierId: patient.identifier.find((i) => i.type.coding[0].code === 'e88dc246-3614-4ee3-8141-1f2a83054e72')
+          ?.value,
+        nationalId: patient.identifier.find((i) => i.type.coding[0].code === '58a47054-1359-11df-a1f1-0026b9348838')
+          ?.value,
+      };
+    }
+  }, [patient]);
+
+  const consentPatient = useMemo<HieClient>(() => {
+    if (patient && patientIdentifiers) {
+      return {
+        id: String(patientIdentifiers.crIdentifierId),
+        first_name: patient.name[0].text,
+        identification_type: HieIdentificationType.NationalID,
+        identification_number: String(patientIdentifiers.nationalId),
+      } as unknown as HieClient;
+    }
+  }, [patient, patientIdentifiers]);
+
+  // Under-18 clients skip biometric verification and whitelisting; a missing or
+  // unparseable birthDate is treated as not-a-minor (normal biometric-first flow).
+  const isMinor = useMemo(() => {
+    if (!patient?.birthDate) {
+      return false;
+    }
+    const age = dayjs().diff(dayjs(patient.birthDate), 'year');
+    return Number.isFinite(age) && age < 18;
+  }, [patient?.birthDate]);
+
+  const selectedPaymentMode = useMemo(() => {
+    if (initialUnitPriceUuid) {
+      const splitPrice = initialUnitPriceUuid.split('#');
+      if (splitPrice && splitPrice.length > 2) {
+        return splitPrice[2];
+      }
+    }
+    if (activeVisit) {
+      const paymentMode =
+        activeVisit.attributes?.find((atr) => atr?.attributeType?.uuid === '8553afa0-bdb9-4d3c-8a98-05fa9350aa85')
+          ?.value ?? '';
+      return paymentMode;
+    }
+    return '';
+  }, [activeVisit, initialUnitPriceUuid]);
+
+  const selectedPaymentDetail: PaymentDetail = useMemo(() => {
+    if (activeVisit) {
+      const paymentDetail =
+        activeVisit.attributes?.find((atr) => atr?.attributeType?.uuid === 'df0362f9-782e-4d92-8bb2-3112e9e9eb3c')
+          ?.value ?? '';
+      if (paymentDetail) {
+        return PaymentDetail.NonPaying;
+      }
+    }
+    return PaymentDetail.Paying;
+  }, [activeVisit]);
+
+  useEffect(() => {
+    getBillableServices();
+    getCashPoints();
+    getPatientBills();
+  }, []);
+
+  useEffect(() => {
+    if (selectedPaymentMode && servicePrices) {
+      const paymentModeBillableServices = getBillableServiceByPaymentMode(selectedPaymentMode, servicePrices);
+      setFilteredBillableServices(paymentModeBillableServices);
+    }
+  }, [selectedPaymentMode, servicePrices]);
+
+  // Preselect the first cash point for the logged-in location (default index 0).
+  useEffect(() => {
+    if (!selectedCashPoint && facilityCashPoints?.length) {
+      setSelectedCashPoint(facilityCashPoints[0]);
+    }
+  }, [facilityCashPoints, selectedCashPoint]);
+
+  // Preselect the first billable service for the payment mode (default index 0).
+  useEffect(() => {
+    if (filteredBillableServices?.length) {
+      if (billableItem) {
+        const preselectedBillableService = filteredBillableServices.find(
+          (sp) => sp.billableService.uuid === billableItem.uuid,
+        );
+        if (preselectedBillableService) {
+          setSelectedBillableService(preselectedBillableService);
+          return;
+        }
+      }
+
+      if (!selectedBillableService) {
+        setSelectedBillableService(filteredBillableServices[0]);
+      }
+    }
+  }, [filteredBillableServices, selectedBillableService, billableItem]);
+
+  useEffect(() => {
+    if (triggerCreateVisit && claimResult) {
+      const fn = async () => {
+        await sendToTriage();
+        setTriggerCreateVisit(false);
+      };
+      void fn();
+    }
+  }, [triggerCreateVisit, claimResult]);
+
+  if (!patient) {
+    return <>No Client data</>;
+  }
+
+  function onClaimsVisitStart(
+    payload: ClaimResult,
+    selectedIntervention: Intervention,
+    subBenefit: ClientSubBenefit,
+    usePreselectedIntervention: boolean,
+  ) {
+    if (usePreselectedIntervention) {
+      setBillCreated(true);
+      showAlert('success', 'Bill succesfully updated', '');
+      dismiss(true);
+    }
+    setClaimResult(payload);
+    setIntervention(selectedIntervention);
+    setSelectedSubBenefit(subBenefit);
+  }
+
+  function onError(error: any) {
+    setLoading(false);
+  }
+
+  function hasPreExistingInterventions(preExistingInterventions1: PreExistingIntervention[]) {
+    if (preExistingInterventions1 && preExistingInterventions1.length) {
+      setPreExistingInterventions(preExistingInterventions1);
+    }
+  }
+
+  function onInterventionChange(selectedIntervention: Intervention) {
+    setIntervention(selectedIntervention);
+  }
+
+  async function getPatientBills() {
+    if (patientUuid) {
+      const resp = await fetchPatientBills(patientUuid);
+      const todaysBills = getTodaysBills(resp);
+      setPatientBills(todaysBills);
+    }
+  }
+  function getTodaysBills(bills: Bill[]) {
+    const today = new Date();
+    return bills.filter((b) => {
+      const billDate = new Date(b.dateCreated);
+      return (
+        billDate.getFullYear() === today.getFullYear() &&
+        billDate.getMonth() === today.getMonth() &&
+        billDate.getDate() === today.getDate()
+      );
+    });
+  }
+
+  const sendToTriage = async () => {
+    try {
+      const newVisit: Visit = await createPatientVisit();
+      if (newVisit) {
+        if (isPerdiem) {
+          setBillCreated(true);
+          showAlert('success', 'Bill succesfully updated', '');
+          dismiss(true);
+          return;
+        }
+        // add bill if it was a paying client
+        let createBillResp = null;
+        if (selectedPaymentDetail === PaymentDetail.Paying) {
+          const createBillDto = generateCreateBillDto();
+          if (isValidCreateBillDto(createBillDto) && !billCreated) {
+            createBillResp = await createBill(createBillDto);
+            if (createBillResp) {
+              setBillCreated(true);
+              showAlert('success', 'Bill succesfully created', '');
+            }
+
+            if (order) {
+              const billOrderDto = await generateBillOrderDto(createBillResp);
+              if (billOrderDto) {
+                await createOrderBillInHie(billOrderDto);
+              }
+            } else {
+              const encounter = await createOrder(patientUuid, newVisit.uuid);
+              const billOrderDto = await generateBillOrderDto(createBillResp, encounter);
+              if (billOrderDto) {
+                await createOrderBillInHie(billOrderDto);
+              }
+            }
+          } else {
+            return false;
+          }
+        }
+
+        if ((PaymentDetail.Paying && (createBillResp || billCreated)) || PaymentDetail.NonPaying) {
+          dismiss(true);
+        }
+      }
+    } catch (error) {
+      showAlert('error', error.message ?? 'Error creating visit', '');
+    } finally {
+      setLoading(false);
+    }
+  };
+  const generateAddToTriageDto = (newVisit: Visit): QueueEntryDto => {
+    const payload: QueueEntryDto = {
+      visit: {
+        uuid: newVisit.uuid,
+      },
+      queueEntry: {
+        status: {
+          uuid: QUEUE_STATUS_UUIDS.WAITING_UUID,
+        },
+        priority: {
+          uuid: QUEUE_PRIORITIES_UUIDS.NORMAL_PRIORITY_UUID,
+        },
+        queue: {
+          uuid: '', //selectedServiceQueue,
+        },
+        patient: {
+          uuid: patientUuid,
+        },
+        startedAt: newVisit.startDatetime,
+        sortWeight: 0,
+      },
+    };
+    return payload;
+  };
+
+  function getBillableServiceByPaymentMode(
+    paymentModeUuid: string,
+    servicePrices: ServicePrice[],
+  ): PayableBillableService[] {
+    const paymentBillableServices: ServicePrice[] = [];
+    const useOrderBillableFilter = !!order && !!billableItem;
+
+    servicePrices.forEach((sp) => {
+      if (sp.paymentMode?.uuid !== paymentModeUuid) {
+        return;
+      }
+
+      if (useOrderBillableFilter) {
+        if (sp.billableService.uuid === billableItem.uuid) {
+          paymentBillableServices.push(sp);
+        }
+      } else if (registrationBillableServices.includes(sp.billableService.uuid)) {
+        paymentBillableServices.push(sp);
+      }
+    });
+    return paymentBillableServices;
+  }
+  const billableServicesHandler = (selectedBillableServiceUuid: string) => {
+    const sB = servicePrices.find((sp) => {
+      return sp.uuid === selectedBillableServiceUuid;
+    });
+    // Both branches did the same thing to the selection, so the service is set either way
+    // and only the warning is conditional.
+    setSelectedBillableService(sB);
+
+    // "Patient has a similar bill" is worth saying when a biller picks a service the
+    // patient has already been billed for. It is not worth saying as the panel opens,
+    // which is what was happening: Carbon's ComboBox fires onChange while it initialises,
+    // so the toast appeared on launch before anyone had chosen anything. Suppressed until
+    // a service has actually been settled on and is being changed.
+    if (userPickedService.current && !isValidBillableService(sB)) {
+      showAlert('error', 'Existing bill', 'Patient has a similar bill');
+    }
+    userPickedService.current = true;
+  };
+  const isValidBillableService = (selectedService: ServicePrice) => {
+    // check if patient has been billed for similar service
+    let isValid = true;
+    patientBills.forEach((b) => {
+      const lineItems = b.lineItems;
+      lineItems.forEach((l) => {
+        if (l.billableService === selectedService.billableService.display) {
+          isValid = false;
+        }
+      });
+    });
+    return isValid;
+  };
+  const cashPointsHandler = (selectedCashPointUuid: string) => {
+    const selectedCashPoint = cashPoints.find((cp) => {
+      return cp.uuid === selectedCashPointUuid;
+    });
+    setSelectedCashPoint(selectedCashPoint);
+  };
+  const patientTypeHandler = (selectedPatientType: { selectedItem: { id: string; text: string } }) => {
+    const pt = selectedPatientType.selectedItem.id;
+    setSelectedPatientType(pt);
+  };
+  const patientCategoryHandler = (categoryUuid: string) => {
+    setSelectedPatientCategory(categoryUuid);
+  };
+  const createPatientVisit = async () => {
+    const visitDto = getUpdateVisitDto();
+    const result = await updateVisit(visitUuid, visitDto);
+    if (result) {
+      showAlert('success', 'Visit has been updated succesfully', '');
+      return result;
+    } else {
+      showAlert('error', 'Error updating patient visit', '');
+      throw new Error('Error updating patient visit');
+    }
+  };
+  const getUpdateVisitDto = (): UpdateVisitDto => {
+    const visitAttributes = getVisitAttributes();
+    const visitDto: UpdateVisitDto = {};
+    if (visitAttributes.length > 0) {
+      visitDto['attributes'] = visitAttributes;
+    }
+    return visitDto;
+  };
+  const showAlert = (alertType: 'error' | 'success', title: string, subtitle: string) => {
+    showSnackbar({
+      kind: alertType,
+      title: title,
+      subtitle: subtitle,
+    });
+  };
+
+  function getVisitAttributes(): VisitAttribute[] {
+    const attributes: VisitAttribute[] = [];
+    if (selectedPatientType) {
+      attributes.push({
+        attributeType: 'fbc0702d-b4c9-4968-be63-af8ad3ad6239',
+        value: selectedPatientType,
+      });
+    }
+
+    // Claims
+    if (claimResult) {
+      attributes.push({
+        attributeType: '4962a633-c4f8-474c-857c-5c68c72fbbe3',
+        value: claimResult.authorization_code,
+      });
+
+      // scheme code
+      attributes.push({
+        attributeType: '79072572-80c0-4a38-9da0-afe207e3ef2d',
+        value: claimResult.scheme_code,
+      });
+
+      // service type
+      attributes.push({
+        attributeType: '97d892fe-38a4-4cfb-bdf7-2a03dff6e7cf',
+        value: claimResult.service_type,
+      });
+    }
+    return attributes;
+  }
+
+  async function getBillableServices() {
+    const billableServices = await fetchBillableServices();
+    generateServiceTypesList(billableServices);
+  }
+
+  async function getCashPoints() {
+    const cp = await fetchCashPoints();
+    setCashPoints(cp);
+  }
+
+  function getfacilityCashpoints() {
+    return cashPoints.filter((cp) => {
+      return cp && cp.location?.uuid === locationUuid;
+    });
+  }
+
+  function generateServiceTypesList(billableServices: BillableService[]) {
+    const sp: ServicePrice[] = [];
+    for (let bs of billableServices) {
+      if (bs.servicePrices) {
+        const servicePrices = bs.servicePrices;
+        for (let servicePrice of servicePrices) {
+          sp.push(servicePrice);
+        }
+      }
+    }
+    setServicePrices(sp);
+  }
+
+  function generateCreateBillDto(): CreateBillDto {
+    const payload: CreateBillDto = {
+      lineItems: [
+        {
+          billableService: selectedBillableService.billableService.uuid,
+          quantity: quantity ?? 1,
+          price: selectedBillableService.price,
+          priceName: selectedBillableService.name,
+          priceUuid: selectedBillableService.uuid,
+          lineItemOrder: 0,
+          status: isCash ? 'PAID' : 'PENDING',
+        },
+      ],
+      cashPoint: selectedCashPoint.uuid,
+      patient: patientUuid,
+      visit: activeVisit?.uuid ?? '',
+      status: 'PENDING',
+      payments: [],
+    };
+    return payload;
+  }
+  function isValidCreateBillDto(createBillDto: CreateBillDto): boolean {
+    if (!createBillDto.patient) {
+      showAlert('error', 'Please select a patient', '');
+      return false;
+    }
+    if (!createBillDto.status) {
+      showAlert('error', 'Bill does not have a status', '');
+      return false;
+    }
+    if (!createBillDto.cashPoint) {
+      showAlert('error', 'Please select a valid cashpoint', '');
+      return false;
+    }
+    if (!createBillDto.lineItems || createBillDto.lineItems.length === 0) {
+      showAlert('error', 'Please select a valid billable service', '');
+      return false;
+    }
+    return true;
+  }
+
+  function hasSelectedPaymentMode(paymentMode: string): boolean {
+    if (!selectedPaymentMode) {
+      return false;
+    }
+    if (paymentMode.trim().toUpperCase() === 'SHA') {
+      return selectedPaymentMode === shaPaymentModeUuid;
+    }
+    return false;
+  }
+
+  function generateOrderEncounterPayload(patientUuid: string, visitUuid: string): CreateOrderEncounterDto {
+    return {
+      patient: patientUuid,
+      location: locationUuid,
+      encounterType: orderEncounterTypeUuid,
+      visit: visitUuid,
+      obs: [],
+      orders: [
+        {
+          action: 'NEW',
+          type: 'order',
+          patient: patientUuid,
+          careSetting: outPatientCareSettingUuid,
+          orderer: session.currentProvider.uuid ?? 'pd25871c-1359-11df-a1f1-0026b9348838',
+          encounter: null,
+          concept: getOrderConcept(),
+          accessionNumber: null,
+          urgency: 'ROUTINE',
+          scheduledDate: null,
+        },
+      ],
+    };
+  }
+  function getOrderConcept() {
+    if (hasSelectedPaymentMode('SHA')) {
+      return shaConsulationConceptUuid;
+    }
+    return cashConsulationConceptUuid;
+  }
+  async function createOrder(patientUuid: string, visitUuid: string) {
+    const createOrderPayload = generateOrderEncounterPayload(patientUuid, visitUuid);
+    try {
+      const resp = await createOrderEncounter(createOrderPayload);
+      if (resp) {
+        showAlert('success', 'Consultation order created', 'Consultation order has been succesfully created');
+      }
+      return resp;
+    } catch (error) {
+      showAlert(
+        'error',
+        'Error creating consulation order',
+        'An error occurred while generating the consultation order. Please contact support',
+      );
+    }
+  }
+
+  async function generateBillOrderDto(createdBillResp: any, encounter?: Encounter) {
+    try {
+      let orderNumber = order?.orderNumber ?? '';
+
+      if (!orderNumber && encounter?.orders?.length) {
+        const fetchedOrder = await getOrder(encounter.orders[0]?.uuid);
+        orderNumber = fetchedOrder?.orderNumber ?? '';
+      }
+
+      const billUuid = createdBillResp?.uuid;
+      const lineItemUuid = createdBillResp?.lineItems?.[0]?.uuid ?? '';
+
+      let payload = {
+        bill_uuid: billUuid,
+        order_no: orderNumber,
+        line_item_uuid: lineItemUuid,
+      };
+
+      if (claimResult && intervention) {
+        const interventionResult = intervention;
+        const electivePreauth =
+          interventionResult.requiresOncologyPreauth ||
+          interventionResult.requiresOpticalPreauth ||
+          interventionResult.requiresRadiologyPreauth ||
+          interventionResult.requiresRenalPreauth ||
+          interventionResult.requiresSurgicalPreauth;
+        const requiresPreauth = interventionResult.needsPreauth;
+        const requiredPreauthDocumentTypes = interventionResult.requiredPreauthDocumentTypes;
+        const applicableDocumentTypes = interventionResult.applicableDocumentTypes;
+
+        let interventionPayload = {
+          sub_benefit_code: selectedSubBenefit ? selectedSubBenefit.code : '',
+          intervention_code: interventionResult.code,
+          consent_token: claimResult.authorization_code,
+          service_type: getServiceType(interventionResult, visitType),
+          requires_preauth: requiresPreauth,
+          normal_preauth: requiresPreauth && !electivePreauth,
+          elective_preauth: interventionResult.needsManualPreauthApproval && electivePreauth,
+        };
+
+        if (patientUuid) {
+          interventionPayload['patient_uuid'] = patientUuid;
+        }
+
+        if (applicableDocumentTypes && applicableDocumentTypes.length) {
+          interventionPayload['applicable_document_types'] = applicableDocumentTypes.join(',');
+        }
+
+        if (requiredPreauthDocumentTypes && requiredPreauthDocumentTypes.length) {
+          interventionPayload['required_preauth_document_types'] = requiredPreauthDocumentTypes.join(',');
+        }
+
+        payload = {
+          ...payload,
+          ...interventionPayload,
+        };
+      }
+
+      return payload;
+    } catch (error) {
+      console.error(error);
+      return null;
+    }
+  }
+
+  /**
+   * Everything that ends this panel goes through here: the caller is told whether a claim
+   * visit was actually started — which is what makes its list refresh — and then the
+   * platform is asked to close the workspace.
+   *
+   * `closeWorkspace` is optional because this component is still rendered inline by the
+   * create-order-bill form, which is itself a workspace and cannot stack a second one on
+   * top of itself. There, dismissing is the caller's own `onModalClose` doing it.
+   */
+  const dismiss = (success: boolean) => {
+    onModalClose?.({ success });
+    closeWorkspace?.();
+  };
+
+  const handleSecondaryAction = () => {
+    dismiss(false);
+  };
+
+  const handleprimaryAction = async () => {
+    await handleSendClientToTriage();
+  };
+
+  const handleSendClientToTriage = async () => {
+    try {
+      setLoading(true);
+      if (isSha) {
+        if (claimResult) {
+          await sendToTriage();
+        } else {
+          setTriggerCreateVisit(true);
+        }
+        return;
+      }
+      await sendToTriage();
+    } catch (error) {
+      setLoading(false);
+    }
+  };
+
+  function onClientConsent({ otp, authGuid }: { otp?: string; authGuid?: string }) {
+    if (otp) {
+      setOtp(otp);
+      setOtpVerified(true);
+    }
+    if (authGuid) {
+      setAuthGuid(authGuid);
+    }
+  }
+
+  const isSha = (hasSelectedPaymentMode('SHA') && !isCash) || addSHAClaimVisit;
+  const patientName = patient?.name?.[0]?.text ?? '';
+  const crNumber = patientIdentifiers?.crIdentifierId ?? '';
+  const consentSatisfied = otpVerified || !!authGuid;
+
+  return (
+    /* The panel's own shell — overlay, header, close button — is the platform's now: this
+       is a registered workspace, so O3 draws the chrome, the title bar and the hide /
+       maximise controls, and this component is only what goes inside. */
+    <div className={styles.workspace}>
+      {/* Who this is for. It was the drawer's subtitle; the workspace header shows the
+          registered title only, so the patient is named at the top of the body instead. */}
+      {patientName ? (
+        <div className={styles.patientBanner}>
+          <span className={styles.drawerPatient}>{patientName}</span>
+          {crNumber ? (
+            <span className={styles.drawerCr}>{/^cr/i.test(crNumber) ? crNumber : `CR ${crNumber}`}</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className={styles.drawerBody}>
+        {patient && (
+          <>
+            {order && (
+              <section className={styles.drawerSection}>
+                <h5 className={styles.drawerSectionTitle}>Order details</h5>
+                <div className={styles.formRow}>
+                  <InlineNotification kind="info" title={`${order?.orderNumber} - ${order?.display}`} lowContrast />
+                </div>
+              </section>
+            )}
+            <section className={styles.drawerSection}>
+              <h5 className={styles.drawerSectionTitle}>
+                Billing details
+                {isSha ? (
+                  <Tag size="sm" type="teal">
+                    SHA
+                  </Tag>
+                ) : null}
+              </h5>
+
+              {/* Cash point and Billable service belong to this section — they were in a
+                    card of their own after the claim details, which put the two fields that say
+                    what is being billed below the section describing the claim built from them. */}
+              {showBillableServices && (
+                <div className={styles.formRow}>
+                  <div
+                    className={styles.formControl}
+                    onFocusCapture={selectInputText}
+                    onKeyDownCapture={(e) => {
+                      if (!selectedCashPoint || e.ctrlKey || e.metaKey || e.altKey) {
+                        return;
+                      }
+                      const showingLabel = (e.target as HTMLInputElement)?.value === (selectedCashPoint.name ?? '');
+                      if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedCashPoint(null);
+                      }
+                    }}
+                  >
+                    <ComboBox
+                      id="cash-point"
+                      titleText="Cash point"
+                      placeholder="Search cash point"
+                      items={facilityCashPoints ?? []}
+                      itemToString={(item) => item?.name ?? ''}
+                      shouldFilterItem={({ item, inputValue }) => {
+                        const selectedLabel = selectedCashPoint?.name ?? '';
+                        if (!inputValue || inputValue === selectedLabel) {
+                          return true;
+                        }
+                        return (item?.name ?? '').toLowerCase().includes(inputValue.toLowerCase());
+                      }}
+                      selectedItem={selectedCashPoint ?? null}
+                      onChange={({ selectedItem }) => setSelectedCashPoint(selectedItem ?? null)}
+                    />
+                  </div>
+                  <div
+                    className={styles.formControl}
+                    onFocusCapture={selectInputText}
+                    onKeyDownCapture={(e) => {
+                      if (!selectedBillableService || e.ctrlKey || e.metaKey || e.altKey) {
+                        return;
+                      }
+                      const label = `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`;
+                      const showingLabel = (e.target as HTMLInputElement)?.value === label;
+                      if (showingLabel && (e.key === 'Backspace' || e.key === 'Delete')) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setSelectedBillableService(null);
+                      }
+                    }}
+                  >
+                    <ComboBox
+                      id="billable-service"
+                      titleText="Billable service"
+                      placeholder="Search billable service"
+                      items={filteredBillableServices ?? []}
+                      itemToString={(item) =>
+                        item ? `${item.billableService.display} (${item.name}: ${item.price})` : ''
+                      }
+                      shouldFilterItem={({ item, inputValue }) => {
+                        const selectedLabel = selectedBillableService
+                          ? `${selectedBillableService.billableService.display} (${selectedBillableService.name}: ${selectedBillableService.price})`
+                          : '';
+                        if (!inputValue || inputValue === selectedLabel) {
+                          return true;
+                        }
+                        const text = item
+                          ? `${item.billableService.display} ${item.name} ${item.price}`.toLowerCase()
+                          : '';
+                        return text.includes(inputValue.toLowerCase());
+                      }}
+                      selectedItem={selectedBillableService ?? null}
+                      onChange={({ selectedItem }) =>
+                        selectedItem ? billableServicesHandler(selectedItem.uuid) : setSelectedBillableService(null)
+                      }
+                    />
+                  </div>
+                </div>
+              )}
+
+              {selectedPaymentDetail === PaymentDetail.NonPaying && (
+                <div className={styles.formRow} style={{ marginTop: '1rem' }}>
+                  <div className={styles.formControl}>
+                    <Select
+                      id="patient-category"
+                      labelText="Patient category"
+                      onChange={(e) => patientCategoryHandler(e.target.value)}
+                    >
+                      <SelectItem value="" text="Select" />
+                      <SelectItem value={PatientCategories.CCC_PATIENT_UUID} text="CCC" />
+                      <SelectItem value={PatientCategories.MCH_PATIENT_UUID} text="MCH" />
+                    </Select>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {selectedPaymentDetail === PaymentDetail.Paying && isSha && (
+              <section className={styles.drawerSection}>
+                <h5 className={styles.drawerSectionTitle}>SHA claim details</h5>
+                <p className={styles.drawerSectionHint}>
+                  Select the sub-benefit and intervention for this consultation.
+                </p>
+                <ExtensionSlot
+                  name="billing-claims-slot"
+                  state={{
+                    clientRegistryId: patientIdentifiers?.crIdentifierId,
+                    patientUuid: patientUuid,
+                    triggerCreateVisit,
+                    otp,
+                    authGuid,
+                    visitType,
+                    onSelectChange: () => { },
+                    onClaimsVisitStart,
+                    onInterventionChange,
+                    onError,
+                    hasPreExistingInterventions,
+                  }}
+                />
+              </section>
+            )}
+
+            {selectedPaymentDetail === PaymentDetail.Paying && consentPatient && intervention && (
+              <section className={styles.consentSection}>
+                <h5 className={styles.drawerSectionTitle}>Client consent</h5>
+                <ClaimsConsentExtension
+                  patient={consentPatient}
+                  intervention={intervention}
+                  crIdentifierId={patientIdentifiers.crIdentifierId}
+                  visitType={visitType}
+                  onClientConsent={onClientConsent}
+                  onAuthGuidReceived={setAuthGuid}
+                  isMinor={isMinor}
+                />
+              </section>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* The O3 workspace footer: two buttons filling the panel's width, flush to its
+          edges. Every other panel in the app ends this way. */}
+      <ButtonSet className={styles.drawerFooter}>
+        <Button kind="secondary" size="md" onClick={handleSecondaryAction} disabled={loading}>
+          Cancel
+        </Button>
+        <Button
+          kind="primary"
+          size="md"
+          onClick={handleprimaryAction}
+          disabled={loading || (isSha && !consentSatisfied)}
+        >
+          {isCash ? 'PAY' : loading ? 'Starting…' : 'Start claim visit'}
+        </Button>
+      </ButtonSet>
+    </div>
+  );
+};
+
+export default SendToQueueModal;

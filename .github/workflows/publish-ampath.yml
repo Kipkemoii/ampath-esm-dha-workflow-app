@@ -2,7 +2,7 @@ name: AMPATH Package Publishing
 
 on:
   push:
-    branches: [main]
+    branches: [main, claim-workflows]
   release:
     types:
       - created
@@ -37,13 +37,17 @@ jobs:
           path: dist
           overwrite: true
 
-  publish-next:
+  publish-prerelease:
     runs-on: ubuntu-latest
     needs: build
     if: >
-      github.event_name == 'push' && 
-      github.ref == 'refs/heads/main' &&
-      github.repository_owner == 'AMPATH'
+      github.event_name == 'push' &&
+      github.repository_owner == 'AMPATH' &&
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claim-workflows')
+
+    env:
+      NPM_DIST_TAG: ${{ github.ref == 'refs/heads/main' && 'next' || 'claim-workflows' }}
+      VERSION_SUFFIX: ${{ github.ref == 'refs/heads/main' && 'next' || 'claim-workflows' }}
 
     steps:
       - name: 📥 Checkout repository
@@ -58,23 +62,18 @@ jobs:
       - name: 📦 Install dependencies
         run: yarn install --immutable
 
-      - name: 🔧 Configure Git
+      - name: 🏷️ Set prerelease version
         run: |
-          git config user.email "devs@ampath.or.ke" 
-          git config user.name "AMPATH CI"
-
-      - name: 🏷️ Version with next tag
-        run: |
-          CURRENT_VERSION=$(node -e "console.log(require('./package.json').version)")
-          NEXT_VERSION="${CURRENT_VERSION}-next.${{ github.run_number }}"
-          yarn version $NEXT_VERSION --immediate
-          echo "Publishing version: $NEXT_VERSION"
+          BASE_VERSION=$(node -p "require('./package.json').version.split('-')[0]")
+          PUBLISH_VERSION="${BASE_VERSION}-${VERSION_SUFFIX}.${{ github.run_number }}"
+          node -e "const fs=require('fs');const p=require('./package.json');p.version='${PUBLISH_VERSION}';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+          echo "Publishing version: ${PUBLISH_VERSION} (tag: ${NPM_DIST_TAG})"
 
       - name: 🏗️ Build
         run: yarn build
 
-      - name: 📦 Publish to npm with next tag
-        run: yarn npm publish --tag next --access public
+      - name: 📦 Publish to npm
+        run: yarn npm publish --tag "${NPM_DIST_TAG}" --access public
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
 
@@ -102,8 +101,8 @@ jobs:
         run: |
           RELEASE_VERSION=${{ github.ref_name }}
           RELEASE_VERSION=${RELEASE_VERSION#v}
-          yarn version $RELEASE_VERSION --immediate
-          echo "Publishing release version: $RELEASE_VERSION"
+          node -e "const fs=require('fs');const p=require('./package.json');p.version='${RELEASE_VERSION}';fs.writeFileSync('package.json',JSON.stringify(p,null,2)+'\n')"
+          echo "Publishing release version: ${RELEASE_VERSION}"
 
       - name: 🏗️ Build
         run: yarn build
@@ -112,4 +111,3 @@ jobs:
         run: yarn npm publish --tag latest --access public
         env:
           YARN_NPM_AUTH_TOKEN: ${{ secrets.NPM_AUTH_TOKEN }}
-

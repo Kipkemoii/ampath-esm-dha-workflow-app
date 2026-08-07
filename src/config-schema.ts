@@ -75,7 +75,7 @@ export const configSchema = {
     weightUuid: {
       _type: Type.ConceptUuid,
       _default: '5089AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
-    },
+    }
   },
   subDomainUrl: {
     _type: Type.String,
@@ -117,6 +117,11 @@ export const configSchema = {
     _description: 'SHA Consultation Order type uuid',
     _default: '',
   },
+  shaInterventionSwitchingUuid: {
+    _type: Type.String,
+    _description: 'SHA Intervention Switching Order type uuid',
+    _default: '',
+  },
   cashConsulationConceptUuid: {
     _type: Type.String,
     _description: 'Cash Consultation concept uuid',
@@ -151,6 +156,34 @@ export const configSchema = {
     _type: Type.Array,
     _description: 'Consultation billable service names',
     _default: ["CONSULTATION", "KESSES CONSULTATION"]
+  },
+  maternityDischargeFormUuid: {
+    _type: Type.ConceptUuid,
+    _default: 'a6f7d96d-7d6e-3c51-9786-7b817515ff5b'
+  },
+  maternityDischargeEncounterTypeUuid: {
+    _type: Type.ConceptUuid,
+    _default: 'e3c2a17f-4d58-4725-b702-a5d75a2231d0'
+  },
+  shaPaymentModeUuid: {
+    _type: Type.ConceptUuid,
+    _default: "1be55f87-2931-41e0-89c8-8f5652c7c303"
+  },
+  cashPaymentModeUuid: {
+    _type: Type.ConceptUuid,
+    _default: "63eff7a4-6f82-43c4-a333-dbcc58fe9f74"
+  },
+  subBenefitCodesWithHiddenClaimWidget: {
+    _type: Type.Array,
+    _default: ["SHA-08-SC-02"]
+  },
+  startClaimVisitLocationAttributeUuid: {
+     _type: Type.String,
+    _default: "49df844d-79c0-40fc-8ca9-c27d6391f647"
+  },
+  pmfSchemeNames: {
+    _type: Type.Array,
+    _default: ["POMSF", "USALAMA", "TSC"]
   }
 };
 
@@ -202,6 +235,7 @@ export interface ConfigObject {
   cashConsultationOrderTypeUuid: string;
   cashConsulationConceptUuid: string;
   shaConsultationOrderTypeUuid: string;
+  shaInterventionSwitchingUuid: string;
   shaConsulationConceptUuid: string;
   outPatientCareSettingUuid: string;
   orderEncounterTypeUuid: string;
@@ -209,6 +243,13 @@ export interface ConfigObject {
   nonSHAPaymentModes: Array<string>;
   registrationServicequeues: Array<string>;
   consultationBillableServiceNames: Array<string>;
+  maternityDischargeFormUuid: string;
+  maternityDischargeEncounterTypeUuid: string;
+  shaPaymentModeUuid: string;
+  cashPaymentModeUuid: string;
+  subBenefitCodesWithHiddenClaimWidget: Array<string>;
+  startClaimVisitLocationAttributeUuid: string;
+  pmfSchemeNames: Array<string>
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
