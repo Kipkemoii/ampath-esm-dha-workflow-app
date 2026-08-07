@@ -201,12 +201,12 @@ describe('EmtQueue list rendering', () => {
     render(<EmtQueue />);
     await screen.findByText('AMB-d22419d8-FAC');
 
-    expect(mockUsePendingReferrals).toHaveBeenLastCalledWith(10, 0);
+    expect(mockUsePendingReferrals).toHaveBeenLastCalledWith(10, 0, 'location-uuid-1');
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /next page/i }));
 
-    await waitFor(() => expect(mockUsePendingReferrals).toHaveBeenLastCalledWith(10, 10));
+    await waitFor(() => expect(mockUsePendingReferrals).toHaveBeenLastCalledWith(10, 10, 'location-uuid-1'));
   });
 });
 

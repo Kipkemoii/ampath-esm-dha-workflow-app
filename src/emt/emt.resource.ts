@@ -19,7 +19,7 @@ import {
  * real, current OpenMRS session instead of a hand-copied, expiring token.
  */
 
-const EMT_BASE = '/claims/emt';
+const EMT_BASE = '/emt';
 
 /** SWR cache key prefix for the pending-referrals list (used for invalidation). */
 export const EMT_PENDING_KEY = 'emt-pending-referrals';
@@ -36,11 +36,12 @@ export const EMT_POLL_INTERVAL_MS = 30_000;
 export async function fetchPendingReferrals(
   limit = 50,
   offset = 0,
+  locationUuid = '',
 ): Promise<EmtReferralListResponse> {
   try {
     const hieBaseUrl = await getHieBaseUrl();
     const response = await openmrsFetch<EmtReferralListResponse>(
-      `${hieBaseUrl}${EMT_BASE}/pending?limit=${limit}&offset=${offset}`,
+      `${hieBaseUrl}${EMT_BASE}/referrals?limit=${limit}&offset=${offset}&locationUuid=${encodeURIComponent(locationUuid)}`,
       { method: 'GET' },
     );
     const data = response?.data;
@@ -63,11 +64,11 @@ export async function fetchPendingReferrals(
  * convention — SWR focus/reconnect revalidation is the default; here we add an
  * explicit refresh interval since EMT referrals arrive in real time).
  */
-export function usePendingReferrals(limit = 50, offset = 0) {
-  const key = `${EMT_PENDING_KEY}:${limit}:${offset}`;
+export function usePendingReferrals(limit = 50, offset = 0, locationUuid = '') {
+  const key = `${EMT_PENDING_KEY}:${limit}:${offset}:${locationUuid}`;
   const { data, error, isLoading, isValidating, mutate } = useSWR(
     key,
-    () => fetchPendingReferrals(limit, offset),
+    () => fetchPendingReferrals(limit, offset, locationUuid),
     {
       refreshInterval: EMT_POLL_INTERVAL_MS,
       keepPreviousData: true,

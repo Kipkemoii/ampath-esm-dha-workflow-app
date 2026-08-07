@@ -54,6 +54,8 @@ export interface InitiateHandoverRequest {
   identifier: string;
   identifier_type: string;
   regulator: string;
+  /** The current facility's OpenMRS location uuid — the backend scopes the handover to it. */
+  locationUuid: string;
 }
 
 /** Response from `handover/initiate` — carries the request id needed to verify. */
@@ -68,6 +70,8 @@ export interface VerifyHandoverRequest {
   incidence_number: string;
   request_id: string;
   otp: string;
+  /** The current facility's OpenMRS location uuid — the backend scopes the handover to it. */
+  locationUuid: string;
 }
 
 /**

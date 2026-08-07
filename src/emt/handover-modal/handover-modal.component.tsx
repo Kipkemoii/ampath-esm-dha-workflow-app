@@ -270,6 +270,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
         identifier: resolvedDoctor.identifier,
         identifier_type: resolvedDoctor.identifier_type,
         regulator: resolvedDoctor.regulator,
+        locationUuid,
       });
       const requestId = getHandoverRequestId(res);
       if (!requestId) {
@@ -312,6 +313,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
         incidence_number: referral.case_number,
         request_id: requestId,
         otp,
+        locationUuid,
       });
       showAlert(
         'success',

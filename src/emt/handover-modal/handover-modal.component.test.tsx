@@ -177,6 +177,7 @@ describe('initiate', () => {
       identifier: 'A13579',
       identifier_type: 'registration_number',
       regulator: 'KMPDC',
+      locationUuid: 'location-uuid-1',
     });
     expect(await screen.findByText(/enter doctor otp/i)).toBeInTheDocument();
   });
@@ -231,6 +232,7 @@ describe('verify', () => {
         incidence_number: 'AMB-d22419d8-FAC',
         request_id: 'req-123',
         otp: '654321',
+        locationUuid: 'location-uuid-1',
       }),
     );
     expect(props.onHandoverComplete).toHaveBeenCalledWith(referral);

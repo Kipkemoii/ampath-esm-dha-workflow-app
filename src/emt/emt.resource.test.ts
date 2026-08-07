@@ -68,13 +68,13 @@ beforeEach(() => {
 // ── fetchPendingReferrals ─────────────────────────────────────────────
 
 describe('fetchPendingReferrals', () => {
-  it('requests the pending endpoint with limit and offset, awaiting the base url', async () => {
+  it('requests the referrals endpoint with limit, offset, and the facility locationUuid', async () => {
     mockOpenmrsFetch.mockResolvedValueOnce({ data: listFixture } as any);
 
-    const data = await fetchPendingReferrals(50, 0);
+    const data = await fetchPendingReferrals(50, 0, 'location-uuid-1');
 
     expect(mockOpenmrsFetch).toHaveBeenCalledWith(
-      `${BASE_URL}/claims/emt/pending?limit=50&offset=0`,
+      `${BASE_URL}/emt/referrals?limit=50&offset=0&locationUuid=location-uuid-1`,
       { method: 'GET' },
     );
     expect(data.results).toHaveLength(1);
@@ -85,7 +85,7 @@ describe('fetchPendingReferrals', () => {
   it('normalises a malformed envelope gracefully', async () => {
     mockOpenmrsFetch.mockResolvedValueOnce({ data: { results: undefined, count: 'bad' } } as any);
 
-    const data = await fetchPendingReferrals();
+    const data = await fetchPendingReferrals(undefined, undefined, 'location-uuid-1');
     expect(data.results).toEqual([]);
     expect(data.count).toBe(0);
   });
@@ -109,10 +109,11 @@ describe('initiateHandover', () => {
       identifier: 'A13579',
       identifier_type: 'registration_number',
       regulator: 'KMPDC',
+      locationUuid: 'location-uuid-1',
     });
 
     expect(mockOpenmrsFetch).toHaveBeenCalledWith(
-      `${BASE_URL}/claims/emt/handover/initiate`,
+      `${BASE_URL}/emt/handover/initiate`,
       {
         method: 'POST',
         body: {
@@ -120,6 +121,7 @@ describe('initiateHandover', () => {
           identifier: 'A13579',
           identifier_type: 'registration_number',
           regulator: 'KMPDC',
+          locationUuid: 'location-uuid-1',
         },
       },
     );
@@ -135,6 +137,7 @@ describe('initiateHandover', () => {
         identifier: 'A13579',
         identifier_type: 'registration_number',
         regulator: 'KMPDC',
+        locationUuid: 'location-uuid-1',
       });
       fail('Should have thrown');
     } catch (err) {
@@ -154,16 +157,18 @@ describe('verifyHandoverOtp', () => {
       incidence_number: 'AMB-d22419d8-FAC',
       request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
       otp: '623415',
+      locationUuid: 'location-uuid-1',
     });
 
     expect(mockOpenmrsFetch).toHaveBeenCalledWith(
-      `${BASE_URL}/claims/emt/handover/verify`,
+      `${BASE_URL}/emt/handover/verify`,
       {
         method: 'POST',
         body: {
           incidence_number: 'AMB-d22419d8-FAC',
           request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
           otp: '623415',
+          locationUuid: 'location-uuid-1',
         },
       },
     );
@@ -177,6 +182,7 @@ describe('verifyHandoverOtp', () => {
         incidence_number: 'AMB-d22419d8-FAC',
         request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
         otp: '000000',
+        locationUuid: 'location-uuid-1',
       });
       fail('Should have thrown');
     } catch (err) {

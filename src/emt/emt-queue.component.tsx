@@ -50,7 +50,7 @@ const EmtQueue: React.FC = () => {
     isLoading,
     error,
     mutate,
-  } = usePendingReferrals(limit, offset);
+  } = usePendingReferrals(limit, offset, locationUuid);
 
   // Surface upstream errors visibly (network / auth / 5xx) with a retry path.
   useEffect(() => {
