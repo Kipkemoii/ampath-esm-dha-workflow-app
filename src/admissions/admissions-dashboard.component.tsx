@@ -34,7 +34,7 @@ import BedAssignmentRequestList from './bed-assigment-request/bed-assignment-req
 
 const AdmissionsDashboard: React.FC = () => {
   const [dashboardData, setDashboardData] = useState<AdmissionLocationData>(null);
-  const [admissionRequests,setAdmissionRequests] = useState<FacilityAdmissionRequest[]>([]);
+  const [admissionRequests, setAdmissionRequests] = useState<FacilityAdmissionRequest[]>([]);
   const [admissionListData, setAdmissionListData] = useState<Disposition[]>([]);
   const [admittedPatientsData, setAdmittedPatientsData] = useState<BedLayout[]>([]);
   const [facilityBills, setFacilityBills] = useState<FacilityEncounterBill[]>([]);
@@ -51,35 +51,35 @@ const AdmissionsDashboard: React.FC = () => {
     if (patients) {
       return patients[0];
     }
-  }
+  };
 
   const { awaiting, admitted } = useMemo(() => {
     if (admittedPatientsData && awaitingDischargeEncounterBundle) {
       const fhirEntries = awaitingDischargeEncounterBundle.entry;
       let patientUuids = [];
-      if(fhirEntries){
+      if (fhirEntries) {
+        fhirEntries.forEach((fe) => {
+          const resource = fe.resource;
+          if (resource && resource.resourceType === 'Encounter') {
+            const subject = resource.subject.reference.split('/');
+            const patientUuid = subject[1];
+            patientUuids.push(patientUuid);
+          }
+        });
+      }
 
-      fhirEntries.forEach((fe) => {
-        const resource = fe.resource;
-        if (resource && resource.resourceType === 'Encounter') {
-          const subject = resource.subject.reference.split("/");
-          const patientUuid = subject[1];
-          patientUuids.push(patientUuid);
-        }
-      });
-    }
-
-      const awaiting = admittedPatientsData.filter(p => patientUuids.includes(getPatient(p.patients)?.uuid));
-      const admitted = admittedPatientsData.filter(p => !patientUuids.includes(getPatient(p.patients)?.uuid));
+      const awaiting = admittedPatientsData.filter((p) => patientUuids.includes(getPatient(p.patients)?.uuid));
+      const admitted = admittedPatientsData.filter((p) => !patientUuids.includes(getPatient(p.patients)?.uuid));
 
       return {
-        awaiting, admitted
-      }
+        awaiting,
+        admitted,
+      };
     }
     return {
       awaiting: [],
-      admitted: []
-    }
+      admitted: [],
+    };
   }, [admittedPatientsData, awaitingDischargeEncounterBundle]);
 
   useEffect(() => {
@@ -96,8 +96,7 @@ const AdmissionsDashboard: React.FC = () => {
   const fetchData = () => {
     setLoading(true);
     getDashboardData();
-    getAdmissionRequests(),
-    getFacilityEncounterBills();
+    getAdmissionRequests(), getFacilityEncounterBills();
     // getAdmissionListData();
     getAwaitingDischargeEncounters();
     getAdmittedPatients();
@@ -122,22 +121,22 @@ const AdmissionsDashboard: React.FC = () => {
   };
   const getAwaitingDischargeEncounters = useCallback(async () => {
     const res = await getDichargedEncounters(maternityDischargeEncounterTypeUuid, locationUuid);
-    
+
     if (res && res.entry) {
-      const filteredEntries = res.entry.filter(entry => {
+      const filteredEntries = res.entry.filter((entry) => {
         const resource = entry.resource;
         return resource && resource.resourceType === 'Encounter' && activeVisitEncounterUuids.includes(resource.id);
       });
       setAwaitingDischargeEncounterBundle({
         ...res,
         entry: filteredEntries,
-        total: filteredEntries.length
+        total: filteredEntries.length,
       });
     } else {
       setAwaitingDischargeEncounterBundle(res);
     }
   }, [maternityDischargeEncounterTypeUuid, locationUuid, activeVisitEncounterUuids]);
-  
+
   const getDisachargedEncounters = useCallback(async () => {
     const res = await getDichargedEncounters(AdmissionEncounterTypeUuids.DISCHARGE_ENCOUNTER_TYPE_UUID, locationUuid);
     setDischargeEncounterBundle(res);
@@ -162,28 +161,28 @@ const AdmissionsDashboard: React.FC = () => {
     }
   }
   const getFacilityEncounterBills = async () => {
-    const billingFrom = dayjs().subtract(1, 'day').format('YYYY-MM-DD')
+    const billingFrom = dayjs().subtract(1, 'day').format('YYYY-MM-DD');
     const res = await fetchFacilityEncounterBills(locationUuid, maternityDischargeEncounterTypeUuid, billingFrom);
     setFacilityBills(res);
     setLoading(false);
   };
-  const getAdmissionRequests = async()=>{
-     const admissionRequests = await fetchFacilityAdmissionRequests(locationUuid);
-     if(admissionRequests){
-        setAdmissionRequests(admissionRequests);
-     }else{
-        setAdmissionRequests([]);
-     }
-  }
+  const getAdmissionRequests = async () => {
+    const admissionRequests = await fetchFacilityAdmissionRequests(locationUuid);
+    if (admissionRequests) {
+      setAdmissionRequests(admissionRequests);
+    } else {
+      setAdmissionRequests([]);
+    }
+  };
   const handleRefresh = () => {
     fetchData();
   };
   return (
     <>
       <div className={styles.admissionsLayout}>
-      <div className={styles.hwrSection}>
-        <FacilityAndWorkerSlot />
-      </div>
+        <div className={styles.hwrSection}>
+          <FacilityAndWorkerSlot />
+        </div>
         <div className={styles.headerSection}>
           <h4>Admissions</h4>
         </div>
@@ -211,13 +210,11 @@ const AdmissionsDashboard: React.FC = () => {
               <Tabs>
                 <TabList contained>
                   <Tab>Admission Requests</Tab>
-                  {
-                    /*
+                  {/*
 
                      <Tab>Bed Assignment Requests</Tab>
-                    */
-                  }
-                
+                    */}
+
                   <Tab>Admitted</Tab>
                   <Tab>Awaiting Discharge</Tab>
                   <Tab>Discharged</Tab>
@@ -234,25 +231,27 @@ const AdmissionsDashboard: React.FC = () => {
                       <></>
                     )}
                   </TabPanel>
-                  {
-                    /* 
+                  {/* 
                       <TabPanel>
                    <BedAssignmentRequestList locationUuid={locationUuid} refresh={handleRefresh}/>
                   </TabPanel>
 
-                    */
-                  }
-                
+                    */}
+
                   <TabPanel>
                     {admittedPatientsData ? (
-                       <AdmittedPatientsList admittedPatientsData={admitted} refresh={handleRefresh} />
+                      <AdmittedPatientsList admittedPatientsData={admitted} refresh={handleRefresh} />
                     ) : (
                       <></>
                     )}
                   </TabPanel>
                   <TabPanel>
                     {admittedPatientsData ? (
-                      <AwaitingDischargeList locationUuid={locationUuid} refresh={handleRefresh} facilityBills={facilityBills}/>
+                      <AwaitingDischargeList
+                        locationUuid={locationUuid}
+                        refresh={handleRefresh}
+                        facilityBills={facilityBills}
+                      />
                     ) : (
                       <></>
                     )}

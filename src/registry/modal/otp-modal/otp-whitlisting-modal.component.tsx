@@ -5,8 +5,26 @@ import {
   getOtpWhitelistRequests,
   getPatientContacts,
 } from '../../hie.resource';
-import { Button, ComboBox, FormLabel, InlineLoading, InlineNotification, Tag, TextArea, TextInput } from '@carbon/react';
-import { CheckmarkFilled, Chat, CloudUpload, DocumentPdf, Renew, SendAlt, TrashCan, WarningAlt } from '@carbon/react/icons';
+import {
+  Button,
+  ComboBox,
+  FormLabel,
+  InlineLoading,
+  InlineNotification,
+  Tag,
+  TextArea,
+  TextInput,
+} from '@carbon/react';
+import {
+  CheckmarkFilled,
+  Chat,
+  CloudUpload,
+  DocumentPdf,
+  Renew,
+  SendAlt,
+  TrashCan,
+  WarningAlt,
+} from '@carbon/react/icons';
 import { usePatient } from '../../../context/patient-context';
 import { useSession } from '@openmrs/esm-framework';
 import { type OTPWhitelistRequest } from '../../hie.types';
@@ -77,6 +95,8 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
   isMinor = false,
 }) => {
   const [whitelisted, setWhitelisted] = useState<boolean | null>(isMinor ? true : null);
+  const [isFaciltyWhitelisted, setFaciltyWhitelisted] = useState<boolean | null>(null);
+  const [siMinor, setIsMinor] = useState<boolean | null>(null);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [selectedReason, setSelectedReason] = useState('');
@@ -138,6 +158,23 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
     cancelPending();
   }, [crId, locationUuid]);
 
+  const checkAgeLessThan18years = (dateOfBirth: string): boolean => {
+    const birthDate = new Date(dateOfBirth);
+    const today = new Date();
+
+    let age = today.getFullYear() - birthDate.getFullYear();
+
+    const hasHadBirthdayThisYear =
+      today.getMonth() > birthDate.getMonth() ||
+      (today.getMonth() === birthDate.getMonth() && today.getDate() >= birthDate.getDate());
+
+    if (!hasHadBirthdayThisYear) {
+      age--;
+    }
+
+    return age < 18;
+  };
+
   const checkWhitelistStatus = async () => {
     try {
       setLoadingWhitelistStatus(true);
@@ -149,7 +186,11 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
 
       let isWhitelisted = res?.whitelistedForOTP ?? false;
 
-      if (!isWhitelisted) {
+      let isFacilityWhitelisted = res?.facilityBiometricsEnforced ?? false;
+
+      let isLessThan18years = checkAgeLessThan18years(res?.dateOfBirth);
+
+      if (!isWhitelisted && !isFacilityWhitelisted && !isLessThan18years) {
         // Not whitelisted by eligibility — look up any existing whitelist request.
         try {
           const list = await getOtpWhitelistRequests(patient!.id, locationUuid);
@@ -174,6 +215,8 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
       }
 
       setWhitelisted(isWhitelisted);
+      setFaciltyWhitelisted(isFacilityWhitelisted);
+      setIsMinor(isLessThan18years);
       onWhitelistStatusChange(isWhitelisted);
     } catch (error) {
       console.error(error);
@@ -299,8 +342,7 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
   };
 
   // Live form validity — the submit button is only enabled when this is true.
-  const isFormValid =
-    !validateFile(file) && Boolean(selectedReason) && reasonDescription.trim().length >= 10;
+  const isFormValid = !validateFile(file) && Boolean(selectedReason) && reasonDescription.trim().length >= 10;
 
   const handleWhitelistSubmit = async () => {
     const nextErrors = validateForm();
@@ -342,6 +384,12 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
     onSendClaimsOtp();
     setResendIn(RESEND_COOLDOWN);
   };
+
+  useEffect(() => {
+    if ((isMinor || isFaciltyWhitelisted || whitelisted) && !otpSent) {
+      onSendClaimsOtp();
+    }
+  }, [isMinor, isFaciltyWhitelisted, whitelisted, otpSent, onSendClaimsOtp]);
 
   const handleVerifyClaimsOtp = async () => {
     setOtpBusy('verify');
@@ -390,7 +438,7 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
 
   return (
     <div>
-      {whitelisted ? (
+      {isMinor || isFaciltyWhitelisted || whitelisted ? (
         consentGiven ? (
           <div className={styles.otpCard}>
             <span className={styles.successIcon}>

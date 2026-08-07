@@ -234,11 +234,11 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
 
         <SectionBlock number="7" title="Admission Details">
           <div className={styles['cs-field-grid']}>
-            <Field label="Status" value={caseSummary?.admissionDetails?.status} />
-            <Field label="Admission Date" value={formatDate(caseSummary?.admissionDetails?.admissionDate)} />
-            <Field label="Admission Diagnosis" value={caseSummary?.admissionDetails?.diagnosis} />
-            <Field label="Primary Doctor" value={caseSummary?.admissionDetails?.admittingDoctor} />
-            <Field label="Ward / Bed" value={caseSummary?.admissionDetails?.ward} />
+            <Field label="Status" value={caseSummary?.inpatientDetails?.status} />
+            <Field label="Admission Date" value={formatDate(caseSummary?.inpatientDetails?.admissionDate)} />
+            <Field label="Admission Diagnosis" value={caseSummary?.inpatientDetails?.diagnosis} />
+            <Field label="Primary Doctor" value={caseSummary?.inpatientDetails?.admittingDoctor} />
+            <Field label="Ward / Bed" value={caseSummary?.inpatientDetails?.ward} />
           </div>
         </SectionBlock>
 
