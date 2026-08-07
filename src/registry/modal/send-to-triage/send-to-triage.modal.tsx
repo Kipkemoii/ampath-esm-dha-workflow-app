@@ -26,6 +26,7 @@ import {
   useConfig,
   ExtensionSlot,
   Encounter,
+  useVisit,
 } from '@openmrs/esm-framework';
 import {
   type HieClient,
@@ -141,6 +142,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
   const [selectedDependant, setSelectedDependant] = useState<HieClient>();
   const [generatedOtp, setGeneratedOtp] = useState<string | null>(null);
   const [scanStatus, setScanStatus] = useState<string>();
+  const { activeVisit } = useVisit(selectedPatient?.uuid);
 
   const next = () => setStep((s) => s + 1);
   const previous = () => setStep((s) => s - 1);
@@ -741,6 +743,7 @@ const SendToTriageModal: React.FC<SendToTriageModalProps> = ({
       ],
       cashPoint: selectedCashPoint.uuid,
       patient: selectedPatient.uuid,
+      visit: activeVisit?.uuid ?? '',
       status: 'PENDING',
       payments: [],
     };

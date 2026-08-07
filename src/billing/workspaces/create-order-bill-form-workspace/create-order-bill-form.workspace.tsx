@@ -267,7 +267,8 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                 cashPoint: cashPointUuid,
                 patient: order?.patient?.uuid,
                 status: 'PENDING',
-                payments: []
+                payments: [],
+                visit: activeVisit?.uuid ?? '',
             };
             response = await createPatientBill(billPayload);
         }
