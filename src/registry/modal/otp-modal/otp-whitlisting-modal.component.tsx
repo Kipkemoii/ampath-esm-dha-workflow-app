@@ -386,7 +386,7 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
   };
 
   useEffect(() => {
-    if ((isMinor || isFaciltyWhitelisted || whitelisted) && !otpSent) {
+    if ((isMinor || !isFaciltyWhitelisted || whitelisted) && !otpSent) {
       onSendClaimsOtp();
     }
   }, [isMinor, isFaciltyWhitelisted, whitelisted, otpSent, onSendClaimsOtp]);
