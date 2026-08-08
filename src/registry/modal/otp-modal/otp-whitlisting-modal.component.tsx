@@ -186,11 +186,11 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
 
       let isWhitelisted = res?.whitelistedForOTP ?? false;
 
-      let isFacilityWhitelisted = res?.facilityBiometricsEnforced ?? false;
+      let facilityWhitelisted = res?.facilityBiometricsEnforced ?? false;
 
       let isLessThan18years = checkAgeLessThan18years(res?.dateOfBirth);
 
-      if (!isWhitelisted && isFacilityWhitelisted && !isLessThan18years) {
+      if (!isWhitelisted && facilityWhitelisted && !isLessThan18years) {
         // Not whitelisted by eligibility — look up any existing whitelist request.
         try {
           const list = await getOtpWhitelistRequests(patient!.id, locationUuid);
@@ -215,7 +215,9 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
       }
 
       setWhitelisted(isWhitelisted);
-      setFaciltyWhitelisted(isFacilityWhitelisted);
+      setFaciltyWhitelisted(facilityWhitelisted);
+      console.log('FACILITY STATUS: ', facilityWhitelisted);
+      console.log('FACILITY STATUS1: ', isFaciltyWhitelisted);
       setIsMinor(isLessThan18years);
       onWhitelistStatusChange(isWhitelisted);
     } catch (error) {
