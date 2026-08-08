@@ -216,8 +216,6 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
 
       setWhitelisted(isWhitelisted);
       setFaciltyWhitelisted(facilityWhitelisted);
-      console.log('FACILITY STATUS: ', facilityWhitelisted);
-      console.log('FACILITY STATUS1: ', isFaciltyWhitelisted);
       setIsMinor(isLessThan18years);
       onWhitelistStatusChange(isWhitelisted);
     } catch (error) {
@@ -386,12 +384,6 @@ const OTPWhitlistingModal: React.FC<OTPWhitlistingModalProps> = ({
     onSendClaimsOtp();
     setResendIn(RESEND_COOLDOWN);
   };
-
-  useEffect(() => {
-    if ((isMinor || !isFaciltyWhitelisted || whitelisted) && !otpSent) {
-      onSendClaimsOtp();
-    }
-  }, [isMinor, isFaciltyWhitelisted, whitelisted, otpSent, onSendClaimsOtp]);
 
   const handleVerifyClaimsOtp = async () => {
     setOtpBusy('verify');
