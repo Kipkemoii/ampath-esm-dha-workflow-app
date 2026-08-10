@@ -17,7 +17,7 @@ import { showSnackbar } from '@openmrs/esm-styleguide';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
-import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis,type AmrsMaternityDiagnosisDto } from '../../../types';
+import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, type AmrsMaternityDiagnosisDto } from '../../../types';
 import { resolveConsentTokenFromBillLines } from '../../v2/patient-bill-details/payment-mode';
 interface patientBillDetailsProps {
   patientUuid: string;
@@ -32,14 +32,13 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return patientBillDetails[0] ?? null;
   }, [patientBillDetails]);
   const billStatus = useMemo(() => getBillStatus(patientBillDetails), [patientBillDetails]);
-   const [visitDiagnosis, setVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
-    const [maternityDiagnosis, setMaternityDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
-    const [encounterDiagnosis, setEncounterDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
-    const patientAmrsVisitDiagnosis = useMemo(
-      () => [...visitDiagnosis, ...maternityDiagnosis, ...encounterDiagnosis],
-      [visitDiagnosis, maternityDiagnosis, encounterDiagnosis],
-    );
-
+  const [visitDiagnosis, setVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+  const [maternityDiagnosis, setMaternityDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+  const [encounterDiagnosis, setEncounterDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
+  const patientAmrsVisitDiagnosis = useMemo(
+    () => [...visitDiagnosis, ...maternityDiagnosis, ...encounterDiagnosis],
+    [visitDiagnosis, maternityDiagnosis, encounterDiagnosis],
+  );
 
   const [visitDiagnosisLoading, setVisitDiagnosisLoading] = useState<boolean>(true);
   const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
@@ -107,7 +106,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
         return s.paid_status === 'POSTED';
       });
       if (hasPostedBill) {
-        return 'PARTIALLY PAID'
+        return 'PARTIALLY PAID';
       }
       const hasPendingBill = patientBillDetails.some((s) => {
         return s.paid_status === 'PENDING';
@@ -121,40 +120,40 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     }
   }
   async function getPatientAmrsVisitDiagnosis() {
-      setVisitDiagnosisLoading(true);
-      const amrsVisitDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
-      try {
-        const resp = await fetchPatientDiagnosis(amrsVisitDiagnosisPayload);
-        setVisitDiagnosis(resp ?? []);
-      } catch (error) {
-        showSnackbar({
-          title: 'Error fetching patient diagnosis',
-          kind: 'error',
-          subtitle: 'An error occurred while fetching the patient diagnosis',
-        });
-      } finally {
-        setVisitDiagnosisLoading(false);
-      }
+    setVisitDiagnosisLoading(true);
+    const amrsVisitDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
+    try {
+      const resp = await fetchPatientDiagnosis(amrsVisitDiagnosisPayload);
+      setVisitDiagnosis(resp ?? []);
+    } catch (error) {
+      showSnackbar({
+        title: 'Error fetching patient diagnosis',
+        kind: 'error',
+        subtitle: 'An error occurred while fetching the patient diagnosis',
+      });
+    } finally {
+      setVisitDiagnosisLoading(false);
     }
-    async function getPatientAmrsMaternityDiagnosis() {
-      setMaternityDiagnosisLoading(true);
-      const amrsMaternityDiagnosisPayload = getPatientAmrsMaternityDiagnosisPayload();
-      try {
-        const resp: any = await fetchMaternityDiagnosis(amrsMaternityDiagnosisPayload);
-        const results = (resp ?? [])
-          .filter((r) => r?.uuid != null)
-          .map((v) => ({ ...v, practitioner_identifier_type: 'National ID' }));
-        setMaternityDiagnosis(results);
-      } catch (error) {
-        showSnackbar({
-          title: 'Error fetching patient maternity diagnosis',
-          kind: 'error',
-          subtitle: 'An error occurred while fetching the patient maternity diagnosis',
-        });
-      } finally {
-        setMaternityDiagnosisLoading(false);
-      }
+  }
+  async function getPatientAmrsMaternityDiagnosis() {
+    setMaternityDiagnosisLoading(true);
+    const amrsMaternityDiagnosisPayload = getPatientAmrsMaternityDiagnosisPayload();
+    try {
+      const resp: any = await fetchMaternityDiagnosis(amrsMaternityDiagnosisPayload);
+      const results = (resp ?? [])
+        .filter((r) => r?.uuid != null)
+        .map((v) => ({ ...v, practitioner_identifier_type: 'National ID' }));
+      setMaternityDiagnosis(results);
+    } catch (error) {
+      showSnackbar({
+        title: 'Error fetching patient maternity diagnosis',
+        kind: 'error',
+        subtitle: 'An error occurred while fetching the patient maternity diagnosis',
+      });
+    } finally {
+      setMaternityDiagnosisLoading(false);
     }
+  }
   async function getPatientAmrsEncounterDiagnosis() {
     setEncounterDiagnosisLoading(true);
     const amrsMaternityDiagnosisPayload = getPatientAmrsVisitDiagnosisPayload();
@@ -176,13 +175,13 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return {
       patientUuid: patientUuid,
       visitDate: billingDate,
-      locationUuid: locationUuid
+      locationUuid: locationUuid,
     };
   }
   function getPatientAmrsMaternityDiagnosisPayload(): AmrsMaternityDiagnosisDto {
     return {
       patientUuid: patientUuid,
-      billingDate: billingDate
+      billingDate: billingDate,
     };
   }
   return (
@@ -237,6 +236,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                       patientBillDetails={patientBillDetails}
                       consentToken={consentToken}
                       onBillDetailsChange={getPatientBillDetails}
+                      billingDate={billingDate}
                     />
                   </>
                 ) : (

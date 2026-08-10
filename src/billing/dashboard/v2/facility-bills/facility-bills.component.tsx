@@ -265,7 +265,6 @@ const FacilityBills: React.FC<facilityBillsProps> = ({
     const facilityBillsPayload = generateFacilityBillsPayload();
     try {
       const data = await fetchFacilityBills(facilityBillsPayload);
-      console.log('FACILITY BILLS', data);
       setFacilityBills(data ?? []);
     } catch (error) {
       showSnackbar({
@@ -314,15 +313,17 @@ const FacilityBills: React.FC<facilityBillsProps> = ({
   // const shaBills = useMemo(() => (facilityBills ?? []).filter((fb) => paymentMode(fb) === 'SHA'), [facilityBills]);
   const shaBills = useMemo(
     () =>
-      (facilityBills ?? []).filter((bill) => bill.bill_items.some((item) => item.price_name?.toUpperCase() === 'SHA')),
+      (facilityBills ?? []).filter((bill) =>
+        bill?.bill_items?.some((item) => item.price_name?.toUpperCase() === 'SHA'),
+      ),
     [facilityBills],
   );
   const cashBills = useMemo(
     () =>
       (facilityBills ?? []).filter((bill) => {
-        const hasSha = bill.bill_items.some((item) => item.price_name?.toUpperCase() === 'SHA');
+        const hasSha = bill?.bill_items?.some((item) => item.price_name?.toUpperCase() === 'SHA');
 
-        const hasCash = bill.bill_items.some((item) => item.price_name?.toUpperCase() === 'CASH');
+        const hasCash = bill?.bill_items?.some((item) => item.price_name?.toUpperCase() === 'CASH');
 
         return hasCash && !hasSha;
       }),

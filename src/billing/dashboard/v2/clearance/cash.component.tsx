@@ -63,15 +63,15 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     cashModeUuid: string,
   ) => {
     if ('line_item_date' in visit) {
-      closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
+      // closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
 
-      setTimeout(() => {
-        launchWorkspace('pay-cash-workspace', {
-          lineItems: (visit as PendingBillLineItems).pending_line_items,
-          billUuid: billUuid,
-          cashModeUuid: cashModeUuid,
-        });
-      }, 50);
+      // setTimeout(() => {
+      launchWorkspace('pay-cash-workspace', {
+        lineItems: (visit as PendingBillLineItems).pending_line_items,
+        billUuid: billUuid,
+        cashModeUuid: cashModeUuid,
+      });
+      // }, 50);
       return;
     }
     setPatientUuid(patientUuid);

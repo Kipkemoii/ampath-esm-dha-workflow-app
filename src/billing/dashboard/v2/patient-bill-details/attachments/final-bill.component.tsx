@@ -32,8 +32,8 @@ const FinalBillComponent = forwardRef<HTMLDivElement, FinalBillComponentProps>((
   // an `items` array. Normalise to a list so the table always has a consistent shape,
   // without silently dropping data either caller might send.
   const items =
-    Array.isArray(bill.items) && bill.items.length > 0
-      ? bill.items
+    Array.isArray(bill) && bill.length > 0
+      ? bill
       : [
           {
             billable_service: bill.billable_service,

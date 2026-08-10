@@ -27,6 +27,7 @@ interface claimInterventionDetailsProps {
   visitUuid: string;
   canSwitchIntervention?: boolean;
   onSwitchSuccess?: () => void;
+  billingDate: string;
 }
 
 const isActiveIntervention = (iv: VisitIntervention) => (iv.workflow_state ?? '').toUpperCase() === 'ACTIVE';
@@ -38,6 +39,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   visitUuid,
   canSwitchIntervention = false,
   onSwitchSuccess,
+  billingDate,
 }) => {
   const session = useSession();
   const locationUuid = session?.sessionLocation?.uuid;
@@ -61,6 +63,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       claimInterventions: ci,
       bill: patientBillDetails,
       patientUuid: patientBillDetails?.patient_uuid,
+      billingDate: billingDate,
     });
   };
 
@@ -75,7 +78,9 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     canActOnIntervention(intervention) && !hasBlockingPreauth(intervention);
 
   const canRaisePreauthFor = (intervention: VisitIntervention) => {
-    return canActOnIntervention(intervention) && Boolean(intervention.needs_preauth) && !hasBlockingPreauth(intervention);
+    return (
+      canActOnIntervention(intervention) && Boolean(intervention.needs_preauth) && !hasBlockingPreauth(intervention)
+    );
   };
 
   const isResubmitPreauth = (intervention: VisitIntervention) =>

@@ -4,7 +4,7 @@ import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/e
 import { ApplicableDocumentType, type VisitIntervention } from '../../types';
 
 import styles from './attachments.scss';
-import { Button, Form, Modal, Tag } from '@carbon/react';
+import { Button, Form, InlineLoading, Modal, Tag } from '@carbon/react';
 import { useTranslation } from 'react-i18next';
 import { type GeneratedDocument } from './type';
 import { DocumentPdf, TrashCan, View } from '@carbon/react/icons';
@@ -33,10 +33,14 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   bill,
   consentToken,
   patientUuid,
+  billingDate,
 }) => {
+  console.log('BILL GENERATE: ', bill);
+
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [generatingDocumentId, setGeneratingDocumentId] = useState<string | null>(null);
 
   const [documents, setDocuments] = useState<GeneratedDocument[]>(() => {
     const uniqueDocumentTypes = [...new Set(claimInterventions?.applicable_document_types ?? [])];
@@ -165,6 +169,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   };
 
   const generateDocument = async (document: GeneratedDocument) => {
+    setGeneratingDocumentId(document.id);
     let element: HTMLDivElement | null = null;
 
     switch (document.name) {
@@ -230,6 +235,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
           : d,
       ),
     );
+    setGeneratingDocumentId(null);
   };
 
   const generatedCount = documents.filter((d) => d.generated).length;
@@ -272,8 +278,13 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
               </div>
 
               {!document.generated ? (
-                <Button kind="ghost" size="sm" onClick={() => generateDocument(document)}>
-                  Generate
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  onClick={() => generateDocument(document)}
+                  disabled={generatingDocumentId !== null}
+                >
+                  {generatingDocumentId === document.id ? <InlineLoading description="Generating…" /> : 'Generate'}
                 </Button>
               ) : (
                 <div
@@ -349,7 +360,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
         <FinalBillComponent ref={finalBillRef} bill={bill} />
-        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} />
+        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
       </div>
