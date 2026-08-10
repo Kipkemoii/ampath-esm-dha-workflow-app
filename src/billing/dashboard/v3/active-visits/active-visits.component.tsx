@@ -212,7 +212,7 @@ const ActiveVisits: React.FC<{ date?: string, onDateChange?: (value: string) => 
                                                         size="sm"
                                                         onClick={() => handleRowClick(row)}
                                                     >
-                                                        Initiate SHA claim
+                                                        Start SHA visit
                                                     </Button>
                                                 </TableCell>
                                             );

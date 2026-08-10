@@ -5,6 +5,7 @@ import {
   type PatientFacilityBillDetails,
   type PatientPaymentsDto,
   type PatientPayment,
+  ClaimsVisit,
 } from '../types';
 import {
   fetchMaternityDiagnosis,
@@ -39,6 +40,8 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     () => [...visitDiagnosis, ...maternityDiagnosis, ...encounterDiagnosis],
     [visitDiagnosis, maternityDiagnosis, encounterDiagnosis],
   );
+  const [claimsVisit, setClaimsVisit] = useState<ClaimsVisit>();
+
 
   const [visitDiagnosisLoading, setVisitDiagnosisLoading] = useState<boolean>(true);
   const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
@@ -184,6 +187,11 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
       billingDate: billingDate,
     };
   }
+  function onLoadingClaimVisit(claimVisit: ClaimsVisit) {
+    if (claimVisit) {
+      setClaimsVisit(claimVisit);
+    }
+  }
   return (
     <>
       <div className={styles.bdLayout}>
@@ -225,6 +233,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                     amrsVisitDiagnosis={patientAmrsVisitDiagnosis}
                     locationUuid={locationUuid}
                     consentToken={consentToken}
+                    claimsVisit={claimsVisit}
                   />
                 )}
               </TabPanel>
@@ -237,6 +246,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                       consentToken={consentToken}
                       onBillDetailsChange={getPatientBillDetails}
                       billingDate={billingDate}
+                      onLoadingClaimVisit={onLoadingClaimVisit}
                     />
                   </>
                 ) : (
