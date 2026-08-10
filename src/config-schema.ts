@@ -169,6 +169,10 @@ export const configSchema = {
     _type: Type.ConceptUuid,
     _default: "1be55f87-2931-41e0-89c8-8f5652c7c303"
   },
+  shaVariantPaymentModeUuids: {
+    _type: Type.Array,
+    _default: ["1be55f87-2931-41e0-89c8-8f5652c7c303", "18763f02-16f7-4dfc-aff9-15b53eea20b2", "783ddd3c-52bb-489a-9b39-937eccc6c55c"]
+  },
   cashPaymentModeUuid: {
     _type: Type.ConceptUuid,
     _default: "63eff7a4-6f82-43c4-a333-dbcc58fe9f74"
@@ -178,7 +182,7 @@ export const configSchema = {
     _default: ["SHA-08-SC-02"]
   },
   startClaimVisitLocationAttributeUuid: {
-     _type: Type.String,
+    _type: Type.String,
     _default: "49df844d-79c0-40fc-8ca9-c27d6391f647"
   },
   pmfSchemeNames: {
@@ -246,6 +250,7 @@ export interface ConfigObject {
   maternityDischargeFormUuid: string;
   maternityDischargeEncounterTypeUuid: string;
   shaPaymentModeUuid: string;
+  shaVariantPaymentModeUuids: Array<string>;
   cashPaymentModeUuid: string;
   subBenefitCodesWithHiddenClaimWidget: Array<string>;
   startClaimVisitLocationAttributeUuid: string;

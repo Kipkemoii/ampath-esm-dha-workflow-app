@@ -142,7 +142,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     outPatientCareSettingUuid,
     orderEncounterTypeUuid,
     registrationServicequeues,
-    shaPaymentModeUuid,
+    shaVariantPaymentModeUuids
   } = useConfig<ConfigObject>();
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
@@ -609,7 +609,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       return false;
     }
     if (paymentMode.trim().toUpperCase() === 'SHA') {
-      return selectedPaymentMode === shaPaymentModeUuid;
+      return shaVariantPaymentModeUuids.includes(selectedPaymentMode);
     }
     return false;
   }
