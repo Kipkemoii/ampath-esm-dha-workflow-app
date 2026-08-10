@@ -12,15 +12,23 @@ interface patientClaimDetailsProps {
   locationUuid: string;
   patientBillDetails: PatientFacilityBillDetails[];
   onBillDetailsChange?: () => void;
+  onLoadingClaimVisit?: (claimVisit: ClaimsVisit) => void;
 }
 const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
   consentToken,
   locationUuid,
   patientBillDetails,
   onBillDetailsChange,
+  onLoadingClaimVisit
 }) => {
   const [patientBill, setPatientBill] = useState<PatientFacilityBillDetails>();
   const { claimVisit, isLoading, isValidating } = useProviderClaimPreview(consentToken, locationUuid);
+
+  useEffect(() => {
+    if (claimVisit && !isLoading && !isValidating) {
+      onLoadingClaimVisit(claimVisit);
+    }
+  }, [claimVisit, isLoading, isValidating])
 
   useEffect(() => {
     if (consentToken && locationUuid) {

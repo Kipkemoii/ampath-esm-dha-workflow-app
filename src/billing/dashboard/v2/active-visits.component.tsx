@@ -73,7 +73,7 @@
 //                       kind="primary"
 //                       onClick={() => handleInitiateClaim(visit.person_uuid, visit.visit_type_uuid, visit.visit_uuid)}
 //                     >
-//                       Initiate SHA Claim
+//                       Start SHA visit
 //                     </Button>
 //                   )}
 //                 </TableCell>

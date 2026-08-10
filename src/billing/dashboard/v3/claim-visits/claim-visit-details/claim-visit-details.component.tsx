@@ -17,6 +17,7 @@ import { VisitType } from '../../../../../claims';
 import { canEditClaimContent } from '../../../v2/claim-statuses';
 import { interventionHasBlockingPreauth, usePreauthPreview } from '../../../../../claims/claims.resource';
 import PayerPreviewTile from '../payer-preview/payer-preview-tile.component';
+import { Renew } from '@carbon/react/icons';
 
 interface claimVisitDetailsProps {
   claimsVisit: ClaimsVisit;
@@ -168,6 +169,10 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
     });
   };
 
+  const handleRefresh = () => {
+    invalidateProviderClaimPreview();
+  }
+
   return (
     <>
       <div className={styles.cvLayout}>
@@ -201,7 +206,12 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
         <Tile
           id="provider-preview"
         >
-          <dd>Provider preview</dd>
+          <div className={styles.tileHeader}>
+            <dd>Provider preview</dd>
+            <Button size="sm" kind="ghost" renderIcon={Renew} onClick={handleRefresh} disabled={claimRefreshing}>
+              Refresh
+            </Button>
+          </div>
           <br />
           <br />
           <dl className={styles.detailsGrid}>

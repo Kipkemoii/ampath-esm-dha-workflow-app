@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
-import { type PatientPayment, type PatientFacilityBillDetails } from '../../types';
+import React, { useEffect, useMemo, useState } from 'react';
+import { type PatientPayment, type PatientFacilityBillDetails, ClaimsVisit } from '../../types';
 import styles from './bill-details.scss';
-import { OverflowMenu, OverflowMenuItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import { Button, OverflowMenu, OverflowMenuItem, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
 import { formatDate, parseDate } from '@openmrs/esm-framework';
 import BillItemPaymentModal from '../modals/bill-item-payment/bill-item-payment.modal';
 import AddClaimLineModal from '../modals/add-claim-line/add-claim-line.modal';
@@ -15,50 +15,63 @@ interface billDetailsProps {
   amrsVisitDiagnosis: AmrsVisitDiagnosis[];
   consentToken: string;
   locationUuid: string;
+  claimsVisit: ClaimsVisit;
 }
-const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPayments, amrsVisitDiagnosis, consentToken, locationUuid }) => {
-  const [showPaymentModal,setShowPaymentModal] = useState<boolean>(false);
-  const [showAddClaimLineModal,setShowAddClaimLineModal] = useState<boolean>(false);
-  const [selectedBillItem,setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
-  const setDiagnosisInterventionCode = useMemo(()=>getConsultationBillIntervantionCode(),[patientBillDetails]);
+const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPayments, amrsVisitDiagnosis, consentToken, locationUuid, claimsVisit }) => {
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
+  const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
+  const setDiagnosisInterventionCode = useMemo(() => getConsultationBillIntervantionCode(), [patientBillDetails]);
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
-  
+
   if (!patientBillDetails && !patientPayments) {
     return <>No Data</>;
   }
-  function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails){
-      setSelectedBillItem(patientBillDetail);
-      setShowPaymentModal(true);
+  function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails) {
+    setSelectedBillItem(patientBillDetail);
+    setShowPaymentModal(true);
   }
-  function handleClosePayModal(){
-     setShowPaymentModal(false);
+  function handleClosePayModal() {
+    setShowPaymentModal(false);
   }
-  function handleSuccessfullPayment(){
+  function handleSuccessfullPayment() {
     handleClosePayModal();
   }
-  function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails){
+  function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails) {
     setSelectedBillItem(patientBillDetail);
     setShowAddClaimLineModal(true);
   }
-  function handleCloseAddClaimItemModal(){
-     setShowAddClaimLineModal(false);
+  function handleCloseAddClaimItemModal() {
+    setShowAddClaimLineModal(false);
   }
-  function getConsultationBillIntervantionCode(){
-    if(!patientBillDetails || patientBillDetails.length === 0){
-        return '';
+  function getConsultationBillIntervantionCode() {
+    if (!patientBillDetails || patientBillDetails.length === 0) {
+      return '';
     }
-     const consultationBill = patientBillDetails.find((b)=>{
-        return b.billable_service.toLocaleLowerCase().trim().includes('consultation');
-     });
-    if(consultationBill){
-       return consultationBill.intervention_code;
-    }else{
+    const consultationBill = patientBillDetails.find((b) => {
+      return b.billable_service.toLocaleLowerCase().trim().includes('consultation');
+    });
+    if (consultationBill) {
+      return consultationBill.intervention_code;
+    } else {
       return patientBillDetails[0].intervention_code ?? '';
     }
   }
-  function onSuccess () {
+  function onSuccess() {
     handleCloseAddClaimItemModal();
     invalidateProviderClaimPreview();
+  }
+  function interventionAddedToClaimLine(b: PatientFacilityBillDetails) {
+    if (b.intervention_code && b.has_claim_line === 0) {
+      if (claimsVisit && claimsVisit.invoices) {
+        const lineExists = claimsVisit.invoices.some((inv) =>
+          inv.lines.some(l => l.intervention_code === b.intervention_code)
+        );
+        return lineExists;
+      }
+      return false;
+    }
+    return true;
   }
   return (
     <>
@@ -97,18 +110,34 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
                               <TableCell>{b.order_no ?? ''}</TableCell>
                               <TableCell>{b.service_type ?? ''}</TableCell>
                               <TableCell>{b.payment_scheme}</TableCell>
-                              <TableCell>{b.payment_status}</TableCell>
+                              <TableCell>{b.paid_status}</TableCell>
                               <TableCell>{b.item_quantity}</TableCell>
                               <TableCell>Ksh {b.item_total_price}</TableCell>
                               <TableCell>
-                                <OverflowMenu aria-label="overflow-menu">
+                                {/* <OverflowMenu aria-label="overflow-menu">
                                   {
-                                    (b.payment_status !== 'PAID') && <OverflowMenuItem itemText="Pay" onClick={() => handleBillItemPayment(b)} />
+                                    (b.paid_status !== 'PAID' && !b.intervention_code) && <OverflowMenuItem itemText="Pay" onClick={() => handleBillItemPayment(b)} />
                                   }
                                   {
                                     (b.intervention_code && b.has_claim_line === 0) && <OverflowMenuItem itemText="Add Claim Line" onClick={() => handleClaimLineAddition(b)} />
                                   }
-                              </OverflowMenu>
+                                </OverflowMenu> */}
+                                {
+                                  (b.paid_status !== 'PAID' && !b.intervention_code) && <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>Pay</Button>
+                                }
+                                {
+                                  b.intervention_code ?
+                                    (
+                                      claimsVisit ?
+                                        (
+                                          claimsVisit.workflow_state === 'DRAFT' ?
+                                            (!interventionAddedToClaimLine(b) && <Button size="sm" kind="tertiary" onClick={() => handleClaimLineAddition(b)}>Add Claim Line</Button>)
+                                            : <Tag>{claimsVisit.workflow_state}</Tag>
+                                        )
+                                        : <></>
+                                    )
+                                    : <></>
+                                }
                               </TableCell>
                             </TableRow>
                           </>
@@ -165,37 +194,38 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
         )}
         {
           amrsVisitDiagnosis.length > 0 ? (<>
-           <div className={styles.billRow}>
+            <div className={styles.billRow}>
               <div>
                 <h6>Patient Dignosis</h6>
               </div>
               <div>
-             <VisitDiagnosisDetails 
-              amrsVisitDiagnosis={amrsVisitDiagnosis}
-              consentToken={consentToken}
-              locationUuid={locationUuid}
-              interventionCode={setDiagnosisInterventionCode}
-             />
-             </div>
-          </div>
-          
-          </>):(<></>)
+                <VisitDiagnosisDetails
+                  amrsVisitDiagnosis={amrsVisitDiagnosis}
+                  consentToken={consentToken}
+                  locationUuid={locationUuid}
+                  interventionCode={setDiagnosisInterventionCode}
+                  claimsVisit={claimsVisit}
+                />
+              </div>
+            </div>
+
+          </>) : (<></>)
         }
         {
-          (showPaymentModal && selectedBillItem) && <BillItemPaymentModal 
-          open={showPaymentModal} 
-          billItem={selectedBillItem}
-          onClose={handleClosePayModal} 
-          onPay={handleSuccessfullPayment}/>
+          (showPaymentModal && selectedBillItem) && <BillItemPaymentModal
+            open={showPaymentModal}
+            billItem={selectedBillItem}
+            onClose={handleClosePayModal}
+            onPay={handleSuccessfullPayment} />
         }
         {
-          (showAddClaimLineModal && selectedBillItem) && <AddClaimLineModal 
-           open={showAddClaimLineModal}
-           billItem={selectedBillItem}
-           onClose={handleCloseAddClaimItemModal}
-           onSuccess={onSuccess}
-           locationUuid={locationUuid}
-           consentToken={consentToken}
+          (showAddClaimLineModal && selectedBillItem) && <AddClaimLineModal
+            open={showAddClaimLineModal}
+            billItem={selectedBillItem}
+            onClose={handleCloseAddClaimItemModal}
+            onSuccess={onSuccess}
+            locationUuid={locationUuid}
+            consentToken={consentToken}
           />
         }
       </div>
