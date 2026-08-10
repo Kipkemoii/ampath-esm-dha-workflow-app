@@ -15,7 +15,21 @@ import {
   fetchPatientFacilityBillDetails,
 } from '../../../billing-claims.resource';
 import { showSnackbar } from '@openmrs/esm-styleguide';
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import {
+  Column,
+  Grid,
+  StructuredListBody,
+  StructuredListCell,
+  StructuredListRow,
+  StructuredListWrapper,
+  Tab,
+  TabList,
+  TabPanel,
+  TabPanels,
+  Tabs,
+  Tag,
+  Tile,
+} from '@carbon/react';
 import BillDetails from './bill-details/bill-details';
 import PatientClaimDetails from './claim-details/patient-claim-details.component';
 import { type AmrsVisitDiagnosisDto, type AmrsVisitDiagnosis, type AmrsMaternityDiagnosisDto } from '../../../types';
@@ -33,6 +47,22 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return patientBillDetails[0] ?? null;
   }, [patientBillDetails]);
   const billStatus = useMemo(() => getBillStatus(patientBillDetails), [patientBillDetails]);
+  const billTotalAmount = useMemo(
+    () => patientBillDetails.reduce((sum, item) => sum + Number(item.item_total_price ?? 0), 0),
+    [patientBillDetails],
+  );
+  const billPaidAmount = useMemo(
+    () => patientBillPayments.reduce((sum, payment) => sum + Number(payment.amount ?? 0), 0),
+    [patientBillPayments],
+  );
+  const billBalance = useMemo(() => Math.max(0, billTotalAmount - billPaidAmount), [billTotalAmount, billPaidAmount]);
+  const amountClaimed = useMemo(
+    () =>
+      patientBillDetails
+        .filter((item) => Boolean(item.intervention_code?.trim()))
+        .reduce((sum, item) => sum + Number(item.item_total_price ?? 0), 0),
+    [patientBillDetails],
+  );
   const [visitDiagnosis, setVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
   const [maternityDiagnosis, setMaternityDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
   const [encounterDiagnosis, setEncounterDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
@@ -192,32 +222,81 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
       setClaimsVisit(claimVisit);
     }
   }
+
+  function formatCurrency(value: number) {
+    return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+  }
+
+  function getBillStatusTagType(status: string) {
+    if (status === 'PAID') {
+      return 'green';
+    }
+    if (status === 'PENDING') {
+      return 'red';
+    }
+    return 'cool-gray';
+  }
+
   return (
     <>
       <div className={styles.bdLayout}>
-        <div className={styles.bdHeader}>
-          {facilityPatientDetail ? (
-            <>
-              <div className={styles.pdCol}>
-                <strong>Name:</strong> {facilityPatientDetail.patient_name}
+        <Grid condensed className={styles.summaryGrid}>
+          <Column sm={4} md={5} lg={10} className={styles.summaryColumn}>
+            <Tile className={styles.summaryTile}>
+              <h6 className={styles.summaryHeading}>Bill details</h6>
+              {facilityPatientDetail ? (
+                <Grid condensed className={styles.patientSummaryGrid}>
+                  <Column sm={4} md={4} lg={8} className={styles.pdCol}>
+                    <span className={styles.fieldLabel}>Name</span>
+                    <span>{facilityPatientDetail.patient_name}</span>
+                  </Column>
+                  <Column sm={4} md={4} lg={8} className={styles.pdCol}>
+                    <span className={styles.fieldLabel}>CR</span>
+                    <span>{facilityPatientDetail.cr_no}</span>
+                  </Column>
+                  <Column sm={4} md={4} lg={8} className={styles.pdCol}>
+                    <span className={styles.fieldLabel}>Bill date</span>
+                    <span>{facilityPatientDetail.bill_date}</span>
+                  </Column>
+                  <Column sm={4} md={4} lg={8} className={styles.pdCol}>
+                    <span className={styles.fieldLabel}>CashPoint</span>
+                    <span>{facilityPatientDetail.cash_point}</span>
+                  </Column>
+                </Grid>
+              ) : null}
+            </Tile>
+          </Column>
+          <Column sm={4} md={3} lg={6} className={styles.summaryColumn}>
+            <Tile className={styles.summaryTile}>
+              <h6 className={styles.summaryHeading}>Bill status</h6>
+              <div className={styles.statusTagRow}>
+                <Tag type={getBillStatusTagType(billStatus)}>{billStatus ?? ''}</Tag>
               </div>
-              <div className={styles.pdCol}>
-                <strong>CashPoint:</strong> {facilityPatientDetail.cash_point}
-              </div>
-              <div className={styles.pdCol}>
-                <strong>Bill Date:</strong> {facilityPatientDetail.bill_date}
-              </div>
-              <div className={styles.pdCol}>
-                <strong>CR:</strong> {facilityPatientDetail.cr_no}
-              </div>
-              <div className={styles.pdCol}>
-                <strong>Bill Status:</strong> {billStatus ?? ''}
-              </div>
-            </>
-          ) : (
-            <></>
-          )}
-        </div>
+              <StructuredListWrapper className={styles.amountList} isCondensed>
+                <StructuredListBody>
+                  <StructuredListRow className={styles.amountRow}>
+                    <StructuredListCell className={styles.fieldLabel}>Total amount</StructuredListCell>
+                    <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(billTotalAmount)}</StructuredListCell>
+                  </StructuredListRow>
+                  {amountClaimed > 0 && (
+                    <StructuredListRow className={styles.amountRow}>
+                      <StructuredListCell className={styles.fieldLabel}>Claim amount</StructuredListCell>
+                      <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(amountClaimed)}</StructuredListCell>
+                    </StructuredListRow>
+                  )}
+                  <StructuredListRow className={styles.amountRow}>
+                    <StructuredListCell className={styles.fieldLabel}>Amount paid</StructuredListCell>
+                    <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(billPaidAmount)}</StructuredListCell>
+                  </StructuredListRow>
+                  <StructuredListRow className={styles.balanceRow}>
+                    <StructuredListCell className={styles.balanceLabel}>Balance</StructuredListCell>
+                    <StructuredListCell className={styles.balanceValue}>Ksh {formatCurrency(billBalance)}</StructuredListCell>
+                  </StructuredListRow>
+                </StructuredListBody>
+              </StructuredListWrapper>
+            </Tile>
+          </Column>
+        </Grid>
         <div>
           <Tabs>
             <TabList scrollDebounceWait={200}>

@@ -1,20 +1,85 @@
-.bdLayout{
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+
+.bdLayout {
     display: flex;
     flex-direction: column;
     width: 100%;
-    padding: 15px 15px;
-    row-gap: 5px;
+    padding: layout.$spacing-05;
+    row-gap: layout.$spacing-03;
 }
 
-.bdHeader{
-    display: flex;
-    flex-direction: row;
-    column-gap: 10px;
-    padding: 15px 15px;
-    background: #f4f4f4;
-    flex-wrap: wrap;
+.summaryGrid {
+    align-items: stretch;
+    margin: 0;
+    padding: layout.$spacing-06;
 }
-.pdCol{
-    padding: 5px 5px;
-    width: 30%;
+
+.summaryColumn {
+    display: flex;
+}
+
+.summaryTile {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    gap: layout.$spacing-04;
+    padding: layout.$spacing-05;
+}
+
+.patientSummaryGrid {
+    row-gap: layout.$spacing-05;
+}
+
+.pdCol {
+    display: flex;
+    flex-direction: column;
+    gap: layout.$spacing-02;
+    min-width: 0;
+}
+
+.summaryHeading {
+    @include type.type-style('heading-compact-01');
+    text-transform: uppercase;
+    margin: 0;
+}
+
+.fieldLabel {
+    @include type.type-style('label-01');
+    color: colors.$gray-70;
+}
+
+.statusTagRow {
+    padding-top: layout.$spacing-02;
+}
+
+.amountList {
+    margin-top: layout.$spacing-02;
+}
+
+.amountRow {
+    border-bottom: 1px solid colors.$gray-20;
+}
+
+.amountValue {
+    @include type.type-style('heading-compact-01');
+}
+
+.balanceRow {
+    border-bottom: none;
+}
+
+.balanceLabel {
+    @include type.type-style('heading-compact-01');
+}
+
+.balanceValue {
+    @include type.type-style('heading-compact-02');
+}
+
+.amountValue,
+.balanceValue {
+    text-align: right;
+    white-space: nowrap;
 }
