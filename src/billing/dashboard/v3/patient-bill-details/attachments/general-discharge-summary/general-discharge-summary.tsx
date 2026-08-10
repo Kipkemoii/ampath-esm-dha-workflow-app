@@ -154,28 +154,32 @@ const GeneralDischargeSummary = forwardRef<HTMLDivElement, GeneralDischargeSumma
 
           <SectionBlock number="2" title="Admission Details">
             <div className={styles['ds-field-grid']}>
-              <Field label="Admission Date" value={dischargeSummary?.admissionDetails?.admissionDate} />
-              <Field label="Discharge Date" value={dischargeSummary?.admissionDetails?.dischargeDate} />
-              <Field label="Status" value={dischargeSummary?.admissionDetails?.status} />
-              <Field label="Primary Doctor" value={dischargeSummary?.admissionDetails?.admittingDoctor} />
-              <Field label="Ward / Bed" value={dischargeSummary?.admissionDetails?.ward} />
-              <Field label="Admission Diagnosis" value={dischargeSummary?.admissionDetails?.diagnosis} />
-              <Field label="Inpatient Record" value={dischargeSummary?.admissionDetails?.admissionReason} />
+              <Field label="Admission Date" value={dischargeSummary?.inpatientDetails?.admissionDate} />
+              <Field label="Discharge Date" value={dischargeSummary?.inpatientDetails?.dischargeDate} />
+              <Field label="Status" value={dischargeSummary?.inpatientDetails?.status} />
+              <Field label="Primary Doctor" value={dischargeSummary?.inpatientDetails?.admittingDoctor} />
+              <Field label="Ward / Bed" value={dischargeSummary?.inpatientDetails?.ward} />
+              <Field label="Admission Diagnosis" value={dischargeSummary?.inpatientDetails?.diagnosis} />
+              <Field label="Inpatient Record" value={dischargeSummary?.inpatientDetails?.admissionReason} />
             </div>
           </SectionBlock>
 
           <SectionBlock number="3" title="Medical Data">
             <div className={styles['ds-field-grid']}>
-              <Field label="Discharge Diagnosis" value={dischargeSummary?.admissionDetails?.diagnosis} />
+              <Field label="Discharge Diagnosis" value={dischargeSummary?.inpatientDetails?.diagnosis} />
               <Field label="Other Conditions" value={s.clinical.otherConditions} />
               <Field label="Clinical Findings" value={s.clinical.findings} />
               <Field label="Treatment" value={s.clinical.treatment} />
               <Field label="Operations / Procedures" value={s.clinical.operations} />
-              <Field label="Laboratory Findings" value={dischargeSummary?.labOrders} />
+              {dischargeSummary?.labOrders ? (
+                <Field label="Laboratory Findings" value={dischargeSummary?.labOrders?.map((o, i) => o.test)} />
+              ) : (
+                <></>
+              )}
               <Field label="Imaging Findings" value={s.clinical.imagingFindings} />
               <Field
                 label="Referrals / Other Instructions"
-                value={dischargeSummary?.admissionDetails?.referringFacility}
+                value={dischargeSummary?.inpatientDetails?.referringFacility}
               />
             </div>
           </SectionBlock>
@@ -184,30 +188,57 @@ const GeneralDischargeSummary = forwardRef<HTMLDivElement, GeneralDischargeSumma
             <table className={styles['ds-table']}>
               <thead>
                 <tr>
+                  <th>Admission Date</th>
+                  <th>Ward</th>
+                  <th>Bed</th>
                   <th>Drug</th>
-                  <th>Dose</th>
-                  <th>Period</th>
-                  <th>Notes</th>
+                  <th>Status</th>
+                  <th>Doctor</th>
                 </tr>
               </thead>
+
               <tbody>
-                {s.medications.map((m, i) => (
-                  <tr key={i}>
-                    <td className={styles['ds-drug-name']}>{m.drug}</td>
-                    <td>{m.dose}</td>
-                    <td>{m.period}</td>
-                    <td className={styles['ds-drug-notes']}>{m.notes}</td>
-                  </tr>
-                ))}
+                {dischargeSummary?.inpatientDetails && (
+                  <table className={styles['ds-table']}>
+                    <tbody>
+                      <tr>
+                        <td>Admission Date</td>
+                        <td>{dischargeSummary?.inpatientDetails?.admissionDate ?? '—'}</td>
+                      </tr>
+
+                      <tr>
+                        <td>Ward</td>
+                        <td>{dischargeSummary?.inpatientDetails?.ward ?? '—'}</td>
+                      </tr>
+
+                      <tr>
+                        <td>Bed</td>
+                        <td>{dischargeSummary?.inpatientDetails?.bed ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <td>Diagnosis</td>
+                        <td>{dischargeSummary?.inpatientDetails?.diagnosis ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <td>Diagnosis</td>
+                        <td>{dischargeSummary?.inpatientDetails?.status ?? '—'}</td>
+                      </tr>
+                      <tr>
+                        <td>Admitting Doctor</td>
+                        <td>{dischargeSummary?.inpatientDetails?.admittingDoctor ?? '—'}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                )}
               </tbody>
             </table>
           </SectionBlock>
 
           <SectionBlock number="5" title="Post-Discharge Instructions">
             <div className={styles['ds-outcome']}>
-              Patient discharged in <strong>{s.outcome.condition}</strong>.
+              Patient discharged in <strong>{dischargeSummary?.inpatientDetails?.status}</strong>.
             </div>
-            <Field label="Attending Doctor" value={dischargeSummary?.admissionDetails?.admittingDoctor} />
+            <Field label="Attending Doctor" value={dischargeSummary?.inpatientDetails?.admittingDoctor} />
           </SectionBlock>
 
           <div className={styles['ds-footer']}>Confidential — For authorized clinical use only</div>

@@ -43,7 +43,7 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
   const [serviceQueues, setServiceQueues] = useState<ServiceQueue[]>();
   const [cashPoints, setCashPoints] = useState<CashPoint[]>([]);
   const [billableServices, setBillableServices] = useState<BillableService[]>([]);
-  const { currentVisit } = useVisit(patientUuid);
+  const { currentVisit, activeVisit } = useVisit(patientUuid);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
@@ -332,6 +332,7 @@ const VisitBillingForm: React.FC<VisitBillingFormProps> = ({ patientUuid, setExt
       ],
       cashPoint: selectedCashPoint.uuid,
       patient: patientUuid,
+      visit: activeVisit?.uuid ?? '',
       status: 'PENDING',
       payments: [],
     };

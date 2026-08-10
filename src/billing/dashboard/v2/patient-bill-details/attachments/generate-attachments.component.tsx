@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 
 import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
-import { type VisitIntervention } from '../../types';
+import { ApplicableDocumentType, type VisitIntervention } from '../../types';
 
 import styles from './attachments.scss';
 import { Button, Form, Modal, Tag } from '@carbon/react';
@@ -49,7 +49,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
     }));
   });
   const session = useSession();
-  const locationUuid = session.sessionLocation?.uuid;
+  const locationUuid = session?.sessionLocation?.uuid;
 
   const invoiceRef = useRef<HTMLDivElement>(null);
   const dischargeRef = useRef<HTMLDivElement>(null);
@@ -97,6 +97,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   };
 
   const docTypes = claimInterventions.applicable_document_types;
+  const shouldUseBirthNotificationDischargeSummary = (docTypes ?? []).includes(
+    ApplicableDocumentType.BIRTH_NOTIFICATION,
+  );
 
   const handleSubmit = async (document: GeneratedDocument) => {
     if (!document.file) {
@@ -174,7 +177,11 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
 
       case 'DISCHARGE_SUMMARY':
-        element = generalDischargeSummary.current;
+        element = shouldUseBirthNotificationDischargeSummary ? dischargeRef.current : generalDischargeSummary.current;
+        break;
+
+      case 'MEDICAL_REPORT':
+        element = caseSummaryRef.current;
         break;
 
       case 'CASE_SUMMARY':

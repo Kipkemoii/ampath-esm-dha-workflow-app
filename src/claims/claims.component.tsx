@@ -37,10 +37,13 @@ import {
   type ClaimResult,
 } from './index';
 import { addIntervention, checkInterventionExists } from './interventions.resource';
-import { launchWorkspace, showSnackbar, useSession, useVisit, Visit } from '@openmrs/esm-framework';
+import { launchWorkspace, showSnackbar, useConfig, useSession, useVisit, Visit } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import { useProviderClaimPreview } from '../billing/billing-claims.resource';
 import { getConsentToken as getVisitConsentToken } from '../shared/services/claims.resource';
+import { getClientEligibityStatus } from '../shared/services/eligibility.resource';
+import { Scheme } from '../registry/types';
+import { ConfigObject } from '../config-schema';
 
 interface ClaimsComponentProps {
   clientRegistryId: string;
@@ -84,6 +87,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   const [selectedIntervention, setSelectedIntervention] = useState<Intervention>();
   const [selectedSubBenefitCode, setSelectedSubBenefitCode] = useState<ClientSubBenefit>();
   const [isBenefitEligible, setIsBenefitEligible] = useState(false);
+  const [schemes, setSchemes] = useState<Scheme[]>();
   // Preselect from bill-order only once — re-running when interventions reload was
   // forcing the first preexisting code back whenever the user picked another.
   const didAutoPreselect = useRef(false);
@@ -92,6 +96,8 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   const { interventions, isLoadingInterventions } = useInterventions(clientRegistryId, selectedSubBenefitCode?.code);
   const { preExistingInterventions, isLoadingPreExistingIntervention } = usePreExistingIntervention(patientUuid);
   const { sessionLocation } = useSession();
+
+  const { pmfSchemeNames } = useConfig<ConfigObject>();
 
   const handleAddPreauthRequest = async () => {
     // await createPreauthRequest();
@@ -130,11 +136,14 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   };
 
   const isPmsf = useMemo(() => {
-    if (selectedSubBenefitCode) {
-      return selectedSubBenefitCode.code.toUpperCase().includes('PMF');
-    }
-    return false;
-  }, [selectedSubBenefitCode]);
+    if (!schemes || !pmfSchemeNames) return false;
+
+    const pmfSet = new Set(pmfSchemeNames.map((name) => name.trim().toUpperCase()));
+    return schemes.some(({ schemeName }) => {
+      const baseName = schemeName.split('-')[0].trim().toUpperCase();
+      return pmfSet.has(baseName);
+    });
+  }, [schemes, pmfSchemeNames]);
 
   const { benefitUtilizations, isLoadingBenefitUtilization } = useBenefitUtilizations(
     clientRegistryId,
@@ -163,10 +172,22 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   }, [pomsfBalance, isLoadingPomsfBalances, selectedSubBenefitCode, selectedIntervention]);
 
   useEffect(() => {
-    // The endpoint returns an empty list for clients with no utilization record,
-    // so neither the first entry nor its computational detail is guaranteed.
-    setIsBenefitEligible(benefitUtilizations?.[0]?.computationalDetail?.eligibility ?? false);
-  }, [benefitUtilizations]);
+    if (benefitUtilizations) {
+      setIsBenefitEligible(benefitUtilizations?.[0]?.computationalDetail?.eligibility ?? false);
+    }
+
+    const fn = async () => {
+      const response = await getClientEligibityStatus({ requestIdNumber: clientRegistryId, requestIdType: '3', locationUuid: sessionLocation?.uuid });
+      if (response) {
+        setSchemes(response?.schemes);
+      }
+    }
+
+    if (clientRegistryId && sessionLocation) {
+      fn();
+    }
+
+  }, [benefitUtilizations, clientRegistryId, sessionLocation]);
 
   useEffect(() => {
     if (triggerCreateVisit) {
@@ -216,7 +237,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   }, [preExistingInterventions, isLoadingPreExistingIntervention, clientSubBenefits, interventions]);
 
   useEffect(() => {
-    if(!isLoadingPreExistingIntervention && preExistingInterventions && preExistingInterventions.length) {
+    if (!isLoadingPreExistingIntervention && preExistingInterventions && preExistingInterventions.length) {
       hasPreExistingInterventions(preExistingInterventions);
     }
   }, [preExistingInterventions, isLoadingPreExistingIntervention])
@@ -623,31 +644,43 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
             ) : null}
           </div>
 
-          {isLoadingBenefitUtilization && !isPmsf ? (
-            <InlineLoading className={styles.checkingEligibility} description="Checking eligibility" />
-          ) : benefitUtilizations?.length ? (
-            isBenefitEligible ? (
-              <Tag size="sm" type="green">
-                Eligible
-              </Tag>
-            ) : (
-              <Tag size="sm" type="red">
-                Not Eligible
-              </Tag>
-            )
-          ) : (
-            <></>
-          )}
+          {
+            !isPmsf ?
+              (
+                isLoadingBenefitUtilization ? (
+                  <InlineLoading className={styles.checkingEligibility} description="Checking eligibility" />
+                ) : benefitUtilizations?.length ? (
+                  isBenefitEligible ? (
+                    <Tag size="sm" type="green">
+                      Eligible
+                    </Tag>
+                  ) : (
+                    <Tag size="sm" type="red">
+                      Not Eligible
+                    </Tag>
+                  )
+                ) : (
+                  <></>
+                )
+              )
+              : <></>
+          }
 
-          {isLoadingPomsfBalances && isPmsf ? (
-            <InlineLoading className={styles.checkingEligibility} description="Loading POMSF balance" />
-          ) : pmfBalance ? (
-            <Tag size="sm" type="green">
-              {pmfBalance}
-            </Tag>
-          ) : (
-            <></>
-          )}
+          {
+            isPmsf ?
+              (
+                isLoadingPomsfBalances ? (
+                  <InlineLoading className={styles.checkingEligibility} description="Loading POMSF balance" />
+                ) : pmfBalance ? (
+                  <Tag size="sm" type="green">
+                    {pmfBalance}
+                  </Tag>
+                ) : (
+                  <></>
+                )
+              )
+              : <></>
+          }
 
           {selectedIntervention ? (
             <>

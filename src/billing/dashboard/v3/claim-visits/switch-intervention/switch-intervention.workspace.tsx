@@ -14,7 +14,7 @@ import {
   Toggle,
 } from '@carbon/react';
 import { Renew, WarningAltFilled } from '@carbon/react/icons';
-import { showSnackbar, useConfig, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, useConfig, useSession, useVisit, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import styles from './switch-intervention.workspace.scss';
 import { type SwitchInterventionDto, type VisitIntervention } from '../../types';
@@ -111,6 +111,7 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
 
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const { activeVisit } = useVisit(patientUuid);
 
   const { lineItems: billableItems } = useBillableItems();
   const { cashPoints } = useCashPoint();
@@ -177,6 +178,7 @@ const SwitchInterventionForm: React.FC<SwitchInterventionWorkspaceProps> = ({
             status: shaPrice.price === 0 ? 'PAID' : 'PENDING',
           },
         ],
+        visit: activeVisit?.uuid ?? '',
         cashPoint: cashPointUuid,
         patient: patientUuid,
         status: 'PENDING',

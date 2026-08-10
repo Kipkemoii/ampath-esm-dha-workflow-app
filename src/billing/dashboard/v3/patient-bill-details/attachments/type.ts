@@ -54,7 +54,7 @@ export interface VisitSummaryResponse {
   clinicalNotes: ClinicalNote[];
   soapNote: SoapNote;
   labOrders: LabOrder[];
-  admissionDetails?: VisitSummaryAdmissionDetails;
+  inpatientDetails?: VisitSummaryAdmissionDetails;
   dialysis?: VisitSummaryDialysis;
 }
 

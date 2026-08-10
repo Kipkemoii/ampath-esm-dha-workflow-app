@@ -174,12 +174,16 @@ export const configSchema = {
     _default: "63eff7a4-6f82-43c4-a333-dbcc58fe9f74"
   },
   subBenefitCodesWithHiddenClaimWidget: {
-    _type: Type.String,
+    _type: Type.Array,
     _default: ["SHA-08-SC-02"]
   },
   startClaimVisitLocationAttributeUuid: {
      _type: Type.String,
     _default: "49df844d-79c0-40fc-8ca9-c27d6391f647"
+  },
+  pmfSchemeNames: {
+    _type: Type.Array,
+    _default: ["POMSF", "USALAMA", "TSC"]
   }
 };
 
@@ -245,6 +249,7 @@ export interface ConfigObject {
   cashPaymentModeUuid: string;
   subBenefitCodesWithHiddenClaimWidget: Array<string>;
   startClaimVisitLocationAttributeUuid: string;
+  pmfSchemeNames: Array<string>
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;
