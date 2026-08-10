@@ -43,7 +43,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     const { claimVisit, isLoading: isLoadingClaimVisits } = useProviderClaimPreview(getConsentToken(activeVisit), sessionLocation?.sessionLocation?.uuid);
     const patientUuid = order?.patient?.uuid;
     const conceptUuid = order?.concept?.uuid;
-    const { nonSHAPaymentModes, consultationBillableServiceNames, subBenefitCodesWithHiddenClaimWidget, startClaimVisitLocationAttributeUuid } = useConfig<ConfigObject>();
+    const { nonSHAPaymentModes, consultationBillableServiceNames, subBenefitCodesWithHiddenClaimWidget, startClaimVisitLocationAttributeUuid, shaVariantPaymentModeUuids } = useConfig<ConfigObject>();
     const [searchTerm, setSearchTerm] = useState('');
     const [triggerAddIntervention, setTriggerAddIntervention] = useState<boolean>(false);
     const [interventionResult, setInterventionResult] = useState<ClaimIntervention>();
@@ -150,11 +150,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     }, [billableItem, identifiers, isSHAEligible]);
 
     const isSHAPaymentMode = useMemo(() => {
-        if (servicePrices && selectedServicePriceUuid) {
-            return servicePrices?.some((v) => v?.uuid === selectedServicePriceUuid && v?.name?.toUpperCase()?.includes("SHA"));
+        if (servicePrices && selectedServicePriceUuid && shaVariantPaymentModeUuids) {
+            return servicePrices?.some((v) => v?.uuid === selectedServicePriceUuid && shaVariantPaymentModeUuids.includes(v?.paymentMode?.uuid));
         }
         return false;
-    }, [servicePrices, selectedServicePriceUuid]);
+    }, [servicePrices, selectedServicePriceUuid, shaVariantPaymentModeUuids]);
 
     const initialUnitPriceUuid = useMemo(() => {
         if (billableItem && billableItem.length) {
@@ -603,7 +603,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
                                                 title="No active claim visit. Continue to start a Claim visit."
                                             />
                                         ) :
-                                            <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, onSelectChange: () => { }, onAddIntervention }} />
+                                            <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, onSelectChange: () => { }, onAddIntervention, hasPreExistingInterventions: () => {} }} />
                                     }
                                 </Column>
                                 :
