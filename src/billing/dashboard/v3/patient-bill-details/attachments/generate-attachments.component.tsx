@@ -23,6 +23,7 @@ interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   bill: any;
   consentToken: string;
   patientUuid: string;
+  billingDate: string;
 }
 
 const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
@@ -32,6 +33,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   bill,
   consentToken,
   patientUuid,
+  billingDate,
 }) => {
   const { t } = useTranslation();
   const [previewUrl, setPreviewUrl] = useState<string>();
@@ -332,7 +334,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <DischargeSummaryComponent ref={dischargeRef} claimIntervention={claimInterventions} bill={bill} />
 
         <FinalBillComponent ref={finalBillRef} bill={bill} />
-        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} />
+        <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
       </div>

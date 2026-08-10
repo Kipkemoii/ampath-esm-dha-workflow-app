@@ -29,9 +29,10 @@ function SectionBlock({ number, title, children }) {
 
 interface CaseSummaryProps {
   patientUuid: string;
+  billingDate: string;
 }
 
-const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid }, ref) => {
+const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid, billingDate }, ref) => {
   const [caseSummary, setCasesummary] = useState<VisitSummaryResponse>();
   const [vitals, setVitals] = useState<VitalReading[]>();
   const session = useSession();
@@ -64,6 +65,13 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
       });
     }
   };
+  const filteredConditions =
+    caseSummary?.conditions?.filter((condition) => {
+      const conditionDate = formatDate(condition.onsetDate);
+      const billDate = formatDate(billingDate);
+
+      return conditionDate === billDate;
+    }) ?? [];
 
   useEffect(() => {
     if (!locationUuid) return;
@@ -106,11 +114,15 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
         {/* {p.alert && <div className={styles['cs-alert']}>{p.alert}</div>} */}
 
         <SectionBlock number="1" title="Allergies">
-          {caseSummary?.allergies.map((a, i) => (
-            <div key={i} className={styles['cs-field-value']}>
-              ✓ {a.label}
-            </div>
-          ))}
+          {caseSummary?.allergies?.length ? (
+            caseSummary.allergies.map((a, i) => (
+              <div key={i} className={styles['cs-field-value']}>
+                ✓ {a.substance} ({a.criticality}) — {a.reaction}
+              </div>
+            ))
+          ) : (
+            <div className={styles['cs-field-value']}>No known allergies</div>
+          )}
         </SectionBlock>
 
         <SectionBlock number="2" title="Active Diagnoses">
@@ -118,16 +130,14 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
             <thead>
               <tr>
                 <th>Date</th>
-                <th>Code</th>
                 <th>Description</th>
                 <th>Status</th>
               </tr>
             </thead>
             <tbody>
-              {caseSummary?.conditions.map((d, i) => (
+              {filteredConditions?.map((d, i) => (
                 <tr key={i}>
                   <td>{formatDate(d.onsetDate)}</td>
-                  <td>{d.code}</td>
                   <td>
                     {d.description}
                     {d.primary && <span className={styles['cs-pill']}>Primary</span>}
@@ -233,13 +243,17 @@ const CaseSummary = forwardRef<HTMLDivElement, CaseSummaryProps>(({ patientUuid 
         </SectionBlock>
 
         <SectionBlock number="7" title="Admission Details">
-          <div className={styles['cs-field-grid']}>
-            <Field label="Status" value={caseSummary?.inpatientDetails?.status} />
-            <Field label="Admission Date" value={formatDate(caseSummary?.inpatientDetails?.admissionDate)} />
-            <Field label="Admission Diagnosis" value={caseSummary?.inpatientDetails?.diagnosis} />
-            <Field label="Primary Doctor" value={caseSummary?.inpatientDetails?.admittingDoctor} />
-            <Field label="Ward / Bed" value={caseSummary?.inpatientDetails?.ward} />
-          </div>
+          {caseSummary?.inpatientDetails ? (
+            <div className={styles['cs-field-grid']}>
+              <Field label="Status" value={caseSummary?.inpatientDetails?.status} />
+              <Field label="Admission Date" value={formatDate(caseSummary?.inpatientDetails?.admissionDate)} />
+              <Field label="Admission Diagnosis" value={caseSummary?.inpatientDetails?.diagnosis} />
+              <Field label="Primary Doctor" value={caseSummary?.inpatientDetails?.admittingDoctor} />
+              <Field label="Ward / Bed" value={caseSummary?.inpatientDetails?.ward} />
+            </div>
+          ) : (
+            <></>
+          )}
         </SectionBlock>
 
         {/* <SectionBlock number="8" title="Encounter Log">

@@ -470,6 +470,12 @@ export interface PatientBill {
   payments: BillPayment[];
   visit_uuid: string;
   visit_type_uuid: string;
+  location_name: string;
+  location_uuid: string;
+  national_id: string;
+  paid_status: string;
+  visit_start_date: string;
+  cr_id: string;
 }
 
 export interface PendingLineItem {
