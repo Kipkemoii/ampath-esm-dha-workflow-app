@@ -76,7 +76,7 @@ export enum HieIdentificationType {
   RefugeeID = 'Refugee ID',
   AlienID = 'Alien ID',
   MandateNumber = 'Mandate Number',
-  Cr = 'id',
+  Cr = 'ClientRegistry ID',
   TemporaryDependantID = 'Temporary Dependant ID',
   BirthCertificate = 'Birth Certificate',
   BirthNotification = 'Birth Notification',
