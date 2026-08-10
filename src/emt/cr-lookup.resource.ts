@@ -9,10 +9,9 @@ import { HieIdentificationType, type HieClient } from '../registry/types';
  * national ID, …) instead of a bare identifier.
  *
  * The CR is only queryable through its search endpoint, so we reuse the
- * established `fetchClientRegistryData` search with `identificationType: 'id'`
- * (`HieIdentificationType.Cr`) — the same identification type the rest of the
- * app uses when it already holds a CR id. The search returns an array; a CR id
- * is unique, so the first entry is the record we want.
+ * established `fetchClientRegistryData` search with
+ * `identificationType: CR_SEARCH_IDENTIFICATION_TYPE` ('CR id'). The search
+ * returns an array; a CR id is unique, so the first entry is the record we want.
  *
  * Lookups are done lazily per-row (on expand / on render of a small page) so a
  * single failed or slow CR fetch never blocks the whole queue.

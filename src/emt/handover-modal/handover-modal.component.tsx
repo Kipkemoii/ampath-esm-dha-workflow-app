@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Modal, ModalBody, TextInput, Button, InlineLoading, Tag, ComboBox, Dropdown } from '@carbon/react';
-import { showSnackbar } from '@openmrs/esm-framework';
+import { TextInput, Button, ButtonSet, InlineLoading, Tag, ComboBox, Dropdown } from '@carbon/react';
+import { showSnackbar, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
 import OTPInput from '../../shared/ui/otp-input/otp-input.component';
 import {
   initiateHandover,
@@ -37,11 +37,12 @@ const normalizeRegulationBody = (value?: string | null): RegulationBody => {
   return 'KMPDC';
 };
 
-interface HandoverModalProps {
-  open: boolean;
+/** Registration name, shared with whoever launches this workspace. */
+export const EMT_HANDOVER_WORKSPACE = 'emt-handover-workspace';
+
+interface HandoverWorkspaceProps extends Partial<DefaultWorkspaceProps> {
   referral: EmtReferralRow;
   locationUuid: string;
-  onModalClose: () => void;
   /** Fired after a successful verify — caller refreshes the queue + launches the visit. */
   onHandoverComplete: (referral: EmtReferralRow) => void;
   /** Fired when the upstream 404s — the referral is gone (handled elsewhere); caller drops it. */
@@ -67,11 +68,11 @@ interface HandoverModalProps {
  * A 404 means the referral no longer exists, so the parent is told to drop it
  * rather than leaving the user stuck on a step that can never succeed.
  */
-const HandoverModal: React.FC<HandoverModalProps> = ({
-  open,
+const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
   referral,
   locationUuid,
-  onModalClose,
+  closeWorkspace,
+  promptBeforeClosing,
   onHandoverComplete,
   onReferralUnavailable,
 }) => {
@@ -79,6 +80,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
   const [otp, setOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [handoverRequestId, setHandoverRequestId] = useState('');
 
   // --- receiving doctor resolution (doctor step) ---
   const [providerQuery, setProviderQuery] = useState('');
@@ -101,6 +103,11 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
     [],
   );
 
+  // Past the doctor step an OTP may already be in flight — warn before losing that progress.
+  useEffect(() => {
+    promptBeforeClosing?.(() => step !== 'doctor');
+  }, [step, promptBeforeClosing]);
+
   /** Only a HWR hit carrying a registration number yields a usable receiving doctor. */
   const resolvedDoctor: ReceivingDoctor | null = useMemo(() => {
     const regId = hwrHit?.membership?.registration_id?.trim();
@@ -122,6 +129,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
     setOtp('');
     setLoading(false);
     setError('');
+    setHandoverRequestId('');
     setProviderQuery('');
     setProviderHits([]);
     setSearchingProviders(false);
@@ -135,7 +143,7 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
 
   const handleClose = () => {
     reset();
-    onModalClose();
+    closeWorkspace?.();
   };
 
   const showAlert = (kind: 'success' | 'error' | 'info' | 'warning', title: string, subtitle = '') =>
@@ -266,29 +274,29 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
     setError('');
     try {
       const res = await initiateHandover({
-        incidence_number: referral.case_number,
+        incidenceNumber: referral.case_number,
         identifier: resolvedDoctor.identifier,
         identifier_type: resolvedDoctor.identifier_type,
         regulator: resolvedDoctor.regulator,
         locationUuid,
       });
-      const requestId = getHandoverRequestId(res);
-      if (!requestId) {
+      const newRequestId = getHandoverRequestId(res);
+      if (!newRequestId) {
         // The response shape didn't carry a request id — surface rather than guess.
         throw new EmtApiError(
           0,
           'Handover was initiated but no request id was returned. Please retry or contact support.',
         );
       }
-      // Stash the request id on the referral object for the verify call.
-      (referral as EmtReferralRow & { _request_id?: string })._request_id = requestId;
+      setHandoverRequestId(newRequestId);
       setStep('otp');
       showAlert('info', 'OTP sent', `A code was sent to ${resolvedDoctor.name}.`);
     } catch (err) {
       const message = describeError(err, 'Failed to initiate handover.');
       if (err instanceof EmtApiError && err.status === 404) {
-        // The referral is gone — the parent closes this modal and drops the row.
+        // The referral is gone — the workspace closes and the caller drops the row.
         onReferralUnavailable(referral, message);
+        closeWorkspace?.();
         return;
       }
       setError(message);
@@ -302,16 +310,15 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
     setLoading(true);
     setError('');
     try {
-      const requestId = (referral as EmtReferralRow & { _request_id?: string })._request_id ?? '';
-      if (!requestId) {
-        // Lost the request id (e.g. modal reopened) — go back to initiate.
+      if (!handoverRequestId) {
+        // Lost the request id (e.g. workspace reopened) — go back to initiate.
         setStep('confirm');
         setError('The handover session was lost. Please re-initiate.');
         return;
       }
       await verifyHandoverOtp({
-        incidence_number: referral.case_number,
-        request_id: requestId,
+        incidenceNumber: referral.case_number,
+        request_id: handoverRequestId,
         otp,
         locationUuid,
       });
@@ -322,11 +329,13 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
       );
       reset();
       onHandoverComplete(referral);
+      closeWorkspace?.();
     } catch (err) {
       const message = describeError(err, 'OTP verification failed.');
       if (err instanceof EmtApiError && err.status === 404) {
-        // The referral is gone — the parent closes this modal and drops the row.
+        // The referral is gone — the workspace closes and the caller drops the row.
         onReferralUnavailable(referral, message);
+        closeWorkspace?.();
         return;
       }
       setError(message);
@@ -352,15 +361,9 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
     step === 'doctor' ? 'Select receiving doctor' : step === 'confirm' ? 'Confirm handover' : 'Enter doctor OTP';
 
   return (
-    <Modal
-      open={open}
-      modalHeading={modalHeading}
-      passiveModal={false}
-      size="sm"
-      onRequestClose={handleClose}
-      preventCloseOnClickOutside
-    >
-      <ModalBody>
+    <div className={styles.container}>
+      <h4 className={styles.heading}>{modalHeading}</h4>
+      <div className={styles.body}>
         {step === 'doctor' && (
           <div className={styles.doctorBody}>
             <p className={styles.confirmText}>
@@ -428,15 +431,6 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
             )}
 
             {doctorSearchError && <p className={styles.errorText}>{doctorSearchError}</p>}
-
-            <div className={styles.actions}>
-              <Button kind="secondary" onClick={handleClose}>
-                Cancel
-              </Button>
-              <Button kind="primary" onClick={() => setStep('confirm')} disabled={!resolvedDoctor || searchingHwr}>
-                Continue
-              </Button>
-            </div>
           </div>
         )}
 
@@ -462,21 +456,6 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
               </span>
             </div>
             {error && <p className={styles.errorText}>{error}</p>}
-            <div className={styles.actions}>
-              <Button kind="ghost" onClick={() => setStep('doctor')} disabled={loading}>
-                Change doctor
-              </Button>
-              <Button kind="secondary" onClick={handleClose} disabled={loading}>
-                Cancel
-              </Button>
-              {loading ? (
-                <InlineLoading description="Sending OTP to doctor…" />
-              ) : (
-                <Button kind="primary" onClick={handleInitiate}>
-                  Send OTP
-                </Button>
-              )}
-            </div>
           </div>
         )}
 
@@ -488,25 +467,57 @@ const HandoverModal: React.FC<HandoverModalProps> = ({
             </p>
             <OTPInput otpLength={6} onChange={setOtp} />
             {error && <p className={styles.errorText}>{error}</p>}
-            <div className={styles.actions}>
-              <Button kind="ghost" onClick={handleResend} disabled={loading}>
-                Resend OTP
-              </Button>
-              <Button kind="secondary" onClick={handleClose} disabled={loading}>
-                Cancel
-              </Button>
-              {loading ? (
-                <InlineLoading description="Verifying…" />
-              ) : (
-                <Button kind="primary" onClick={handleVerify} disabled={otp.length < 4}>
-                  Verify
-                </Button>
-              )}
-            </div>
           </div>
         )}
-      </ModalBody>
-    </Modal>
+      </div>
+
+      <ButtonSet className={styles.buttonSet}>
+        {step === 'doctor' && (
+          <>
+            <Button kind="secondary" onClick={handleClose}>
+              Cancel
+            </Button>
+            <Button kind="primary" onClick={() => setStep('confirm')} disabled={!resolvedDoctor || searchingHwr}>
+              Continue
+            </Button>
+          </>
+        )}
+        {step === 'confirm' && (
+          <>
+            <Button kind="ghost" onClick={() => setStep('doctor')} disabled={loading}>
+              Change doctor
+            </Button>
+            <Button kind="secondary" onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            {loading ? (
+              <InlineLoading description="Sending OTP to doctor…" />
+            ) : (
+              <Button kind="primary" onClick={handleInitiate}>
+                Send OTP
+              </Button>
+            )}
+          </>
+        )}
+        {step === 'otp' && (
+          <>
+            <Button kind="ghost" onClick={handleResend} disabled={loading}>
+              Resend OTP
+            </Button>
+            <Button kind="secondary" onClick={handleClose} disabled={loading}>
+              Cancel
+            </Button>
+            {loading ? (
+              <InlineLoading description="Verifying…" />
+            ) : (
+              <Button kind="primary" onClick={handleVerify} disabled={otp.length < 4}>
+                Verify
+              </Button>
+            )}
+          </>
+        )}
+      </ButtonSet>
+    </div>
   );
 };
 

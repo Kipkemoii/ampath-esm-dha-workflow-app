@@ -32,7 +32,7 @@ describe('fetchClientByCrId', () => {
 
     expect(mockFetchClientRegistryData).toHaveBeenCalledWith({
       identificationNumber: 'CR5617849204955-8',
-      identificationType: 'id',
+      identificationType: 'CR id',
       locationUuid: 'loc-uuid-1',
     });
     expect(result?.first_name).toBe('Jane');

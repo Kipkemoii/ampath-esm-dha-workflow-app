@@ -98,7 +98,7 @@ export async function initiateHandover(
     const hieBaseUrl = await getHieBaseUrl();
     const response = await openmrsFetch<InitiateHandoverResponse>(
       `${hieBaseUrl}${EMT_BASE}/handover/initiate`,
-      { method: 'POST', body: payload },
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: payload },
     );
     return response?.data;
   } catch (err) {
@@ -121,6 +121,7 @@ export async function verifyHandoverOtp(payload: VerifyHandoverRequest) {
     const hieBaseUrl = await getHieBaseUrl();
     const response = await openmrsFetch(`${hieBaseUrl}${EMT_BASE}/handover/verify`, {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: payload,
     });
     return response?.data;

@@ -34,10 +34,14 @@ const referralFixture = {
   submission_id: 3,
   cr_id: 'CR5617849204955-8',
   status: 'pending_acceptance',
+  incident_id: 'INC-20260803100645-254727092999-ffjotq',
+  dispatch_id: 'd22419d8-6d36-4b2f-a33c-3e008bd85f77',
   case_number: 'AMB-d22419d8-6d36-4b2f-a33c-3e008bd85f77-FAC',
   ambulance_fr_code: 'FID-AMB-916293-3',
+  ambulance_registration_number: 'KDN 085T',
   facility_fr_code: 'FID-47-108521-3',
   evacuation_scene: '',
+  priority: 'p1 life threatening (als) with altered consciousness',
   referral_reason: '',
   referral_category: '',
   transport_modality: '',
@@ -105,7 +109,7 @@ describe('initiateHandover', () => {
     mockOpenmrsFetch.mockResolvedValueOnce({ data: responseFixture } as any);
 
     const res = await initiateHandover({
-      incidence_number: 'AMB-d22419d8-FAC',
+      incidenceNumber: 'AMB-d22419d8-FAC',
       identifier: 'A13579',
       identifier_type: 'registration_number',
       regulator: 'KMPDC',
@@ -116,8 +120,9 @@ describe('initiateHandover', () => {
       `${BASE_URL}/emt/handover/initiate`,
       {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: {
-          incidence_number: 'AMB-d22419d8-FAC',
+          incidenceNumber: 'AMB-d22419d8-FAC',
           identifier: 'A13579',
           identifier_type: 'registration_number',
           regulator: 'KMPDC',
@@ -133,7 +138,7 @@ describe('initiateHandover', () => {
 
     try {
       await initiateHandover({
-        incidence_number: 'AMB-d22419d8-FAC',
+        incidenceNumber: 'AMB-d22419d8-FAC',
         identifier: 'A13579',
         identifier_type: 'registration_number',
         regulator: 'KMPDC',
@@ -150,11 +155,11 @@ describe('initiateHandover', () => {
 // ── verifyHandoverOtp ──────────────────────────────────────────────────
 
 describe('verifyHandoverOtp', () => {
-  it('POSTs to /handover/verify with incidence_number, request_id, and otp', async () => {
+  it('POSTs to /handover/verify with incidenceNumber, request_id, and otp', async () => {
     mockOpenmrsFetch.mockResolvedValueOnce({ data: { status: 'verified' } } as any);
 
     await verifyHandoverOtp({
-      incidence_number: 'AMB-d22419d8-FAC',
+      incidenceNumber: 'AMB-d22419d8-FAC',
       request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
       otp: '623415',
       locationUuid: 'location-uuid-1',
@@ -164,8 +169,9 @@ describe('verifyHandoverOtp', () => {
       `${BASE_URL}/emt/handover/verify`,
       {
         method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: {
-          incidence_number: 'AMB-d22419d8-FAC',
+          incidenceNumber: 'AMB-d22419d8-FAC',
           request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
           otp: '623415',
           locationUuid: 'location-uuid-1',
@@ -179,7 +185,7 @@ describe('verifyHandoverOtp', () => {
 
     try {
       await verifyHandoverOtp({
-        incidence_number: 'AMB-d22419d8-FAC',
+        incidenceNumber: 'AMB-d22419d8-FAC',
         request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
         otp: '000000',
         locationUuid: 'location-uuid-1',

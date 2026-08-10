@@ -14,7 +14,7 @@ import {
   TableRow,
   Tag,
 } from '@carbon/react';
-import { navigate, showSnackbar, useSession } from '@openmrs/esm-framework';
+import { launchWorkspace, navigate, showSnackbar, useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 
@@ -22,13 +22,15 @@ import styles from './emt-queue.scss';
 import EmptyState from '../billing/dashboard/v3/shared/empty-state.component';
 import TableToolbar from '../billing/dashboard/v3/shared/table-toolbar.component';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
-import HandoverModal from './handover-modal/handover-modal.component';
+import { EMT_HANDOVER_WORKSPACE } from './handover-modal/handover-modal.component';
 import {
   usePendingReferrals,
   EMT_PENDING_KEY,
 } from './emt.resource';
 import { fetchClientByCrId, clientDisplayName } from './cr-lookup.resource';
 import { EmtApiError, type EmtReferralRow } from './types/emt.types';
+import { searchPatientByCrNumber } from '../resources/patient-search.resource';
+import { IdentifierTypesUuids } from '../resources/identifier-types';
 
 const EmtQueue: React.FC = () => {
   const { t } = useTranslation();
@@ -38,7 +40,6 @@ const EmtQueue: React.FC = () => {
   const [pageSize, setPageSize] = useState(10);
   const [pageIndex, setPageIndex] = useState(0); // 0-based page for server offset
   const [rows, setRows] = useState<EmtReferralRow[]>([]);
-  const [handoverTarget, setHandoverTarget] = useState<EmtReferralRow | null>(null);
   const [globalError, setGlobalError] = useState<string>('');
 
   const limit = pageSize;
@@ -197,8 +198,7 @@ const EmtQueue: React.FC = () => {
     }
   };
 
-  const handleHandoverComplete = (referral: EmtReferralRow) => {
-    setHandoverTarget(null);
+  const handleHandoverComplete = async (referral: EmtReferralRow) => {
     // Refresh from the source of truth — don't just splice locally.
     mutate();
     showSnackbar({
@@ -206,20 +206,40 @@ const EmtQueue: React.FC = () => {
       title: 'Handover complete',
       subtitle: `Starting visit for ${referral.patientName} (${referral.case_number}).`,
     });
-    // Launch the patient visit workspace. EmtQueue is mounted as a bare
-    // extension (no React Router ancestor), so cross-app navigation has to go
-    // through the shell's navigate() rather than react-router's useNavigate —
-    // and there's no router `state` channel either, so we hand off the CR id
-    // via a query param; the Registration screen re-resolves the CR record
-    // itself. The EMT patient may not yet exist in AMRS (only in CR); the
-    // registry screen resolves/creates the AMRS patient from that CR record.
-    navigate({ to: `\${openmrsSpaBase}/home/registry?emtCrId=${encodeURIComponent(referral.cr_id)}` });
+    // EmtQueue is mounted as a bare extension (no React Router ancestor), so
+    // cross-app navigation has to go through the shell's navigate() rather
+    // than react-router's useNavigate — and there's no router `state` channel
+    // either.
+    //
+    // If the patient already exists in AMRS (registered on an earlier visit),
+    // skip straight to their chart. Otherwise fall back to the registry
+    // screen so staff complete registration manually, same as today — the CR
+    // id travels via a query param and the Registration screen re-resolves
+    // the CR record itself.
+    let amrsPatientUuid: string | undefined;
+    try {
+      const resp = await searchPatientByCrNumber(referral.cr_id);
+      amrsPatientUuid = (resp.results ?? []).find((p) =>
+        p.identifiers.some(
+          (id) =>
+            id.identifier === referral.cr_id &&
+            id.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID,
+        ),
+      )?.uuid;
+    } catch {
+      // Registration-status check failed — fall back to the manual registry path below.
+    }
+
+    navigate({
+      to: amrsPatientUuid
+        ? `\${openmrsSpaBase}/patient/${amrsPatientUuid}/chart`
+        : `\${openmrsSpaBase}/home/registry?emtCrId=${encodeURIComponent(referral.cr_id)}`,
+    });
   };
 
   // The backend returned 404 during initiate/verify — another facility/user
   // already handled this referral, or it no longer exists.
   const handleReferralUnavailable = (referral: EmtReferralRow, reason: string) => {
-    setHandoverTarget(null);
     mutate();
     showSnackbar({
       kind: 'warning',
@@ -233,7 +253,17 @@ const EmtQueue: React.FC = () => {
   const openHandover = (row: DataTableRow<any[]>) => {
     const target = rowsById.get(String(row.id));
     if (!target) return;
-    setHandoverTarget(target);
+    if (!locationUuid) {
+      showSnackbar({ kind: 'error', title: 'No default location selected', subtitle: '' });
+      return;
+    }
+    launchWorkspace(EMT_HANDOVER_WORKSPACE, {
+      workspaceTitle: 'EMT Handover',
+      referral: target,
+      locationUuid,
+      onHandoverComplete: handleHandoverComplete,
+      onReferralUnavailable: handleReferralUnavailable,
+    });
   };
 
   return (
@@ -410,17 +440,6 @@ const EmtQueue: React.FC = () => {
             />
           )}
         </>
-      )}
-
-      {handoverTarget && (
-        <HandoverModal
-          open={!!handoverTarget}
-          referral={handoverTarget}
-          locationUuid={locationUuid}
-          onModalClose={() => setHandoverTarget(null)}
-          onHandoverComplete={handleHandoverComplete}
-          onReferralUnavailable={handleReferralUnavailable}
-        />
       )}
     </div>
   );

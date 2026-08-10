@@ -2,21 +2,58 @@ import type { HieClient } from '../../registry/types';
 
 /**
  * A single pending EMT / ambulance referral as returned by
- * `GET /api/v1/claims/emt/pending`.
+ * `GET {hieBaseUrl}/emt/referrals`. Sample payload:
+ *
+ * ```json
+ * {
+ *   "submission_id": 77,
+ *   "cr_id": "CR4089468813472-8",
+ *   "status": "pending_acceptance",
+ *   "incident_id": "INC-1786295440",
+ *   "dispatch_id": "5aee41d2-7cb9-4a56-991f-6c014428819a",
+ *   "case_number": "AMB-5aee41d2-7cb9-4a56-991f-6c014428819a-FAC",
+ *   "ambulance_fr_code": "FID-AMB-916293-3",
+ *   "ambulance_registration_number": "GKB 847V",
+ *   "facility_fr_code": "FID-01-116951-6",
+ *   "evacuation_scene": "Nairobi Central",
+ *   "priority": "p1 life threatening (als) with altered consciousness",
+ *   "referral_reason": "",
+ *   "referral_category": "",
+ *   "transport_modality": "",
+ *   "referral_notes": "Chief complaint: Seizures. History of present illness: Witnessed seizure at scene. Medical history: None reported",
+ *   "bundle_id": "5aee41d2-7cb9-4a56-991f-6c014428819a",
+ *   "encounter_ref": "b64ff563-5ed6-4c9e-885d-3de53ae9d3f9",
+ *   "interventions": ["SHA-01-001"],
+ *   "requested_at": "2026-08-09T21:56:23.206621Z",
+ *   "updated_at": "2026-08-09T21:56:24.978157Z"
+ * }
+ * ```
+ *
+ * `visit_id` and `encounter_ref` are only present once the referral has an
+ * associated AMRS visit / resolved HIE encounter — earlier-stage submissions omit them.
  */
 export interface EmtReferral {
   submission_id: number;
   cr_id: string;
   status: EmtReferralStatus;
+  incident_id: string;
+  dispatch_id: string;
   case_number: string;
   ambulance_fr_code: string;
+  ambulance_registration_number: string;
   facility_fr_code: string;
   evacuation_scene: string;
+  /** Free-text triage priority, e.g. "p1 life threatening (als) with altered consciousness". */
+  priority: string;
   referral_reason: string;
   referral_category: string;
   transport_modality: string;
   referral_notes: string;
   bundle_id: string;
+  /** Present once an AMRS visit has been started for this referral. */
+  visit_id?: string;
+  /** Present once the originating HIE encounter has been resolved. */
+  encounter_ref?: string;
   interventions: string[];
   requested_at: string;
   updated_at: string;
@@ -50,7 +87,7 @@ export interface ReceivingDoctor {
 
 /** Request body for `POST /api/v1/claims/emt/handover/initiate`. */
 export interface InitiateHandoverRequest {
-  incidence_number: string;
+  incidenceNumber: string;
   identifier: string;
   identifier_type: string;
   regulator: string;
@@ -67,7 +104,7 @@ export interface InitiateHandoverResponse {
 
 /** Request body for `POST /api/v1/claims/emt/handover/verify`. */
 export interface VerifyHandoverRequest {
-  incidence_number: string;
+  incidenceNumber: string;
   request_id: string;
   otp: string;
   /** The current facility's OpenMRS location uuid — the backend scopes the handover to it. */

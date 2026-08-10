@@ -34,10 +34,14 @@ const referral: EmtReferralRow = {
   submission_id: 3,
   cr_id: 'CR5617849204955-8',
   status: 'pending_acceptance',
+  incident_id: 'INC-20260803100645-254727092999-ffjotq',
+  dispatch_id: 'd22419d8-6d36-4b2f-a33c-3e008bd85f77',
   case_number: 'AMB-d22419d8-FAC',
   ambulance_fr_code: 'FID-AMB-916293-3',
+  ambulance_registration_number: 'KDN 085T',
   facility_fr_code: 'FID-47-108521-3',
   evacuation_scene: '',
+  priority: 'p1 life threatening (als) with altered consciousness',
   referral_reason: '',
   referral_category: '',
   transport_modality: '',
@@ -67,10 +71,10 @@ const hwrHitFixture = {
 
 function baseProps() {
   return {
-    open: true,
     referral,
     locationUuid: 'location-uuid-1',
-    onModalClose: jest.fn(),
+    closeWorkspace: jest.fn(),
+    promptBeforeClosing: jest.fn(),
     onHandoverComplete: jest.fn(),
     onReferralUnavailable: jest.fn(),
   };
@@ -173,7 +177,7 @@ describe('initiate', () => {
     await user.click(screen.getByRole('button', { name: /send otp/i }));
 
     expect(mockInitiateHandover).toHaveBeenCalledWith({
-      incidence_number: 'AMB-d22419d8-FAC',
+      incidenceNumber: 'AMB-d22419d8-FAC',
       identifier: 'A13579',
       identifier_type: 'registration_number',
       regulator: 'KMPDC',
@@ -216,7 +220,7 @@ describe('verify', () => {
     await screen.findByText(/enter doctor otp/i);
   }
 
-  it('on success: verifies with incidence_number/request_id/otp and completes the handover', async () => {
+  it('on success: verifies with incidenceNumber/request_id/otp and completes the handover', async () => {
     const user = userEvent.setup();
     const props = baseProps();
     const { container } = render(<HandoverModal {...props} />);
@@ -229,7 +233,7 @@ describe('verify', () => {
 
     await waitFor(() =>
       expect(mockVerifyHandoverOtp).toHaveBeenCalledWith({
-        incidence_number: 'AMB-d22419d8-FAC',
+        incidenceNumber: 'AMB-d22419d8-FAC',
         request_id: 'req-123',
         otp: '654321',
         locationUuid: 'location-uuid-1',

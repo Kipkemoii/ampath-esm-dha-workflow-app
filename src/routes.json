@@ -435,6 +435,14 @@
       "canHide": true,
       "width": "wider",
       "preferredWindowSize": "maximized"
+    },
+    {
+      "name": "emt-handover-workspace",
+      "component": "emtHandoverWorkspace",
+      "title": "EMT Handover",
+      "type": "emt-handover",
+      "canHide": true,
+      "width": "narrow"
     }
   ],
   "workspaces2": [

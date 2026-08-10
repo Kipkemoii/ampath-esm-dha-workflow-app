@@ -154,6 +154,11 @@ export const emtDashboardLink = getSyncLifecycle(createDashboardLink(emtDashboar
 
 export const emtQueue = getAsyncLifecycle(() => import('./emt/emt-queue.component'), options);
 
+export const emtHandoverWorkspace = getAsyncLifecycle(
+  () => import('./emt/handover-modal/handover-modal.component'),
+  options,
+);
+
 export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
 export const billingDashboardLink = getAsyncLifecycle(
   () => import('./billing/billing-dashboard-link.component'),

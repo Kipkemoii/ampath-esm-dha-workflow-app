@@ -1,12 +1,14 @@
 /**
  * Tests for the EMT / Referral queue list: loading/empty/error states, row
  * rendering (merged referral + CR data), search filtering, pagination wiring,
- * and that the Handover action opens the modal for the right referral.
+ * and that the Handover action launches the handover workspace for the right
+ * referral.
  *
  * The handover flow itself (doctor resolution, initiate/verify, OTP, the
  * "already handled elsewhere" race) is covered in
- * `handover-modal/handover-modal.component.test.tsx` — here `HandoverModal` is
- * mocked out to a stub so this file stays focused on the queue/list behavior.
+ * `handover-modal/handover-modal.component.test.tsx` — here `launchWorkspace`
+ * is mocked so this file stays focused on the queue/list behavior and how it
+ * wires the workspace launch.
  */
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
@@ -14,10 +16,12 @@ import userEvent from '@testing-library/user-event';
 
 const mockNavigate = jest.fn();
 const mockShowSnackbar = jest.fn();
+const mockLaunchWorkspace = jest.fn();
 const mockUseSession = jest.fn(() => ({ sessionLocation: { uuid: 'location-uuid-1' } }));
 jest.mock('@openmrs/esm-framework', () => ({
   navigate: (...args: unknown[]) => mockNavigate(...args),
   showSnackbar: (...args: unknown[]) => mockShowSnackbar(...args),
+  launchWorkspace: (...args: unknown[]) => mockLaunchWorkspace(...args),
   useSession: () => mockUseSession(),
 }));
 
@@ -40,24 +44,17 @@ jest.mock('./cr-lookup.resource', () => ({
     client ? [client.first_name, client.last_name].filter(Boolean).join(' ') : crId,
 }));
 
-const mockHandoverModalProps = jest.fn();
 jest.mock('./handover-modal/handover-modal.component', () => ({
   __esModule: true,
-  default: (props: any) => {
-    mockHandoverModalProps(props);
-    return (
-      <div data-testid="handover-modal-stub">
-        <span>Handover modal for {props.referral?.case_number}</span>
-        <button onClick={() => props.onHandoverComplete(props.referral)}>Complete handover</button>
-        <button onClick={() => props.onReferralUnavailable(props.referral, 'Already handled elsewhere')}>
-          Simulate already handled
-        </button>
-        <button onClick={props.onModalClose}>Close</button>
-      </div>
-    );
-  },
+  EMT_HANDOVER_WORKSPACE: 'emt-handover-workspace',
 }));
 
+const mockSearchPatientByCrNumber = jest.fn();
+jest.mock('../resources/patient-search.resource', () => ({
+  searchPatientByCrNumber: (...args: unknown[]) => mockSearchPatientByCrNumber(...args),
+}));
+
+import { IdentifierTypesUuids } from '../resources/identifier-types';
 import { EmtApiError } from './types/emt.types';
 import EmtQueue from './emt-queue.component';
 
@@ -65,10 +62,14 @@ const referralFixture = {
   submission_id: 3,
   cr_id: 'CR5617849204955-8',
   status: 'pending_acceptance',
+  incident_id: 'INC-20260803100645-254727092999-ffjotq',
+  dispatch_id: 'd22419d8-6d36-4b2f-a33c-3e008bd85f77',
   case_number: 'AMB-d22419d8-FAC',
   ambulance_fr_code: 'FID-AMB-916293-3',
+  ambulance_registration_number: 'KDN 085T',
   facility_fr_code: 'FID-47-108521-3',
   evacuation_scene: '',
+  priority: 'p1 life threatening (als) with altered consciousness',
   referral_reason: '',
   referral_category: '',
   transport_modality: '',
@@ -105,6 +106,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUseSession.mockReturnValue({ sessionLocation: { uuid: 'location-uuid-1' } });
   mockFetchClientByCrId.mockResolvedValue(null);
+  mockSearchPatientByCrNumber.mockResolvedValue({ results: [], totalCount: 0 });
   mockPendingReferrals();
 });
 
@@ -211,7 +213,7 @@ describe('EmtQueue list rendering', () => {
 });
 
 describe('EmtQueue handover wiring', () => {
-  it('opens the handover modal for the clicked row (not some other row)', async () => {
+  it('launches the handover workspace for the clicked row (not some other row)', async () => {
     mockPendingReferrals({ referrals: [olderReferralFixture, referralFixture], count: 2 });
     render(<EmtQueue />);
     await screen.findByText('AMB-d22419d8-FAC');
@@ -221,29 +223,86 @@ describe('EmtQueue handover wiring', () => {
     const targetRow = rows.find((r) => within(r).queryByText('AMB-older-FAC'));
     await user.click(within(targetRow!).getByRole('button', { name: /handover/i }));
 
-    expect(screen.getByTestId('handover-modal-stub')).toBeInTheDocument();
-    expect(mockHandoverModalProps).toHaveBeenCalledWith(
+    expect(mockLaunchWorkspace).toHaveBeenCalledWith(
+      'emt-handover-workspace',
       expect.objectContaining({ referral: expect.objectContaining({ case_number: 'AMB-older-FAC' }) }),
     );
   });
 
-  it('on handover completion: refreshes the queue, shows a success toast, and navigates to start the visit', async () => {
+  it('refuses to open the handover workspace when there is no default location, instead of sending an empty locationUuid', async () => {
+    mockUseSession.mockReturnValue({ sessionLocation: undefined });
     mockPendingReferrals({ referrals: [referralFixture], count: 1 });
     render(<EmtQueue />);
     await screen.findByText('AMB-d22419d8-FAC');
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /handover/i }));
-    await user.click(screen.getByRole('button', { name: /complete handover/i }));
+
+    expect(mockLaunchWorkspace).not.toHaveBeenCalled();
+    expect(mockShowSnackbar).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'error', title: expect.stringMatching(/no default location/i) }),
+    );
+  });
+
+  it('on handover completion for a not-yet-registered patient: refreshes the queue, shows a success toast, and sends staff to the registry screen', async () => {
+    mockPendingReferrals({ referrals: [referralFixture], count: 1 });
+    mockSearchPatientByCrNumber.mockResolvedValueOnce({ results: [], totalCount: 0 });
+    render(<EmtQueue />);
+    await screen.findByText('AMB-d22419d8-FAC');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /handover/i }));
+    const { onHandoverComplete } = mockLaunchWorkspace.mock.calls[0][1];
+    onHandoverComplete(referralFixture);
 
     expect(mockMutate).toHaveBeenCalled();
     expect(mockShowSnackbar).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'success', subtitle: expect.stringContaining('AMB-d22419d8-FAC') }),
     );
+    await waitFor(() =>
+      expect(mockSearchPatientByCrNumber).toHaveBeenCalledWith('CR5617849204955-8'),
+    );
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          to: expect.stringMatching(/\/home\/registry\?emtCrId=/),
+        }),
+      ),
+    );
     expect(mockNavigate).toHaveBeenCalledWith(
       expect.objectContaining({ to: expect.stringContaining(encodeURIComponent('CR5617849204955-8')) }),
     );
-    expect(screen.queryByTestId('handover-modal-stub')).not.toBeInTheDocument();
+  });
+
+  it('on handover completion for an already-registered patient: skips the registry screen and goes straight to their chart', async () => {
+    mockPendingReferrals({ referrals: [referralFixture], count: 1 });
+    mockSearchPatientByCrNumber.mockResolvedValueOnce({
+      totalCount: 1,
+      results: [
+        {
+          uuid: 'amrs-patient-uuid-1',
+          identifiers: [
+            { identifier: 'CR5617849204955-8', identifierType: { uuid: IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID } },
+          ],
+        },
+      ],
+    });
+    render(<EmtQueue />);
+    await screen.findByText('AMB-d22419d8-FAC');
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /handover/i }));
+    const { onHandoverComplete } = mockLaunchWorkspace.mock.calls[0][1];
+    onHandoverComplete(referralFixture);
+
+    await waitFor(() =>
+      expect(mockNavigate).toHaveBeenCalledWith(
+        expect.objectContaining({ to: expect.stringContaining('/patient/amrs-patient-uuid-1/chart') }),
+      ),
+    );
+    expect(mockNavigate).not.toHaveBeenCalledWith(
+      expect.objectContaining({ to: expect.stringContaining('/home/registry') }),
+    );
   });
 
   it('on "already handled elsewhere": drops the row, refreshes the queue, and warns instead of celebrating', async () => {
@@ -253,13 +312,13 @@ describe('EmtQueue handover wiring', () => {
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /handover/i }));
-    await user.click(screen.getByRole('button', { name: /simulate already handled/i }));
+    const { onReferralUnavailable } = mockLaunchWorkspace.mock.calls[0][1];
+    onReferralUnavailable(referralFixture, 'Already handled elsewhere');
 
     expect(mockMutate).toHaveBeenCalled();
     expect(mockShowSnackbar).toHaveBeenCalledWith(
       expect.objectContaining({ kind: 'warning', subtitle: 'Already handled elsewhere' }),
     );
     expect(mockNavigate).not.toHaveBeenCalled();
-    expect(screen.queryByTestId('handover-modal-stub')).not.toBeInTheDocument();
   });
 });
