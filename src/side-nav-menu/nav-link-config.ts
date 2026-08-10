@@ -54,6 +54,10 @@ export const navLinksConfig = [
     title: 'Pharmacy',
   },
   {
+    to: 'emt',
+    title: 'EMT / Referral',
+  },
+  {
     to: 'mortuary',
     title: 'Mortuary',
   },

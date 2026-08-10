@@ -285,6 +285,23 @@
       "offline": true
     },
     {
+      "name": "emt-dashboard-link",
+      "component": "emtDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "meta": {
+        "name": "emt",
+        "slot": "emt-queue-dashboard-slot",
+        "title": "EMT / Referral"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "emtQueue",
+      "name": "emt",
+      "slot": "emt-queue-dashboard-slot"
+    },
+    {
       "name": "ampath-billing-dashboard-link",
       "component": "billingDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -418,6 +435,14 @@
       "canHide": true,
       "width": "wider",
       "preferredWindowSize": "maximized"
+    },
+    {
+      "name": "emt-handover-workspace",
+      "component": "emtHandoverWorkspace",
+      "title": "EMT Handover",
+      "type": "emt-handover",
+      "canHide": true,
+      "width": "narrow"
     }
   ],
   "workspaces2": [

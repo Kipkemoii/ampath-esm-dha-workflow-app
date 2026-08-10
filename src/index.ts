@@ -14,6 +14,7 @@ import { serviceQueueAdminDashboardMeta } from './dashboard-meta/service-queue-a
 import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.meta';
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
 import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
+import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -148,6 +149,15 @@ export const patientAdmissionSummary = getAsyncLifecycle(
 );
 
 export const caseSummaryLink = getSyncLifecycle(openMrsCreateDashboardLink(caseSummaryMeta as any), options);
+
+export const emtDashboardLink = getSyncLifecycle(createDashboardLink(emtDashboardMeta), options);
+
+export const emtQueue = getAsyncLifecycle(() => import('./emt/emt-queue.component'), options);
+
+export const emtHandoverWorkspace = getAsyncLifecycle(
+  () => import('./emt/handover-modal/handover-modal.component'),
+  options,
+);
 
 export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
 export const billingDashboardLink = getAsyncLifecycle(

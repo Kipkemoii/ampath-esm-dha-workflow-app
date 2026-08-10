@@ -3,12 +3,11 @@ import { Analytics } from '@carbon/react/icons';
 
 import styles from './dashboard.component.scss';
 import Overview from './overview/overview.component';
-import { getServiceQueueByLocationUuid } from '../service-queues/service-queues.resource';
 import { type QueueEntryResult } from '../registry/types';
 import { useSession } from '@openmrs/esm-framework';
-import { QUEUE_SERVICE_UUIDS } from '../shared/constants/concepts';
 import { getDashBoardSummary } from '../resources/dashboard.resource';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
+import { usePendingReferrals } from '../emt/emt.resource';
 
 interface DashboardProps {}
 
@@ -18,6 +17,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
   const [dashboardSummary, setDashboardSummary] = useState<any[]>([]);
   const session = useSession();
   const locationUuid = session.sessionLocation.uuid;
+  const { count: emtCount } = usePendingReferrals(1, 0);
   useEffect(() => {
     getDashBoardData();
   }, []);
@@ -45,6 +45,7 @@ const Dashboard: React.FC<DashboardProps> = () => {
         triageCount={triageQueueEntries}
         consultationCount={consultationQueueEntries}
         dashboardSummary={dashboardSummary}
+        emtCount={emtCount}
       />
     </div>
   );
