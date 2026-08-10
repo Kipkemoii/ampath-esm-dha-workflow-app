@@ -1,7 +1,5 @@
 @use '@carbon/layout';
 
-/* This renders inside the "Claim" tab panel, which adds no padding of its own, so the
-   layout insets itself. */
 .cvLayout {
   display: flex;
   flex-direction: column;
@@ -10,10 +8,6 @@
   padding: layout.$spacing-05;
 }
 
-/* ---- Header ---- */
-/* Wraps rather than splitting into two fixed-width halves, so the action buttons drop
-   onto their own row under the title instead of being squeezed or clipped on a narrow
-   viewport. */
 .cvHeaderSection {
   display: flex;
   flex-wrap: wrap;
@@ -32,9 +26,6 @@
   gap: layout.$spacing-03;
 }
 
-/* ---- Details grid ---- */
-/* `auto-fit` with a floor rather than a fixed column count: this reflows from several
-   columns on a wide viewport down to one on a phone, with no media queries. */
 .detailsGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
@@ -65,15 +56,11 @@
   }
 }
 
-/* ---- Sections ---- */
 .cvContentSection {
   display: flex;
   flex-direction: column;
 }
 
-/* Each category — Invoices, Interventions, Diagnosis, Doctors, Attachments — is its own
-   section, separated by a rule so the groups read distinctly instead of running together
-   as identical, unlabelled rows. */
 .section {
   display: flex;
   flex-direction: column;
@@ -89,16 +76,22 @@
   }
 }
 
-/* The first section sits right under the details grid, which already ends in its own
-   gap — a leading rule here would double up with it. */
-.cvContentSection > .section:first-child {
+.cvContentSection>.section:first-child {
   padding-top: 0;
   border-top: none;
 }
 
-/* Wide tables (Interventions runs to ten columns) scroll horizontally instead of
-   overflowing the tab panel on a narrow viewport. */
 .tableScroll {
   width: 100%;
   overflow-x: auto;
+}
+
+.tileHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  dd {
+    font-weight: 600;
+  }
 }
