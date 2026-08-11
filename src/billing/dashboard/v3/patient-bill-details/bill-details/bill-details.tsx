@@ -1,7 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { type PatientPayment, type PatientFacilityBillDetails, ClaimsVisit } from '../../types';
+import { type PatientPayment, type PatientFacilityBillDetails, type ClaimsVisit } from '../../types';
 import styles from './bill-details.scss';
-import { Button, OverflowMenu, OverflowMenuItem, RadioButton, RadioButtonGroup, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tag } from '@carbon/react';
+import {
+  Button,
+  OverflowMenu,
+  OverflowMenuItem,
+  RadioButton,
+  RadioButtonGroup,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Tag,
+} from '@carbon/react';
 import { formatDate, parseDate } from '@openmrs/esm-framework';
 import BillItemPaymentModal from '../modals/bill-item-payment/bill-item-payment.modal';
 import AddClaimLineModal from '../modals/add-claim-line/add-claim-line.modal';
@@ -18,7 +31,14 @@ interface billDetailsProps {
   claimsVisit: ClaimsVisit;
 }
 type BillingScope = 'OPD' | 'INPATIENT';
-const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPayments, amrsVisitDiagnosis, consentToken, locationUuid, claimsVisit }) => {
+const BillDetails: React.FC<billDetailsProps> = ({
+  patientBillDetails,
+  patientPayments,
+  amrsVisitDiagnosis,
+  consentToken,
+  locationUuid,
+  claimsVisit,
+}) => {
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
@@ -34,6 +54,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
     return <>No Data</>;
   }
   function handleBillItemPayment(patientBillDetail: PatientFacilityBillDetails) {
+    console.log('ACTION PAY BILL: ', patientBillDetail);
     setSelectedBillItem(patientBillDetail);
     setShowPaymentModal(true);
   }
@@ -71,7 +92,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
     if (b.intervention_code && b.has_claim_line === 0) {
       if (claimsVisit && claimsVisit.invoices) {
         const lineExists = claimsVisit.invoices.some((inv) =>
-          inv.lines.some(l => l.intervention_code === b.intervention_code)
+          inv.lines.some((l) => l.intervention_code === b.intervention_code),
         );
         return lineExists;
       }
@@ -116,22 +137,28 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
                     <TableCell>{b.item_quantity}</TableCell>
                     <TableCell>Ksh {b.item_total_price}</TableCell>
                     <TableCell>
-                      {
-                        (b.paid_status !== 'PAID' && !b.intervention_code) && <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>Pay</Button>
-                      }
-                      {
-                        b.intervention_code ?
-                          (
-                            claimsVisit ?
-                              (
-                                claimsVisit.workflow_state === 'DRAFT' ?
-                                  (!interventionAddedToClaimLine(b) && <Button size="sm" kind="tertiary" onClick={() => handleClaimLineAddition(b)}>Add Claim Line</Button>)
-                                  : <Tag>{claimsVisit.workflow_state}</Tag>
-                              )
-                              : <></>
+                      {b.paid_status !== 'PAID' && !b.intervention_code && (
+                        <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>
+                          Pay
+                        </Button>
+                      )}
+                      {b.intervention_code ? (
+                        claimsVisit ? (
+                          claimsVisit.workflow_state === 'DRAFT' ? (
+                            !interventionAddedToClaimLine(b) && (
+                              <Button size="sm" kind="tertiary" onClick={() => handleClaimLineAddition(b)}>
+                                Add Claim Line
+                              </Button>
+                            )
+                          ) : (
+                            <Tag>{claimsVisit.workflow_state}</Tag>
                           )
-                          : <></>
-                      }
+                        ) : (
+                          <></>
+                        )
+                      ) : (
+                        <></>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -226,7 +253,7 @@ const BillDetails: React.FC<billDetailsProps> = ({ patientBillDetails, patientPa
           consentToken={consentToken}
         />
       )}
-      </>
-      );
+    </>
+  );
 };
 export default BillDetails;

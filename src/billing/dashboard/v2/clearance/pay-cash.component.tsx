@@ -20,14 +20,21 @@ import { type PendingLineItem } from '../types';
 import styles from './pay-cash.scss';
 import { updateBillItemStatus } from '../../../api/billing.api';
 import { Snackbar } from '@openmrs/esm-styleguide/src/snackbars/snackbar.component';
+import { payBillItem } from '../../../billing-claims.resource';
 
 interface PayCashComponentProps {
   lineItems?: PendingLineItem[];
   billUuid: string;
   cashModeUuid: string;
+  onPaymentSuccess?: () => void;
 }
 
-const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [], billUuid, cashModeUuid }) => {
+const PayCashComponent: React.FC<PayCashComponentProps> = ({
+  lineItems = [],
+  billUuid,
+  cashModeUuid,
+  onPaymentSuccess,
+}) => {
   const [selectedRows, setSelectedRows] = useState<number[]>([]);
   const [amountTendered, setAmountTendered] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -59,34 +66,49 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [], bil
     if (isProcessing) return;
     closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
   };
+  const payForBillItem = async (billItem: PendingLineItem) => {
+    const payload = {
+      instanceType: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+      amountTendered: (billItem.quantity ?? 0) * (billItem.price ?? 0),
+      amount: (billItem.quantity ?? 0) * (billItem.price ?? 0),
+    };
+
+    return payBillItem(billUuid, payload);
+  };
 
   const onProcessPayment = async () => {
     if (isProcessing) {
       return;
     }
+
     setIsProcessing(true);
-    // setTimeout(() => {
-    //   setIsProcessing(false);
-
-    //   closeWorkspace('pay-cash-workspace', {
-    //     ignoreChanges: true,
-    //   });
-
-    //   showSnackbar({
-    //     kind: 'success',
-    //     title: 'Payment successful',
-    //     subtitle: `${selectedLineItems.length} bill item(s) paid successfully.`,
-    //   });
-    // }, 1000);
 
     try {
-      console.log('starting cash');
-      const res = await Promise.all(
-        selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
-      );
-      console.log('CASH RES: ', res);
+      const paymentResponses = await Promise.all(selectedLineItems.map((item) => payForBillItem(item)));
+
+      // const statusResponses = await Promise.all(
+      //   selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
+      // );
+
+      closeWorkspace('pay-cash-workspace', {
+        ignoreChanges: true,
+      });
+
+      showSnackbar({
+        kind: 'success',
+        title: 'Payment successful',
+        subtitle: `${selectedLineItems.length} bill item(s) paid successfully.`,
+      });
+
+      onPaymentSuccess?.();
     } catch (error) {
       console.error('Error processing payment:', error);
+
+      showSnackbar({
+        kind: 'error',
+        title: 'Payment failed',
+        subtitle: 'An error occurred while processing the selected bill items.',
+      });
     } finally {
       setIsProcessing(false);
     }
