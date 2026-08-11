@@ -126,8 +126,6 @@ const EmtQueue: React.FC = () => {
 
   const columns = [
     { id: 'patientName', header: 'Patient', key: 'patientName' },
-    { id: 'crId', header: 'CR ID', key: 'crId' },
-    { id: 'caseNumber', header: 'Case number', key: 'caseNumber' },
     { id: 'ambulance', header: 'Ambulance', key: 'ambulance' },
     { id: 'requestedAt', header: 'Requested', key: 'requestedAt' },
     { id: 'interventions', header: 'Interventions', key: 'interventions' },
@@ -209,21 +207,35 @@ const EmtQueue: React.FC = () => {
     // EmtQueue is mounted as a bare extension (no React Router ancestor), so
     // cross-app navigation has to go through the shell's navigate() rather
     // than react-router's useNavigate — and there's no router `state` channel
-    // either.
+    // either, so the CR id travels via a query param and the target screen
+    // re-resolves the CR record itself.
     //
+    // Confirm the CR record is actually fetchable before searching OpenMRS —
+    // a referral with a cr_id that's since become unreachable in the Client
+    // Registry is a distinct, actionable problem from "not yet in AMRS".
+    const client = await fetchClientByCrId(referral.cr_id, locationUuid);
+    if (!client) {
+      showSnackbar({
+        kind: 'warning',
+        title: 'Could not load patient details from the Client Registry',
+        subtitle: `CR ${referral.cr_id} could not be reached — search manually to continue.`,
+      });
+      navigate({ to: `\${openmrsSpaBase}/home/registry?emtCrId=${encodeURIComponent(referral.cr_id)}` });
+      return;
+    }
+
     // If the patient already exists in AMRS (registered on an earlier visit),
     // skip straight to their chart. Otherwise fall back to the registry
-    // screen so staff complete registration manually, same as today — the CR
-    // id travels via a query param and the Registration screen re-resolves
-    // the CR record itself.
+    // screen so staff complete registration manually — it re-resolves the
+    // same CR record and loads it there, ready to register.
     let amrsPatientUuid: string | undefined;
     try {
       const resp = await searchPatientByCrNumber(referral.cr_id);
       amrsPatientUuid = (resp.results ?? []).find((p) =>
-        p.identifiers.some(
+        p.identifiers?.some(
           (id) =>
             id.identifier === referral.cr_id &&
-            id.identifierType.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID,
+            id.identifierType?.uuid === IdentifierTypesUuids.CLIENT_REGISTRY_NO_UUID,
         ),
       )?.uuid;
     } catch {
@@ -370,7 +382,7 @@ const EmtQueue: React.FC = () => {
                                 const notes = dataRow?.referral_notes ?? '';
                                 return (
                                   <TableCell key={cell.id} className={styles.notesCell} title={notes}>
-                                    {notes ? `${notes.slice(0, 60)}${notes.length > 60 ? '…' : ''}` : '—'}
+                                    {notes || '—'}
                                   </TableCell>
                                 );
                               }

@@ -207,9 +207,15 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   };
 
   const generateCustomSmsPayload = (): RequestCustomOtpDto => {
+    // Manual search always populates identifierValue/identifierType. The EMT-handoff
+    // path (see the `emtCrId` effect above) skips that form entirely, so identifierValue
+    // stays blank — fall back to the CR id, which is always present, rather than sending
+    // an empty identifier and blocking the request downstream.
+    const identificationNumber = identifierValue.trim() || principal?.id || '';
+    const identificationType = identifierValue.trim() ? identifierType : HieIdentificationType.Cr;
     return {
-      identificationNumber: identifierValue,
-      identificationType: identifierType,
+      identificationNumber,
+      identificationType,
       locationUuid,
       phoneNumber: principal?.phone ? formatPhoneNumberForOTP(principal.phone ?? '') : '',
     };
@@ -228,10 +234,10 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       showAlert('error', 'No default location selected', '');
       return false;
     }
-    if (!payload.phoneNumber) {
-      showAlert('error', 'No phone number selected', '');
-      return false;
-    }
+    // No hard block on a missing phone number: biometric verification (the first step
+    // in the workflow drawer) doesn't need one, and if the flow does fall through to
+    // OTP, the OTP step already offers an "alternative phone number" override with a
+    // "Patient has no phone" reason — this gate was pre-empting that path entirely.
     return true;
   };
   const showAlert = (alertType: 'error' | 'success' | 'info' | 'warning', title: string, subtitle: string) => {

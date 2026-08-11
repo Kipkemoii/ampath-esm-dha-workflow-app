@@ -110,12 +110,12 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
 
   /** Only a HWR hit carrying a registration number yields a usable receiving doctor. */
   const resolvedDoctor: ReceivingDoctor | null = useMemo(() => {
-    const regId = hwrHit?.membership?.registration_id?.trim();
+    const regId = hwrHit?.membership?.external_reference_id?.trim();
     if (!regId) return null;
     return {
       name: hwrHit?.membership?.full_name || selectedProvider?.display || 'Receiving clinician',
       identifier: regId,
-      identifier_type: 'registration_number',
+      identifierType: 'registration_number',
       regulator: regulationBody,
     };
   }, [hwrHit, selectedProvider, regulationBody]);
@@ -276,7 +276,7 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
       const res = await initiateHandover({
         incidenceNumber: referral.case_number,
         identifier: resolvedDoctor.identifier,
-        identifier_type: resolvedDoctor.identifier_type,
+        identifierType: resolvedDoctor.identifierType,
         regulator: resolvedDoctor.regulator,
         locationUuid,
       });
@@ -294,7 +294,7 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
     } catch (err) {
       const message = describeError(err, 'Failed to initiate handover.');
       if (err instanceof EmtApiError && err.status === 404) {
-        // The referral is gone — the workspace closes and the caller drops the row.
+        promptBeforeClosing?.(() => false);
         onReferralUnavailable(referral, message);
         closeWorkspace?.();
         return;
@@ -318,7 +318,7 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
       }
       await verifyHandoverOtp({
         incidenceNumber: referral.case_number,
-        request_id: handoverRequestId,
+        requestId: handoverRequestId,
         otp,
         locationUuid,
       });
@@ -327,6 +327,10 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
         'Handover complete',
         `${referral.patientName} (${referral.case_number}) has been handed over.`,
       );
+      // Bypass the stale promptBeforeClosing test fn (see the 404 branch in
+      // handleInitiate above) so a successful handover closes cleanly, with no
+      // discard-changes prompt.
+      promptBeforeClosing?.(() => false);
       reset();
       onHandoverComplete(referral);
       closeWorkspace?.();
@@ -334,6 +338,7 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
       const message = describeError(err, 'OTP verification failed.');
       if (err instanceof EmtApiError && err.status === 404) {
         // The referral is gone — the workspace closes and the caller drops the row.
+        promptBeforeClosing?.(() => false);
         onReferralUnavailable(referral, message);
         closeWorkspace?.();
         return;
@@ -455,6 +460,15 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
                 </Tag>
               </span>
             </div>
+            <Button
+              kind="ghost"
+              size="sm"
+              className={styles.ghostLink}
+              onClick={() => setStep('doctor')}
+              disabled={loading}
+            >
+              Change doctor
+            </Button>
             {error && <p className={styles.errorText}>{error}</p>}
           </div>
         )}
@@ -466,6 +480,15 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
               {patientLine}.
             </p>
             <OTPInput otpLength={6} onChange={setOtp} />
+            <Button
+              kind="ghost"
+              size="sm"
+              className={styles.ghostLink}
+              onClick={handleResend}
+              disabled={loading}
+            >
+              Resend OTP
+            </Button>
             {error && <p className={styles.errorText}>{error}</p>}
           </div>
         )}
@@ -484,9 +507,6 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
         )}
         {step === 'confirm' && (
           <>
-            <Button kind="ghost" onClick={() => setStep('doctor')} disabled={loading}>
-              Change doctor
-            </Button>
             <Button kind="secondary" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>
@@ -501,9 +521,6 @@ const HandoverModal: React.FC<HandoverWorkspaceProps> = ({
         )}
         {step === 'otp' && (
           <>
-            <Button kind="ghost" onClick={handleResend} disabled={loading}>
-              Resend OTP
-            </Button>
             <Button kind="secondary" onClick={handleClose} disabled={loading}>
               Cancel
             </Button>

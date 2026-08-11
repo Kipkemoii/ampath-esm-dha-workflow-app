@@ -2,6 +2,8 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 .heading {
@@ -35,6 +37,12 @@
   align-items: flex-end;
   gap: 0.75rem;
   flex-wrap: wrap;
+
+  // Carbon form fields default to flex:1 1 auto with no min-width, so the row can
+  // otherwise be forced wider than the panel instead of shrinking/wrapping.
+  > * {
+    min-width: 0;
+  }
 }
 
 .fieldHint {
@@ -53,7 +61,10 @@
 
 .detailGrid {
   display: grid;
-  grid-template-columns: minmax(8rem, 35%) 1fr;
+  // A bare 1fr track won't shrink past its content's min-content width (e.g. the
+  // long case-number/UUID values here), which was forcing the whole panel wider
+  // than its fixed width and clipping content — minmax(0, 1fr) lets it shrink.
+  grid-template-columns: minmax(8rem, 35%) minmax(0, 1fr);
   row-gap: 0.5rem;
   column-gap: 1rem;
   padding: 0.75rem 0;
@@ -74,6 +85,20 @@
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+// Ghost button sized to its label rather than Carbon's default full-width block button —
+// used for secondary actions ("Change doctor", "Resend OTP") moved into the body so the
+// footer stays a standard 2-button row instead of a 3-button set that doesn't fit a
+// narrow panel.
+.ghostLink {
+  align-self: flex-start;
+  width: auto;
+  max-width: none;
+  padding-inline: 0;
+  min-height: auto;
 }
 
 .errorText {

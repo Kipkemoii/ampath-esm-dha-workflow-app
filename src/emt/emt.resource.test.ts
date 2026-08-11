@@ -111,7 +111,7 @@ describe('initiateHandover', () => {
     const res = await initiateHandover({
       incidenceNumber: 'AMB-d22419d8-FAC',
       identifier: 'A13579',
-      identifier_type: 'registration_number',
+      identifierType: 'registration_number',
       regulator: 'KMPDC',
       locationUuid: 'location-uuid-1',
     });
@@ -124,7 +124,7 @@ describe('initiateHandover', () => {
         body: {
           incidenceNumber: 'AMB-d22419d8-FAC',
           identifier: 'A13579',
-          identifier_type: 'registration_number',
+          identifierType: 'registration_number',
           regulator: 'KMPDC',
           locationUuid: 'location-uuid-1',
         },
@@ -140,7 +140,7 @@ describe('initiateHandover', () => {
       await initiateHandover({
         incidenceNumber: 'AMB-d22419d8-FAC',
         identifier: 'A13579',
-        identifier_type: 'registration_number',
+        identifierType: 'registration_number',
         regulator: 'KMPDC',
         locationUuid: 'location-uuid-1',
       });
@@ -160,7 +160,7 @@ describe('verifyHandoverOtp', () => {
 
     await verifyHandoverOtp({
       incidenceNumber: 'AMB-d22419d8-FAC',
-      request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
+      requestId: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
       otp: '623415',
       locationUuid: 'location-uuid-1',
     });
@@ -186,7 +186,7 @@ describe('verifyHandoverOtp', () => {
     try {
       await verifyHandoverOtp({
         incidenceNumber: 'AMB-d22419d8-FAC',
-        request_id: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
+        requestId: '82fd22b6-e366-4077-9866-e1c4ed7328b0',
         otp: '000000',
         locationUuid: 'location-uuid-1',
       });

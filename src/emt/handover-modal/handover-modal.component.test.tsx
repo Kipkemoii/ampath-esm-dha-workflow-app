@@ -179,7 +179,7 @@ describe('initiate', () => {
     expect(mockInitiateHandover).toHaveBeenCalledWith({
       incidenceNumber: 'AMB-d22419d8-FAC',
       identifier: 'A13579',
-      identifier_type: 'registration_number',
+      identifierType: 'registration_number',
       regulator: 'KMPDC',
       locationUuid: 'location-uuid-1',
     });
@@ -220,7 +220,7 @@ describe('verify', () => {
     await screen.findByText(/enter doctor otp/i);
   }
 
-  it('on success: verifies with incidenceNumber/request_id/otp and completes the handover', async () => {
+  it('on success: verifies with incidenceNumber/requestId/otp and completes the handover', async () => {
     const user = userEvent.setup();
     const props = baseProps();
     const { container } = render(<HandoverModal {...props} />);
@@ -234,7 +234,7 @@ describe('verify', () => {
     await waitFor(() =>
       expect(mockVerifyHandoverOtp).toHaveBeenCalledWith({
         incidenceNumber: 'AMB-d22419d8-FAC',
-        request_id: 'req-123',
+        requestId: 'req-123',
         otp: '654321',
         locationUuid: 'location-uuid-1',
       }),

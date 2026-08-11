@@ -80,7 +80,7 @@ export interface ReceivingDoctor {
   name: string;
   /** e.g. the KMPDC registration number ("A13579"). */
   identifier: string;
-  identifier_type: string;
+  identifierType: string;
   /** Licensing body, e.g. "KMPDC" | "COC" | "NCK". */
   regulator: string;
 }
@@ -89,7 +89,7 @@ export interface ReceivingDoctor {
 export interface InitiateHandoverRequest {
   incidenceNumber: string;
   identifier: string;
-  identifier_type: string;
+  identifierType: string;
   regulator: string;
   /** The current facility's OpenMRS location uuid — the backend scopes the handover to it. */
   locationUuid: string;
@@ -105,7 +105,7 @@ export interface InitiateHandoverResponse {
 /** Request body for `POST /api/v1/claims/emt/handover/verify`. */
 export interface VerifyHandoverRequest {
   incidenceNumber: string;
-  request_id: string;
+  requestId: string;
   otp: string;
   /** The current facility's OpenMRS location uuid — the backend scopes the handover to it. */
   locationUuid: string;

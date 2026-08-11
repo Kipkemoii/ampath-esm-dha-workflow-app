@@ -249,6 +249,10 @@ describe('EmtQueue handover wiring', () => {
     mockSearchPatientByCrNumber.mockResolvedValueOnce({ results: [], totalCount: 0 });
     render(<EmtQueue />);
     await screen.findByText('AMB-d22419d8-FAC');
+    // Wait out the row-enrichment CR lookup before queueing the one the
+    // handover-completion flow itself makes, so it doesn't get consumed early.
+    await waitFor(() => expect(mockFetchClientByCrId).toHaveBeenCalledTimes(1));
+    mockFetchClientByCrId.mockResolvedValueOnce({ id: 'CR5617849204955-8', first_name: 'Jane', last_name: 'Doe' });
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /handover/i }));
@@ -289,6 +293,8 @@ describe('EmtQueue handover wiring', () => {
     });
     render(<EmtQueue />);
     await screen.findByText('AMB-d22419d8-FAC');
+    await waitFor(() => expect(mockFetchClientByCrId).toHaveBeenCalledTimes(1));
+    mockFetchClientByCrId.mockResolvedValueOnce({ id: 'CR5617849204955-8', first_name: 'Jane', last_name: 'Doe' });
 
     const user = userEvent.setup();
     await user.click(screen.getByRole('button', { name: /handover/i }));
@@ -303,6 +309,29 @@ describe('EmtQueue handover wiring', () => {
     expect(mockNavigate).not.toHaveBeenCalledWith(
       expect.objectContaining({ to: expect.stringContaining('/home/registry') }),
     );
+  });
+
+  it('on handover completion when the CR record itself cannot be fetched: warns and still sends staff to the registry screen, without searching AMRS', async () => {
+    mockPendingReferrals({ referrals: [referralFixture], count: 1 });
+    render(<EmtQueue />);
+    await screen.findByText('AMB-d22419d8-FAC');
+    await waitFor(() => expect(mockFetchClientByCrId).toHaveBeenCalledTimes(1));
+    mockFetchClientByCrId.mockResolvedValueOnce(null);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: /handover/i }));
+    const { onHandoverComplete } = mockLaunchWorkspace.mock.calls[0][1];
+    onHandoverComplete(referralFixture);
+
+    await waitFor(() =>
+      expect(mockShowSnackbar).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'warning', title: expect.stringMatching(/could not load patient details/i) }),
+      ),
+    );
+    expect(mockNavigate).toHaveBeenCalledWith(
+      expect.objectContaining({ to: expect.stringContaining('/home/registry') }),
+    );
+    expect(mockSearchPatientByCrNumber).not.toHaveBeenCalled();
   });
 
   it('on "already handled elsewhere": drops the row, refreshes the queue, and warns instead of celebrating', async () => {

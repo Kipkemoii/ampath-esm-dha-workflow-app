@@ -465,6 +465,7 @@ export type HwrSearchResult = {
     licensing_body?: string;
     specialty?: string;
     status?: string;
+    external_reference_id?: string;
   };
   contacts?: { email?: string; phone?: string };
   identifiers?: {
