@@ -83,6 +83,9 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
       year: 'numeric',
       month: 'short',
       day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
     }).format(new Date(date));
   };
 
