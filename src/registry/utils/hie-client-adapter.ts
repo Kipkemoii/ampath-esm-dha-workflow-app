@@ -168,7 +168,7 @@ export function generateAmrsPersonPayload(hieClient: HieClient): CreatePersonDto
         attributeType: PersonAttributeTypeUuids.CIVIL_STATUS_UUID,
       });
     }
-    if (d === 'id' && hieClient.id) {
+    if (d === HieIdentificationType.Cr && hieClient.id) {
       attributes.push({
         value: hieClient.id,
         attributeType: PersonAttributeTypeUuids.CLIENT_REGISTRY_ID_UUID,

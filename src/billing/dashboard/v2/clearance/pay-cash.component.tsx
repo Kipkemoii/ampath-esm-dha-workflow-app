@@ -65,29 +65,31 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({ lineItems = [], bil
       return;
     }
     setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-
-      closeWorkspace('pay-cash-workspace', {
-        ignoreChanges: true,
-      });
-
-      showSnackbar({
-        kind: 'success',
-        title: 'Payment successful',
-        subtitle: `${selectedLineItems.length} bill item(s) paid successfully.`,
-      });
-    }, 1000);
-
-    // try {
-    //   await Promise.all(
-    //     selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
-    //   );
-    // } catch (error) {
-    //   console.error('Error processing payment:', error);
-    // } finally {
+    // setTimeout(() => {
     //   setIsProcessing(false);
-    // }
+
+    //   closeWorkspace('pay-cash-workspace', {
+    //     ignoreChanges: true,
+    //   });
+
+    //   showSnackbar({
+    //     kind: 'success',
+    //     title: 'Payment successful',
+    //     subtitle: `${selectedLineItems.length} bill item(s) paid successfully.`,
+    //   });
+    // }, 1000);
+
+    try {
+      console.log('starting cash');
+      const res = await Promise.all(
+        selectedLineItems.map((item) => updateBillItemStatus(billUuid, item.bill_item_uuid, cashModeUuid)),
+      );
+      console.log('CASH RES: ', res);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   return (

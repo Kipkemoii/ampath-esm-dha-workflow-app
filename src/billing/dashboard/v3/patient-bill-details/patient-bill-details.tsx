@@ -139,7 +139,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
         return s.paid_status === 'POSTED';
       });
       if (hasPostedBill) {
-        return 'PARTIALLY PAID'
+        return 'PARTIALLY PAID';
       }
       const hasPendingBill = patientBillDetails.some((s) => {
         return s.paid_status === 'PENDING';
@@ -208,13 +208,13 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     return {
       patientUuid: patientUuid,
       visitDate: billingDate,
-      locationUuid: locationUuid
+      locationUuid: locationUuid,
     };
   }
   function getPatientAmrsMaternityDiagnosisPayload(): AmrsMaternityDiagnosisDto {
     return {
       patientUuid: patientUuid,
-      billingDate: billingDate
+      billingDate: billingDate,
     };
   }
   function onLoadingClaimVisit(claimVisit: ClaimsVisit) {
@@ -324,6 +324,7 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                       patientBillDetails={patientBillDetails}
                       consentToken={consentToken}
                       onBillDetailsChange={getPatientBillDetails}
+                      billingDate={billingDate}
                       onLoadingClaimVisit={onLoadingClaimVisit}
                     />
                   </>

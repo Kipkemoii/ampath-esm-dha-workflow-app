@@ -26,6 +26,7 @@ interface claimVisitDetailsProps {
   onBillDetailsChange?: () => void;
   /** True while claim preview is revalidating — stand down content edits. */
   claimRefreshing?: boolean;
+  billingDate?: string;
 }
 const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   claimsVisit,
@@ -33,6 +34,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
   patientBillDetails,
   onBillDetailsChange,
   claimRefreshing = false,
+  billingDate,
 }) => {
   const [showCloseClaimModal, setShowCloseClaimModal] = useState<boolean>();
   const [showSubmitClaimModal, setSubmitCloseClaimModal] = useState<boolean>(false);
@@ -181,16 +183,10 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
             <h4>Claim Visit Details</h4>
           </div>
           <div className={styles.headerAction}>
-            <Button
-              kind="primary"
-              onClick={displayCloseClaimModal}
-              disabled={!canEditClaim}>
+            <Button kind="primary" onClick={displayCloseClaimModal} disabled={!canEditClaim}>
               Close Claim
             </Button>
-            <Button
-              kind="tertiary"
-              onClick={displayCloseSubmitClaimModal}
-              disabled={!canEditClaim}>
+            <Button kind="tertiary" onClick={displayCloseSubmitClaimModal} disabled={!canEditClaim}>
               Submit claim
             </Button>
             <Button
@@ -290,6 +286,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
                     invalidateProviderClaimPreview();
                     onBillDetailsChange?.();
                   }}
+                  billingDate={billingDate}
                 />
               )}
             </div>

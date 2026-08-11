@@ -14,6 +14,7 @@ import DailyBookings from './bookings/daily/daily-bookings.component';
 import Mortuary from './mortuary/mortuary.component';
 import ServiceQueueAdminDashboard from './service-queues/admin/service-queue-admin-dashboard.component';
 import AdmissionsDashboard from './admissions/admissions-dashboard.component';
+import EmtQueue from './emt/emt-queue.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -38,6 +39,7 @@ const Root: React.FC = () => {
           <Route path="mortuary" element={<Mortuary />} />
           <Route path="service-queue-admin" element={<ServiceQueueAdminDashboard />} />
           <Route path="admissions-dashboard" element={<AdmissionsDashboard />} />
+          <Route path="emt" element={<EmtQueue />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />

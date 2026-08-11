@@ -57,11 +57,11 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
     const statusArr = status.split(',');
 
     if (statusArr.length > 0) {
-       const hasPostedBill = statusArr.some((s) => {
+      const hasPostedBill = statusArr.some((s) => {
         return s === 'POSTED';
       });
-      if(hasPostedBill){
-        return 'PARTIALLY PAID'
+      if (hasPostedBill) {
+        return 'PARTIALLY PAID';
       }
       const hasPendingBill = statusArr.some((s) => {
         return s === 'PENDING';
@@ -75,74 +75,77 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
       return status;
     }
   }
-  const filteredBills = (facilityBills ?? []).filter((fb) => {
-    const term = search.trim().toLowerCase();
-    return (
-      !term ||
-      `${fb.patient_name} ${formatStatusColumn(fb.bill_status)} ${fb.cash_point}`.toLowerCase().includes(term)
-    );
-  });
+
+  const formatDate = (date?: string | null) => {
+    if (!date) return '—';
+
+    return new Intl.DateTimeFormat('en-KE', {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+    }).format(new Date(date));
+  };
 
   return (
     <>
       <TableToolbar
-            id="facility-bills"
-            search={search}
-            onSearch={setSearch}
-            searchPlaceholder="Search patient, status or cash point…"
-            onDate={onDateChange}
+        id="facility-bills"
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="Search patient, status or cash point…"
+        onDate={onDateChange}
       />
       {currentView === BillingView.Bills ? (
         (facilityBills ?? []).length === 0 ? (
           <EmptyState message="No bills." />
         ) : (
-        <>
-          {filteredBills.length === 0 ? (
-            <EmptyState message="No bills match your search." />
-          ) : (
-            <Table aria-label="facility bills" size="sm">
-              <TableHead>
-                <TableRow>
-                  <TableHeader>No</TableHeader>
-                  <TableHeader>Date</TableHeader>
-                  <TableHeader>Patient</TableHeader>
-                  <TableHeader>Status</TableHeader>
-                  <TableHeader>Cashpoint</TableHeader>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredBills.map((fb, index) => {
-                  return (
-                    <TableRow key={fb.patient_uuid}>
-                      <TableCell>{index + 1}</TableCell>
-                      <TableCell>{fb.bill_date}</TableCell>
-                      <TableCell>
-                        <div
-                          className={styles.clickableData}
-                          onClick={() => toggleView(BillingView.BillDetails, fb.patient_uuid)}
-                        >
-                          {fb.patient_name}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {(() => {
-                          const s = formatStatusColumn(fb.bill_status);
-                          const type = s === 'PAID' ? 'green' : s === 'PENDING' ? 'gray' : 'blue';
-                          return (
-                            <Tag size="sm" type={type}>
-                              {s}
-                            </Tag>
-                          );
-                        })()}
-                      </TableCell>
-                      <TableCell>{fb.cash_point}</TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          )}
-        </>
+          <>
+            {facilityBills.length === 0 ? (
+              <EmptyState message="No bills match your search." />
+            ) : (
+              <Table aria-label="facility bills" size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>No</TableHeader>
+                    <TableHeader>Date</TableHeader>
+                    <TableHeader>Patient</TableHeader>
+                    <TableHeader>Status</TableHeader>
+                    <TableHeader>Identifier</TableHeader>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {facilityBills.map((fb, index) => {
+                    return (
+                      <TableRow key={fb.patient_uuid}>
+                        <TableCell>{index + 1}</TableCell>
+                        <TableCell>{formatDate(fb.visit_start_date)}</TableCell>
+                        <TableCell>
+                          <div
+                            className={styles.clickableData}
+                            onClick={() => toggleView(BillingView.BillDetails, fb.patient_uuid)}
+                          >
+                            {fb.patient_name}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {(() => {
+                            const s = formatStatusColumn(fb.paid_status);
+                            const type = s === 'PAID' ? 'green' : s === 'PENDING' ? 'gray' : 'blue';
+                            return (
+                              <Tag size="sm" type={type}>
+                                {s}
+                              </Tag>
+                            );
+                          })()}
+                        </TableCell>
+                        <TableCell>{fb.cr_id}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </>
         )
       ) : (
         <></>

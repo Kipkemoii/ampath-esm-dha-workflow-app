@@ -33,8 +33,8 @@ const InvoiceComponent = forwardRef<HTMLDivElement, InvoiceComponentProps>(({ bi
   }
 
   const items =
-    Array.isArray(bill.items) && bill.items.length > 0
-      ? bill.items
+    Array.isArray(bill) && bill.length > 0
+      ? bill
       : [
           {
             billable_service: bill.billable_service,

@@ -47,11 +47,12 @@ export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Pr
   const facilityBillsUrl = `${etlBaseUrl}/facility/facility-bills?locationUuid=${facilityBillsDto.locationUuid}&billingDate=${facilityBillsDto.billingDate}`;
   const response = await openmrsFetch(facilityBillsUrl);
   const data = await response.json();
-  return (data.results ?? []).map((bill: any) => ({
-    ...bill,
-    bill_items: typeof bill.bill_items === 'string' ? JSON.parse(bill.bill_items) : bill.bill_items,
-    payments: typeof bill.payments === 'string' ? JSON.parse(bill.payments) : bill.payments,
-  }));
+  // return (data.results ?? []).map((bill: any) => ({
+  //   ...bill,
+  //   bill_items: typeof bill.bill_items === 'string' ? JSON.parse(bill.bill_items) : bill.bill_items,
+  //   payments: typeof bill.payments === 'string' ? JSON.parse(bill.payments) : bill.payments,
+  // }));
+  return data.results ?? [];
 }
 
 export async function fetchPatientFacilityBillDetails(
@@ -883,9 +884,9 @@ export function usePayerClaimPreview(invoiceNo: string, locationUuid: string) {
     : null;
 
   const { data, error, isLoading, isValidating } = useSWR<{
-    data: PayerPreviewResponse
+    data: PayerPreviewResponse;
   }>(url, openmrsFetch, {
-    keepPreviousData: true
+    keepPreviousData: true,
   });
 
   const results = data?.data?.results;
