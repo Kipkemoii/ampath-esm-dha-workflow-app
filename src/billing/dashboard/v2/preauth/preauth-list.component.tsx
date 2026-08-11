@@ -14,6 +14,8 @@ import { Renew } from '@carbon/react/icons';
 import { showSnackbar } from '@openmrs/esm-framework';
 import {
   checkPreauthStatus,
+  getPreauthPreview,
+  readPreauthCheck,
   type PreauthCheckKind,
 } from '../../../../claims/claims.resource';
 import EmptyState from '../shared/empty-state.component';
@@ -56,61 +58,78 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
   const rowKey = (item: PatientFacilityBillDetails) =>
     `${item.patient_uuid}-${item.intervention_code}-${item.order_no ?? item.bill_line_item_id ?? item.cashier_bill_line_item_uuid}`;
 
-  const load = useCallback(async () => {
-    if (!locationUuid || !billingDate) return;
-    setLoading(true);
-    try {
-      const data = await fetchPreauthBillItems(locationUuid, billingDate);
-      setItems(data);
+  // `force` skips the short cache that stops the several places reading /pre-auth/preview
+  // from each paying for the same call. Refresh, and the reload after a preauth is raised,
+  // are asking for the current answer, so they go to the HIE.
+  const load = useCallback(
+    async (force = false) => {
+      if (!locationUuid || !billingDate) return;
+      setLoading(true);
+      try {
+        const data = await fetchPreauthBillItems(locationUuid, billingDate);
+        setItems(data);
 
-      const metaMap: Record<string, RowMeta> = {};
-
-      for (const item of data) {
-        const key = rowKey(item);
-        try {
-          const visit = await fetchActiveVisitForPatient(item.patient_uuid, locationUuid);
-          const token = resolveConsentTokenForVisit(visit) || item.consent_token || '';
-          if (!token) {
-            metaMap[key] = { kind: 'no_token' };
-            continue;
+        const metaMap: Record<string, RowMeta> = {};
+        // One preview per visit, not per row. A visit's bill rows share its consent token and
+        // the preview covers every intervention on it, so asking once and reading each row's
+        // intervention off the answer replaces a call per row — a patient with five
+        // interventions was five identical requests to a rate-limited HIE endpoint.
+        const previewByToken = new Map<string, unknown>();
+        const previewFor = async (token: string) => {
+          if (!previewByToken.has(token)) {
+            previewByToken.set(token, await getPreauthPreview(token, locationUuid, { force }));
           }
-          metaMap[key] = { kind: 'loading' };
+          return previewByToken.get(token);
+        };
 
-          const check = await checkPreauthStatus(token, locationUuid, item.intervention_code);
-          metaMap[key] = {
-            kind: check.kind as PreauthCheckKind,
-            status: check.status,
-            preauthCode: check.preauthCode,
-            notes: check.notes,
-          };
-        } catch {
-          const token = item.consent_token || '';
-          if (token) {
-            const check = await checkPreauthStatus(token, locationUuid, item.intervention_code);
+        for (const item of data) {
+          const key = rowKey(item);
+          try {
+            const visit = await fetchActiveVisitForPatient(item.patient_uuid, locationUuid);
+            const token = resolveConsentTokenForVisit(visit) || item.consent_token || '';
+            if (!token) {
+              metaMap[key] = { kind: 'no_token' };
+              continue;
+            }
+            metaMap[key] = { kind: 'loading' };
+
+            const check = readPreauthCheck(await previewFor(token), item.intervention_code);
             metaMap[key] = {
               kind: check.kind as PreauthCheckKind,
               status: check.status,
               preauthCode: check.preauthCode,
               notes: check.notes,
             };
-          } else {
-            metaMap[key] = { kind: 'error', status: 'Visit lookup failed' };
+          } catch {
+            const token = item.consent_token || '';
+            if (token) {
+              const check = await checkPreauthStatus(token, locationUuid, item.intervention_code);
+              metaMap[key] = {
+                kind: check.kind as PreauthCheckKind,
+                status: check.status,
+                preauthCode: check.preauthCode,
+                notes: check.notes,
+              };
+            } else {
+              metaMap[key] = { kind: 'error', status: 'Visit lookup failed' };
+            }
           }
         }
+        setRowMeta(metaMap);
+      } catch {
+        showSnackbar({
+          kind: 'error',
+          title: 'Error loading preauth items',
+          subtitle: 'Could not load bill items needing preauth. Reload or contact support.',
+        });
+        setItems([]);
+        setRowMeta({});
+      } finally {
+        setLoading(false);
       }
-      setRowMeta(metaMap);
-    } catch {
-      showSnackbar({
-        kind: 'error',
-        title: 'Error loading preauth items',
-        subtitle: 'Could not load bill items needing preauth. Reload or contact support.',
-      });
-      setItems([]);
-      setRowMeta({});
-    } finally {
-      setLoading(false);
-    }
-  }, [locationUuid, billingDate]);
+    },
+    [locationUuid, billingDate],
+  );
 
   useEffect(() => {
     load();
@@ -124,11 +143,7 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
 
   const stillNeedsRaise = (item: PatientFacilityBillDetails, meta: RowMeta | undefined) => {
     const elective = needsElectivePreauth(item);
-    return (
-      meta?.kind === 'not_raised' ||
-      meta?.kind === 'failed' ||
-      (elective && meta?.kind === 'no_token')
-    );
+    return meta?.kind === 'not_raised' || meta?.kind === 'failed' || (elective && meta?.kind === 'no_token');
   };
 
   // Queue of interventions that still need a preauth — raise from facility bill details.
@@ -158,7 +173,7 @@ const PreauthList: React.FC<PreauthListProps> = ({ locationUuid, billingDate, on
           iconDescription="Refresh preauth status"
           hasIconOnly
           disabled={loading}
-          onClick={() => load()}
+          onClick={() => load(true)}
           className={styles.refreshBtn}
         />
       </div>
