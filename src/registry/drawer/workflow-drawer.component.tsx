@@ -82,7 +82,7 @@ function decodeHtmlEntities(value: string): string {
 const OTP_EXPIRY_SECONDS = 300; // 5 minutes
 
 // Where the patient is sent first, and the rooms available for each category.
-const PATIENT_CATEGORIES = ['Triage', 'Walk-in'];
+const PATIENT_CATEGORIES = ['Triage', 'Walk-in', 'CCC'];
 const WALK_IN_ROOMS = [];
 
 // Payment modes that are direct payment (not insurance schemes) — excluded from
@@ -236,7 +236,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   const [imageError, setImageError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [method, setMethod] = useState<Method>('cash');
+  const [method, setMethod] = useState<Method>('insurance');
   const [patientCategory, setPatientCategory] = useState<string>(PATIENT_CATEGORIES[0]);
   const [room, setRoom] = useState<string>('');
   const [insurance, setInsurance] = useState<string>('');
@@ -278,7 +278,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       setReasonError('');
       setImageError('');
       setShowWhitelistForm(false);
-      setMethod('cash');
+      setMethod('insurance');
       setPatientCategory(PATIENT_CATEGORIES[0]);
       setRoom('');
       setInsurance('');
@@ -703,10 +703,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   const handleStartVisit = () => {
     const usingInsurance = method === 'insurance';
 
-    // The required fields show their red state on landing (see the derived
-    // *InvalidText below) and the button is disabled while any is empty — guard
-    // here too as a safety net.
-    if (!room || !visitType || (usingInsurance && !insurance)) {
+    // CCC patients do not require a payment method selection.
+    if (!room || !visitType || (!isCccPatient && usingInsurance && !insurance)) {
       return;
     }
 
@@ -715,8 +713,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       room,
       roomUuid: triageQueueByRoom[room] ?? '',
       visitType,
-      method,
-      insurance: usingInsurance ? insurance : undefined,
+      ...(isCccPatient ? {} : { method, insurance: usingInsurance ? insurance : undefined }),
     });
   };
 
@@ -729,9 +726,11 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   // The SHA-ineligibility message (set on selecting an ineligible scheme) takes
   // precedence over the "select a scheme" prompt, and is shown regardless of touch
   // state because it's a response to something the user just did.
+  const isCccPatient = patientCategory === 'CCC';
+
   const insuranceInvalidText =
     insuranceError ||
-    (method === 'insurance' && touched.insurance && !insurance ? 'Select an insurance scheme' : '');
+    (!isCccPatient && method === 'insurance' && touched.insurance && !insurance ? 'Select an insurance scheme' : '');
 
   // A scheme is active/eligible when its coverage status is '1'.
   const isActiveScheme = (s: Scheme) => s.coverage?.status === '1';
@@ -1261,7 +1260,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                   </div>
 
                   <div className={styles.formSection}>
-                    <h6 className={styles.sectionLabel}>Payment</h6>
+                    {!isCccPatient ? <h6 className={styles.sectionLabel}>Payment</h6> : <></>}
                     {hasCashPoint === false ? (
                       <div className={styles.errorNote}>
                         <WarningAltFilled size={20} className={styles.errorNoteIcon} />
@@ -1276,7 +1275,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       name="method-group"
                       orientation="horizontal"
                       valueSelected={method}
-                      disabled={hasCashPoint === false}
+                      disabled={isCccPatient || hasCashPoint === false}
                       onChange={(v) => {
                         // Switching payment method clears any preselected
                         // insurance so it can't carry into the payer mapping —
@@ -1286,8 +1285,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                         setInsuranceError('');
                       }}
                     >
-                      <RadioButton id="method-cash" labelText="Cash" value="cash" />
                       <RadioButton id="method-insurance" labelText="Insurance" value="insurance" />
+                      <RadioButton id="method-cash" labelText="Cash" value="cash" />
                     </RadioButtonGroup>
 
                     {method === 'cash' && hasCashMode === false ? (
@@ -1299,7 +1298,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' ? (
+                    {method === 'insurance' && !isCccPatient ? (
                       <div {...lockSelection(!!insurance)} onBlurCapture={markTouched('insurance')}>
                         <ComboBox
                           id="insurance-scheme"
@@ -1362,7 +1361,10 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       <></>
                     )}
 
-                    {method === 'insurance' && /pomsf/i.test(insurance) && pomsfDisplayBalance !== null ? (
+                    {method === 'insurance' &&
+                    !isCccPatient &&
+                    /pomsf/i.test(insurance) &&
+                    pomsfDisplayBalance !== null ? (
                       <div className={styles.eligibilityRow}>
                         <span className={styles.eligibilityRowLabel}>Eligibility</span>
                         <Tag size="sm" type="green">
@@ -1371,7 +1373,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' && /sha|shif/i.test(insurance) ? (
+                    {method === 'insurance' && !isCccPatient && /sha|shif/i.test(insurance) ? (
                       <div className={styles.eligibilityRow}>
                         <span className={styles.eligibilityRowLabel}>Eligibility</span>
                         {shaEligibilityTag}
@@ -1388,7 +1390,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                       </div>
                     ) : null}
 
-                    {method === 'insurance' && pomsfAllBenefits.length > 0 ? (
+                    {method === 'insurance' && !isCccPatient && pomsfAllBenefits.length > 0 ? (
                       <div className={styles.pomsfBenefitsSection}>
                         <span className={styles.eligibilityRowLabel}>POMSF benefits</span>
                         <div className={styles.tableWrapper}>
@@ -1455,9 +1457,9 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                 disabled={
                   !room ||
                   !visitType ||
-                  hasCashPoint === false ||
-                  (method === 'cash' && hasCashMode === false) ||
-                  (method === 'insurance' && !insurance)
+                  (!isCccPatient && hasCashPoint === false) ||
+                  (!isCccPatient && method === 'cash' && hasCashMode === false) ||
+                  (!isCccPatient && method === 'insurance' && !insurance)
                 }
                 onClick={handleStartVisit}
               >

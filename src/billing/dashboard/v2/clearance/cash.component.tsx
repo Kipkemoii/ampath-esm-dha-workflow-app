@@ -21,22 +21,21 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
 
   const locationUuid = session.sessionLocation?.uuid;
 
-  useEffect(() => {
+  const fetchAll = async () => {
     if (!locationUuid) return;
+    try {
+      const [visitsRes, pendingRes] = await Promise.all([
+        getActiveCashVisits(locationUuid, billingDate),
+        getFacilityBillLineItems(locationUuid, billingDate),
+      ]);
+      setCashPatients(visitsRes?.results ?? []);
+      setPendingBillItems(pendingRes ?? []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
-    const fetchAll = async () => {
-      try {
-        const [visitsRes, pendingRes] = await Promise.all([
-          getActiveCashVisits(locationUuid, billingDate),
-          getFacilityBillLineItems(locationUuid, billingDate),
-        ]);
-        setCashPatients(visitsRes?.results ?? []);
-        setPendingBillItems(pendingRes ?? []);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
+  useEffect(() => {
     fetchAll();
   }, [billingDate, locationUuid]);
 
@@ -63,15 +62,12 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
     cashModeUuid: string,
   ) => {
     if ('line_item_date' in visit) {
-      // closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
-
-      // setTimeout(() => {
       launchWorkspace('pay-cash-workspace', {
         lineItems: (visit as PendingBillLineItems).pending_line_items,
         billUuid: billUuid,
         cashModeUuid: cashModeUuid,
+        onPaymentSuccess: fetchAll,
       });
-      // }, 50);
       return;
     }
     setPatientUuid(patientUuid);
