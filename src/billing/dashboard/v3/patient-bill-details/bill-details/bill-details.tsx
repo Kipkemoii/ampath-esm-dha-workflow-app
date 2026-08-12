@@ -90,12 +90,12 @@ const BillDetails: React.FC<billDetailsProps> = ({
   }
   function interventionAddedToClaimLine(b: PatientFacilityBillDetails) {
     if (b.intervention_code && b.has_claim_line === 0) {
-      if (claimsVisit && claimsVisit.invoices) {
-        const lineExists = claimsVisit.invoices.some((inv) =>
-          inv.lines.some((l) => l.intervention_code === b.intervention_code),
-        );
-        return lineExists;
-      }
+      // if (claimsVisit && claimsVisit.invoices) {
+      //   const lineExists = claimsVisit.invoices.some((inv) =>
+      //     inv.lines.some(l => l.intervention_code === b.intervention_code)
+      //   );
+      //   return lineExists;
+      // }
       return false;
     }
     return true;

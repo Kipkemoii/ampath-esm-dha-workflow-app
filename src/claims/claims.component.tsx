@@ -25,6 +25,7 @@ import {
   usePomsfBalance,
   updateBillOrderConsentToken,
   createPreauthRequest,
+  useExistingElectiveIntervention,
 } from './claims.resource';
 import {
   type BenefitUtilization,
@@ -44,6 +45,7 @@ import { getConsentToken as getVisitConsentToken } from '../shared/services/clai
 import { getClientEligibityStatus } from '../shared/services/eligibility.resource';
 import { Scheme } from '../registry/types';
 import { ConfigObject } from '../config-schema';
+import { Order } from '@openmrs/esm-patient-common-lib';
 
 interface ClaimsComponentProps {
   clientRegistryId: string;
@@ -54,6 +56,7 @@ interface ClaimsComponentProps {
   triggerAddIntervention?: boolean;
   otp?: string;
   authGuid?: string;
+  order?: Order
   onSelectChange: (key, value) => void;
   onClaimsVisitStart?: (
     payload: ClaimResult,
@@ -76,6 +79,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   triggerAddIntervention = false,
   otp = null,
   authGuid = null,
+  order = null,
   onSelectChange,
   onClaimsVisitStart,
   onAddIntervention,
@@ -95,6 +99,7 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
   const { clientSubBenefits, isLoadingClientSubBenefits } = useClientSubBenefits(clientRegistryId);
   const { interventions, isLoadingInterventions } = useInterventions(clientRegistryId, selectedSubBenefitCode?.code);
   const { preExistingInterventions, isLoadingPreExistingIntervention } = usePreExistingIntervention(patientUuid);
+  const { interventionCode: electiveInterventionCode, subBenefitCode: electiveSubBenefitCode, isLoadingElectiveIntervention } = useExistingElectiveIntervention(patientUuid, order);
   const { sessionLocation } = useSession();
 
   const { pmfSchemeNames } = useConfig<ConfigObject>();
@@ -235,6 +240,31 @@ const ClaimsComponent: React.FC<ClaimsComponentProps> = ({
       didAutoPreselect.current = true;
     }
   }, [preExistingInterventions, isLoadingPreExistingIntervention, clientSubBenefits, interventions]);
+
+  useEffect(() => {
+    if (didAutoPreselect.current) {
+      return;
+    }
+    if (isLoadingElectiveIntervention || !electiveSubBenefitCode || !electiveInterventionCode) {
+      return;
+    }
+    if (!clientSubBenefits && !interventions) {
+      return;
+    }
+    if (clientSubBenefits) {
+      const preSelected = clientSubBenefits.find((v) => v.code === electiveSubBenefitCode);
+      if (preSelected) {
+        setSelectedSubBenefitCode(preSelected);
+      }
+    }
+    if (interventions) {
+      const preSelected = interventions.find((v) => v.code === electiveInterventionCode);
+      if (preSelected) {
+        setSelectedIntervention(preSelected);
+      }
+      didAutoPreselect.current = true;
+    }
+  }, [electiveInterventionCode, electiveSubBenefitCode, isLoadingElectiveIntervention, interventions, clientSubBenefits]);
 
   useEffect(() => {
     if (!isLoadingPreExistingIntervention && preExistingInterventions && preExistingInterventions.length) {

@@ -111,7 +111,7 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             cashPoint = currentCashpoint?.uuid;
             setValue("cashPoint", cashPoint);
         } else {
-            if(cashPoints && cashPoints.length) {
+            if (cashPoints && cashPoints.length) {
                 cashPoint = cashPoints[0]?.uuid;
                 setValue("cashPoint", cashPoint);
             }
@@ -372,6 +372,11 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
         }
     }, [triggerAddIntervention, interventionResult, pendingSubmitData]);
 
+    function onError(error: any) {
+        setIsSubmitPending(false);
+        setTriggerAddIntervention(false);
+    }
+
     const onSubmit = async (data) => {
         try {
             // start claim visit
@@ -424,207 +429,207 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
     return (
         <>
             {!showStartVisitModal && (
-            <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
-                <div className={styles.formContainer}>
-                    <Stack gap={3}>
-                        <InlineNotification
-                            kind="info"
-                            title={`${order?.orderNumber} - ${order?.display}`}
-                            lowContrast
-                        />
+                <Form onSubmit={handleSubmit(onSubmit)} className={styles.form}>
+                    <div className={styles.formContainer}>
+                        <Stack gap={3}>
+                            <InlineNotification
+                                kind="info"
+                                title={`${order?.orderNumber} - ${order?.display}`}
+                                lowContrast
+                            />
 
-                        <div>
-                            <EligibilityTags crId={crIdentifierId} locationUuid={sessionLocation?.sessionLocation?.uuid ?? ''} />
-                        </div>
+                            <div>
+                                <EligibilityTags crId={crIdentifierId} locationUuid={sessionLocation?.sessionLocation?.uuid ?? ''} />
+                            </div>
 
-                        <ResponsiveWrapper>
-                            <FormGroup legendText="">
-                                <Column>
-                                    <Controller
-                                        name="quantity"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <TextInput
-                                                {...field}
-                                                id="quantity"
-                                                labelText={t('quantity', 'Quantity *')}
-                                                placeholder={t('enterQuantity', 'Enter quantity')}
-                                                invalid={!!errors.quantity}
-                                                invalidText={errors.quantity?.message}
-                                            />
-                                        )}
-                                    />
-                                </Column>
-                            </FormGroup>
-                        </ResponsiveWrapper>
-
-                        <ResponsiveWrapper>
-                            <Controller
-                                name="billableItem"
-                                control={control}
-                                render={({ field }) => (
-                                    <>
-                                        <FormLabel className={styles.conceptLabel}>{t('billableItem', 'Billable item')}</FormLabel>
-                                        <Search
-                                            id="billableItemSearch"
-                                            labelText={t('billableItem', 'Billable item')}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
-                                            onClear={() => {
-                                                setSearchTerm('');
-                                                field.onChange('');
-                                            }}
-                                            placeholder={t('searchBillableItem', 'Search billable item')}
-                                            ref={searchInputRef}
-                                            value={lineItems.find(v => v.uuid === selectedBillableItem)?.name || searchTerm}
+                            <ResponsiveWrapper>
+                                <FormGroup legendText="">
+                                    <Column>
+                                        <Controller
+                                            name="quantity"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <TextInput
+                                                    {...field}
+                                                    id="quantity"
+                                                    labelText={t('quantity', 'Quantity *')}
+                                                    placeholder={t('enterQuantity', 'Enter quantity')}
+                                                    invalid={!!errors.quantity}
+                                                    invalidText={errors.quantity?.message}
+                                                />
+                                            )}
                                         />
+                                    </Column>
+                                </FormGroup>
+                            </ResponsiveWrapper>
 
-                                        {(() => {
-                                            if (!debouncedSearchTerm || selectedBillableItem) {
-                                                return null;
-                                            }
-                                            if (searchResults && searchResults.length) {
+                            <ResponsiveWrapper>
+                                <Controller
+                                    name="billableItem"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <>
+                                            <FormLabel className={styles.conceptLabel}>{t('billableItem', 'Billable item')}</FormLabel>
+                                            <Search
+                                                id="billableItemSearch"
+                                                labelText={t('billableItem', 'Billable item')}
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
+                                                onClear={() => {
+                                                    setSearchTerm('');
+                                                    field.onChange('');
+                                                }}
+                                                placeholder={t('searchBillableItem', 'Search billable item')}
+                                                ref={searchInputRef}
+                                                value={lineItems.find(v => v.uuid === selectedBillableItem)?.name || searchTerm}
+                                            />
 
+                                            {(() => {
+                                                if (!debouncedSearchTerm || selectedBillableItem) {
+                                                    return null;
+                                                }
+                                                if (searchResults && searchResults.length) {
+
+                                                    return (
+                                                        <ul className={styles.conceptsList}>
+                                                            {searchResults?.map((item) => (
+                                                                <li
+                                                                    className={styles.service}
+                                                                    key={item?.uuid}
+                                                                    onClick={() => {
+                                                                        field.onChange(item?.uuid);
+                                                                        setSearchTerm('');
+                                                                    }}
+                                                                    role="menuitem">
+                                                                    {item?.name}
+                                                                </li>
+                                                            ))}
+                                                        </ul>
+                                                    );
+                                                }
                                                 return (
-                                                    <ul className={styles.conceptsList}>
-                                                        {searchResults?.map((item) => (
-                                                            <li
-                                                                className={styles.service}
-                                                                key={item?.uuid}
-                                                                onClick={() => {
-                                                                    field.onChange(item?.uuid);
-                                                                    setSearchTerm('');
-                                                                }}
-                                                                role="menuitem">
-                                                                {item?.name}
-                                                            </li>
-                                                        ))}
-                                                    </ul>
+                                                    <Layer>
+                                                        <Tile className={styles.emptyResults}>
+                                                            <span>
+                                                                {t('noResultsFor', 'No results for {{searchTerm}}', { searchTerm: debouncedSearchTerm })}
+                                                            </span>
+                                                        </Tile>
+                                                    </Layer>
                                                 );
-                                            }
-                                            return (
-                                                <Layer>
-                                                    <Tile className={styles.emptyResults}>
-                                                        <span>
-                                                            {t('noResultsFor', 'No results for {{searchTerm}}', { searchTerm: debouncedSearchTerm })}
-                                                        </span>
-                                                    </Tile>
-                                                </Layer>
-                                            );
-                                        })()}
-                                    </>
-                                )}
-                            />
-                        </ResponsiveWrapper>
-
-                        <Column>
-                            <Controller
-                                control={control}
-                                name="cashPoint"
-                                render={({ field }) => {
-                                    return (
-                                        <>
-                                            {billableItem && billableItem.length ?
-                                                <Select id="cashPoint" labelText={t('selectCashPoint', 'Select cashpoint *')} invalid={!!errors.cashPoint}
-                                                    invalidText={errors.cashPoint?.message}
-                                                    onChange={(e) => {
-                                                        field.onChange(e.target.value);
-                                                    }}
-                                                    defaultValue={initialCashPoint ?? null}
-                                                >
-                                                    <SelectItem value="" text="Select cashpoint" />
-                                                    {
-                                                        cashPoints.map((cashPoint) => {
-                                                            return (
-                                                                <SelectItem value={cashPoint?.uuid} text={cashPoint?.name} />
-                                                            )
-                                                        })
-                                                    }
-                                                </Select>
-                                                : <></>
-                                            }
+                                            })()}
                                         </>
-                                    );
-                                }}
-                            />
-                        </Column>
+                                    )}
+                                />
+                            </ResponsiveWrapper>
 
-                        <Column>
-                            <Controller
-                                control={control}
-                                name="unitPrice"
-                                render={({ field }) => {
-                                    const serviceUuid = billableItem[0]?.uuid ?? "";
-
-                                    return (
-                                        <>
-                                            {billableItem && billableItem.length ?
-                                                (servicePrices.length > 0 ? (
-                                                    <Select id="unitPrice" labelText={t('selectServicePrice', 'Select service price *')} invalid={!!errors.unitPrice}
-                                                        invalidText={errors.unitPrice?.message}
+                            <Column>
+                                <Controller
+                                    control={control}
+                                    name="cashPoint"
+                                    render={({ field }) => {
+                                        return (
+                                            <>
+                                                {billableItem && billableItem.length ?
+                                                    <Select id="cashPoint" labelText={t('selectCashPoint', 'Select cashpoint *')} invalid={!!errors.cashPoint}
+                                                        invalidText={errors.cashPoint?.message}
                                                         onChange={(e) => {
                                                             field.onChange(e.target.value);
                                                         }}
-                                                        defaultValue={initialUnitPriceUuid ?? null}
+                                                        defaultValue={initialCashPoint ?? null}
                                                     >
-                                                        <SelectItem value="" text="Select service price" />
+                                                        <SelectItem value="" text="Select cashpoint" />
                                                         {
-                                                            servicePrices.map((service) => {
-                                                                const value = serviceUuid + "#" + service?.uuid + "#" + service?.paymentMode?.uuid;
-                                                                const text = `${service?.name} - ${service?.price}`;
+                                                            cashPoints.map((cashPoint) => {
                                                                 return (
-                                                                    <SelectItem value={value} text={text} />
+                                                                    <SelectItem value={cashPoint?.uuid} text={cashPoint?.name} />
                                                                 )
                                                             })
                                                         }
                                                     </Select>
-                                                ) : (
-                                                    <InlineNotification
-                                                        kind="warning"
-                                                        title={t(
-                                                            'noServicesAvailable',
-                                                            'No service price has been configured for this order.',
-                                                        )}
-                                                        lowContrast
-                                                    />
-                                                )) : null
-                                            }
-                                        </>
-                                    );
-                                }}
-                            />
-                        </Column>
-                        {
-                            isSHAPaymentMode ?
-                                <Column>
-                                    {
-                                        (canStartClaimVisit && !consentToken) ? (
-                                            <InlineNotification
-                                                kind="info-square"
-                                                title="No active claim visit. Continue to start a Claim visit."
-                                            />
-                                        ) :
-                                            <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, onSelectChange: () => { }, onAddIntervention, hasPreExistingInterventions: () => {} }} />
-                                    }
-                                </Column>
-                                :
-                                <></>
-                        }
-                    </Stack>
-                </div>
+                                                    : <></>
+                                                }
+                                            </>
+                                        );
+                                    }}
+                                />
+                            </Column>
 
-                <ButtonSet className={classNames(styles.buttonSet, { [styles.tablet]: isTablet })}>
-                    <Button kind="secondary" onClick={closeWorkspace}>
-                        {t('cancel', 'Cancel')}
-                    </Button>
-                    <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty}>
-                        {isSubmitting || isSubmitPending ? (
-                            <InlineLoading description={t('submitting', 'Submitting...')} />
-                        ) : (isSHAPaymentMode && canStartClaimVisit && !consentToken) ? t('startClaimVisit', 'Start claim visit') : (
-                            t('saveAndClose', 'Save & close')
-                        )}
-                    </Button>
-                </ButtonSet>
-            </Form>
+                            <Column>
+                                <Controller
+                                    control={control}
+                                    name="unitPrice"
+                                    render={({ field }) => {
+                                        const serviceUuid = billableItem[0]?.uuid ?? "";
+
+                                        return (
+                                            <>
+                                                {billableItem && billableItem.length ?
+                                                    (servicePrices.length > 0 ? (
+                                                        <Select id="unitPrice" labelText={t('selectServicePrice', 'Select service price *')} invalid={!!errors.unitPrice}
+                                                            invalidText={errors.unitPrice?.message}
+                                                            onChange={(e) => {
+                                                                field.onChange(e.target.value);
+                                                            }}
+                                                            defaultValue={initialUnitPriceUuid ?? null}
+                                                        >
+                                                            <SelectItem value="" text="Select service price" />
+                                                            {
+                                                                servicePrices.map((service) => {
+                                                                    const value = serviceUuid + "#" + service?.uuid + "#" + service?.paymentMode?.uuid;
+                                                                    const text = `${service?.name} - ${service?.price}`;
+                                                                    return (
+                                                                        <SelectItem value={value} text={text} />
+                                                                    )
+                                                                })
+                                                            }
+                                                        </Select>
+                                                    ) : (
+                                                        <InlineNotification
+                                                            kind="warning"
+                                                            title={t(
+                                                                'noServicesAvailable',
+                                                                'No service price has been configured for this order.',
+                                                            )}
+                                                            lowContrast
+                                                        />
+                                                    )) : null
+                                                }
+                                            </>
+                                        );
+                                    }}
+                                />
+                            </Column>
+                            {
+                                isSHAPaymentMode ?
+                                    <Column>
+                                        {
+                                            (canStartClaimVisit && !consentToken) ? (
+                                                <InlineNotification
+                                                    kind="info-square"
+                                                    title="No active claim visit. Continue to start a Claim visit."
+                                                />
+                                            ) :
+                                                <ExtensionSlot name='billing-claims-slot' state={{ clientRegistryId: crIdentifierId, patientUuid, isNewVisit: false, triggerAddIntervention, order, onSelectChange: () => { }, onAddIntervention, hasPreExistingInterventions: () => { }, onError }} />
+                                        }
+                                    </Column>
+                                    :
+                                    <></>
+                            }
+                        </Stack>
+                    </div>
+
+                    <ButtonSet className={classNames(styles.buttonSet, { [styles.tablet]: isTablet })}>
+                        <Button kind="secondary" onClick={closeWorkspace}>
+                            {t('cancel', 'Cancel')}
+                        </Button>
+                        <Button kind="primary" type="submit" disabled={isSubmitting || isSubmitPending || !isDirty}>
+                            {isSubmitting || isSubmitPending ? (
+                                <InlineLoading description={t('submitting', 'Submitting...')} />
+                            ) : (isSHAPaymentMode && canStartClaimVisit && !consentToken) ? t('startClaimVisit', 'Start claim visit') : (
+                                t('saveAndClose', 'Save & close')
+                            )}
+                        </Button>
+                    </ButtonSet>
+                </Form>
             )}
             {
                 showStartVisitModal && <SendToQueueModal

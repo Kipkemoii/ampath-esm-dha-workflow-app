@@ -930,6 +930,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                     otp,
                     authGuid,
                     visitType,
+                    order,
                     onSelectChange: () => { },
                     onClaimsVisitStart,
                     onInterventionChange,

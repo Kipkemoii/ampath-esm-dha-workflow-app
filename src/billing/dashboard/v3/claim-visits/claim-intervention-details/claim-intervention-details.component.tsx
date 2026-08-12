@@ -203,18 +203,10 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
                     )}
                   </TableCell>
                   <TableCell>
-                    <MenuButton label="Actions" kind="ghost" size="sm">
-                      <MenuItem
-                        label={raisePreauthLabel(ci)}
-                        onClick={() => handleRaisePreauth(ci)}
-                        disabled={!canRaise}
-                      />
-                      <MenuItem
-                        label="Switch intervention"
-                        onClick={() => handleSwitchIntervention(ci)}
-                        disabled={!canSwitch}
-                      />
-                    </MenuButton>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.15rem' }}>
+                      <Tag type='outline' disabled={!canRaise} onClick={() => handleRaisePreauth(ci)}>{raisePreauthLabel(ci)}</Tag>
+                      <Tag type='outline' disabled={!canSwitch} onClick={() => handleSwitchIntervention(ci)}>Switch intervention</Tag>
+                    </div>
                   </TableCell>
                 </TableRow>
               );

@@ -13,7 +13,9 @@ import {
   PreauthRequest,
 } from './index';
 import { fetchUrl, getHieBaseUrl, getUrl, useHie } from './utils';
-import { openmrsFetch, restBaseUrl, useSession, Visit } from '@openmrs/esm-framework';
+import { openmrsFetch, restBaseUrl, useConfig, useSession, Visit } from '@openmrs/esm-framework';
+import { Order } from '@openmrs/esm-patient-common-lib';
+import { useProviderClaimPreview } from '../billing/billing-claims.resource';
 
 export const useClientSubBenefits = (clientRegistryId: string) => {
   const { hieBaseUrl, locationUuid } = useHie();
@@ -300,7 +302,92 @@ export const usePreExistingIntervention = (patientUuid: string) => {
   };
 };
 
-export async function updateBillOrderConsentToken(id: number, consentToken: string) {
+export const useElectivePreauthPreview = (consentToken: string) => {
+  const { sessionLocation } = useSession();
+  const { hieBaseUrl } = useConfig({
+    externalModuleName: '@ampath/esm-dha-workflow-app',
+  });
+  const url = consentToken
+    ? `${hieBaseUrl}/pre-auth/preview?locationUuid=${sessionLocation?.uuid}&consentToken=${consentToken}`
+    : null;
+
+  const {
+    data,
+    error,
+    isLoading,
+    isValidating,
+    mutate: mutated,
+  } = useSWR<{
+    data: {
+      results: Array<{
+        authorizationDetails: {
+          interventions: Array<{
+            subBenefitCode: string;
+            code: string;
+          }>
+        },
+        interventionCode: string;
+      }>
+    }
+  }>(url, openmrsFetch, {
+    errorRetryCount: 2,
+  });
+
+  const results = data?.data?.results ?? [];
+
+  return {
+    preauthRequests: results,
+    error,
+    isLoading,
+    isValidating,
+    mutated,
+  };
+};
+
+export const useExistingElectiveIntervention = (patientUuid: string, order: Order) => {
+  const { hieBaseUrl } = useHie();
+  // b594be9a-9673-44f3-9741-b05823d4423c
+  const url = patientUuid
+    ? `${hieBaseUrl}/pre-auth/request?patientUuid=${patientUuid}&electivePreauth=true`
+    : null;
+
+  const { data, error, isLoading: isLoadingElPreauth } = useSWR<{
+    data: Array<{
+      orderNo: string;
+      interventionCode: string;
+      consentToken: string;
+      status: string;
+    }>
+  }>(url, openmrsFetch);
+
+  let results = data?.data;
+
+  if (order && results && results.length) {
+    results = results.filter(result => result.orderNo === order?.orderNumber);
+  }
+
+  let electiveIntervention = results?.[0];
+
+  const { preauthRequests, isLoading } = useElectivePreauthPreview(electiveIntervention?.consentToken);
+
+  let subBenefitCode = null;
+
+  if (!isLoading && preauthRequests && preauthRequests.length) {
+    subBenefitCode = preauthRequests?.find(p => p.interventionCode === electiveIntervention.interventionCode)?.authorizationDetails?.interventions?.[0]?.subBenefitCode;
+  }
+
+  return {
+    interventionCode: electiveIntervention?.interventionCode,
+    subBenefitCode,
+    error,
+    isLoadingElectiveIntervention: isLoading || isLoadingElPreauth,
+  };
+};
+
+export async function updateBillOrderConsentToken(
+  id: number,
+  consentToken: string,
+) {
   const { hieBaseUrl } = await getHieBaseUrl();
   const url = `${hieBaseUrl}/bill-order/${id}/consent-token`;
 
@@ -549,12 +636,12 @@ export const generatePreauthFormData = (
   // Surgical clinical fields — send snake_case (HIE / gateway expects these keys)
   const hasSurgicalPayload = Boolean(
     payload.chief_complaint?.trim() ||
-      payload.vital_signs?.trim() ||
-      payload.history_of_present_illness?.trim() ||
-      payload.physical_examination?.trim() ||
-      payload.investigation_report_details?.trim() ||
-      payload.type_of_anaesthesia?.trim() ||
-      payload.surgery_date?.trim(),
+    payload.vital_signs?.trim() ||
+    payload.history_of_present_illness?.trim() ||
+    payload.physical_examination?.trim() ||
+    payload.investigation_report_details?.trim() ||
+    payload.type_of_anaesthesia?.trim() ||
+    payload.surgery_date?.trim(),
   );
   if (intervention.requiresSurgicalPreauth || hasSurgicalPayload) {
     const chiefComplaint = (payload.chief_complaint ?? '').trim();
@@ -822,25 +909,25 @@ export function normalizePreauthPreviewItem(item: Record<string, unknown>, conse
   const status = String(item.status ?? item.preauth_status ?? '').toUpperCase();
   const preauthType = String(
     item.preauthType ??
-      item.preauth_type ??
-      (item.isOncology || item.is_oncology
-        ? 'ONCOLOGY'
-        : item.isSurgical || item.is_surgical
-          ? 'SURGICAL'
-          : item.isRenal || item.is_renal
-            ? 'RENAL'
-            : item.isRadiology || item.is_radiology
-              ? 'RADIOLOGY'
-              : item.isOptical || item.is_optical
-                ? 'OPTICAL'
-                : 'NORMAL'),
+    item.preauth_type ??
+    (item.isOncology || item.is_oncology
+      ? 'ONCOLOGY'
+      : item.isSurgical || item.is_surgical
+        ? 'SURGICAL'
+        : item.isRenal || item.is_renal
+          ? 'RENAL'
+          : item.isRadiology || item.is_radiology
+            ? 'RADIOLOGY'
+            : item.isOptical || item.is_optical
+              ? 'OPTICAL'
+              : 'NORMAL'),
   ).toUpperCase();
   const id = String(item.guid ?? item.id ?? `${consentToken}-${interventionCode}-${status}`);
   const practitionerRegistrationNumber = String(
     profile?.practitionerRegistrationNumber ??
-      profile?.practitioner_registration_number ??
-      profile?.nationalIdentifier ??
-      '',
+    profile?.practitioner_registration_number ??
+    profile?.nationalIdentifier ??
+    '',
   ).trim();
 
   return {

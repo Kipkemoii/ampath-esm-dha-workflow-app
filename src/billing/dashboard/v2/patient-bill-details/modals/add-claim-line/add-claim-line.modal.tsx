@@ -110,6 +110,7 @@ const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({
       interventionCode: billItem.intervention_code,
       unitPrice: String(billItem.item_price),
       quantity: String(billItem.item_quantity),
+      orderNo: String(billItem.order_no),
       locationUuid: locationUuid,
     };
     if (preauthCode) {
