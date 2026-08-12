@@ -12,7 +12,7 @@ import ActiveVisits from './active-visits/active-visits.component';
 import Clearance from './clearance/clearance.component';
 import { billBalance, getPayableBills } from './cash-checklist/cash-checklist.resource';
 import { getClearanceCounts } from '../../../shared/services/consultation-clearance.resource';
-import { claimVisitToken, useFacilityClaimVisits, useLiveClaimStates } from '../../billing-claims.resource';
+import { useFacilityClaimVisits } from '../../billing-claims.resource';
 import { CLAIM_BUCKETS } from './facility-bills/claim-status';
 import {
   MetricsCard,
@@ -34,6 +34,30 @@ const today = () => new Date().toLocaleDateString('en-CA');
 const TAB_PENDING_CLEARANCE = 0;
 const TAB_FACILITY_BILLS = 1;
 const TAB_SHA_CLAIMS = 2;
+const TAB_PREAUTHORIZATIONS = 3;
+const TAB_ADMISSION_REQUESTS = 4;
+
+/**
+ * Which tabs have been opened, so a panel's content is rendered on the first visit to its
+ * tab and then stays.
+ *
+ * Carbon renders every `TabPanel`, hidden ones included — it only sets `hidden` on the ones
+ * that aren't selected. So all five panels used to start loading on the dashboard's first
+ * paint whichever tab was open, and the two that cost the most (a claim preview per claim
+ * for the bills tables, a preauth preview per claim for Preauthorizations) were what tripped
+ * the HIE's rate limit before the user had asked to see either.
+ *
+ * Panels stay mounted once visited, which is the reason they were all left mounted to begin
+ * with: FacilityBills keeps its selected patient, filters and fetched data while the user
+ * moves between tabs.
+ */
+function useVisitedTabs(selectedTab: number): Set<number> {
+  const [visited, setVisited] = useState<Set<number>>(() => new Set([selectedTab]));
+  useEffect(() => {
+    setVisited((prev) => (prev.has(selectedTab) ? prev : new Set(prev).add(selectedTab)));
+  }, [selectedTab]);
+  return visited;
+}
 
 /* What each tab is for, on the tab itself. They were paragraphs standing above the tables
    — three lines of standing copy on a page opened dozens of times a day, read once.
@@ -51,8 +75,15 @@ const PREAUTH_HINT =
 const ADMISSIONS_HINT =
   'Patients a clinician has asked to admit at this facility. Admit one to a bed, or start the SHA claim for the inpatient visit it opens.';
 
+/* Said on the two claim tiles, because their number is not the live one. See the comment on
+   claimCounts: the state stored against a claim is the state it was in when its visit was
+   recorded, so anything submitted or closed since still counts here. Open the tile to see
+   where the claims actually stand. */
+const CLAIM_COUNT_HINT =
+  'Counted from the state recorded with each claim, so claims submitted or closed since are still included — this can read high. Open the tile for the live status of each claim.';
+
 /**
- * An explanation hung off a tab's label.
+ * An explanation hung off a label — a tab's, or a summary tile's.
  *
  * A `title` prop on the `Tab` itself is dropped: Carbon spreads `rest` onto the button and
  * then sets `title: children` afterwards, so the tab's own label always wins. A `title` on
@@ -62,13 +93,15 @@ const ADMISSIONS_HINT =
  * So the hint is a Carbon `Tooltip` with its delay taken off. It nests inside the tab
  * because Carbon's Tooltip does not inject a trigger of its own — it clones event handlers
  * and aria attributes onto whatever child it is given, and notably not `tabIndex`, so the
- * icon stays inert and the tab keeps sole ownership of focus and keyboard handling.
+ * icon stays inert and the tab keeps sole ownership of focus and keyboard handling. The same
+ * holds against the button wrapping a summary tile: the icon takes no focus of its own, and
+ * clicking it opens the tile, as clicking anywhere else on it does.
  *
  * `autoAlign` matters here: the tab list scrolls (`overflow-x: auto`), which would clip a
  * statically positioned bubble. Floating-ui places it outside that clipping context — the
  * same thing Carbon does for its own overflowing-tab-label tooltip.
  */
-const TabHint: React.FC<{ text: string }> = ({ text }) => (
+const Hint: React.FC<{ text: string }> = ({ text }) => (
   <Tooltip label={text} align="bottom" enterDelayMs={0} leaveDelayMs={0} autoAlign className={styles.tabHint}>
     <span className={styles.tabHintIcon}>
       <Information size={16} />
@@ -123,6 +156,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   // The SHA claims tab has its own, since it is a separate instance of FacilityBills and
   // sharing billsNav would send both lists to the same bucket.
   const [claimsNav, setClaimsNav] = useState<{ statusKey?: string; nonce: number }>({ nonce: 0 });
+  const visitedTabs = useVisitedTabs(selectedTab);
 
   useEffect(() => {
     lastSelectedTab = selectedTab;
@@ -135,30 +169,32 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
     getPayableBills(locationUuid).then((bills) => setCashDue(bills.filter((b) => billBalance(b) > 0).length));
   }, [locationUuid]);
 
-  // The claim tiles count the same claims the bills tab lists, by the same live states.
-  // They used to read a demo store, so they reported fixtures rather than this facility's
-  // claims. The claim-state cache is shared, so counting here costs no extra HIE calls
-  // beyond the ones the bills tab already makes.
+  // The claim tiles count the same claims the SHA claims tab lists, from the state
+  // /claims-visit stores against each one.
+  //
+  // Not the live state, deliberately. A claim's live state comes from claim-preview/provider,
+  // one call per claim — a facility's day is twenty-odd slow round trips to a rate-limited
+  // HIE, and resolving them here spent all of them on these two numbers before the user had
+  // asked to see a claim. That resolution now belongs to the SHA claims tab, which is where
+  // claims are actually read and which only mounts when opened.
+  //
+  // The stored state is what the claim was when its visit was recorded, so a claim submitted
+  // later still reads DRAFT here: these counts can sit high. CLAIM_COUNT_HINT says so on the
+  // tiles, and the tab a tile opens shows the live figure.
   const { claimVisits, loading: claimVisitsLoading } = useFacilityClaimVisits(locationUuid, billingDate);
-  const claimTokens = useMemo(() => claimVisits.map(claimVisitToken).filter(Boolean), [claimVisits]);
-  const { states: liveClaimStates, settled: claimStatesSettled } = useLiveClaimStates(claimTokens, locationUuid);
 
-  // Held back until every state is confirmed: a count off the stored states would name
-  // claims as drafts that were submitted days ago.
-  const claimCountsReady = !claimVisitsLoading && claimStatesSettled;
+  const claimCountsReady = !claimVisitsLoading;
   const claimCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     for (const bucket of CLAIM_BUCKETS) {
       const statuses = new Set(bucket.statuses.map((s) => s.toUpperCase()));
       counts[bucket.key] = claimVisits.filter((cv) => {
-        const state = (liveClaimStates[claimVisitToken(cv)] || cv.visitResponse?.workflow_state || '')
-          .trim()
-          .toUpperCase();
+        const state = (cv.visitResponse?.workflow_state || '').trim().toUpperCase();
         return statuses.has(state);
       }).length;
     }
     return counts;
-  }, [claimVisits, liveClaimStates]);
+  }, [claimVisits]);
 
   const claimTileValue = (bucketKey: string) => (claimCountsReady ? (claimCounts[bucketKey] ?? 0) : 0);
 
@@ -169,6 +205,8 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
     value: number;
     tab: number;
     color?: 'red';
+    /** Hung off the tile's title, for a number that needs qualifying. */
+    hint?: string;
     clearKey?: string;
     billsStatusKey?: string;
     claimsStatusKey?: string;
@@ -198,6 +236,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
       unit: 'Claims',
       value: claimTileValue('draft'),
       tab: TAB_SHA_CLAIMS,
+      hint: CLAIM_COUNT_HINT,
       claimsStatusKey: 'draft',
     },
     {
@@ -207,6 +246,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
       value: claimTileValue('rejected'),
       color: 'red',
       tab: TAB_SHA_CLAIMS,
+      hint: CLAIM_COUNT_HINT,
       claimsStatusKey: 'rejected',
     },
   ];
@@ -249,7 +289,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
           {summary.map((s) => (
             <button key={s.key} type="button" className={styles.metricButton} onClick={() => handleTileClick(s)}>
               <MetricsCard>
-                <MetricsCardHeader title={s.label} />
+                <MetricsCardHeader title={s.label}>{s.hint && <Hint text={s.hint} />}</MetricsCardHeader>
                 <MetricsCardBody>
                   <MetricsCardItem label={s.unit} value={s.value ? s.value : '--'} color={s.color} />
                 </MetricsCardBody>
@@ -270,70 +310,79 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
               <DatePickerInput id="billing-date" labelText="" placeholder="yyyy-mm-dd" size="sm" />
             </DatePicker>
             <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
-              {/* Tab list hidden while a bill's details are open, but the panels stay
-                  mounted so FacilityBills keeps its selected patient and fetched data. */}
+              {/* Tab list hidden while a bill's details are open, but a visited panel stays
+                  mounted so FacilityBills keeps its selected patient and fetched data.
+                  See useVisitedTabs for why an unvisited one renders nothing. */}
               <TabList scrollDebounceWait={200}>
                 <Tab>
                   Pending clearance
-                  <TabHint text={PENDING_HINT} />
+                  <Hint text={PENDING_HINT} />
                 </Tab>
                 <Tab>
                   Facility bills
-                  <TabHint text={BILLS_HINT} />
+                  <Hint text={BILLS_HINT} />
                 </Tab>
                 <Tab>
                   SHA claims
-                  <TabHint text={CLAIMS_HINT} />
+                  <Hint text={CLAIMS_HINT} />
                 </Tab>
                 <Tab>
                   Preauthorizations
-                  <TabHint text={PREAUTH_HINT} />
+                  <Hint text={PREAUTH_HINT} />
                 </Tab>
                 {/* <Tab>Preauth List</Tab> */}
                 {/* <Tab>Claims</Tab> */}
                 <Tab>
                   Admission Requests
-                  <TabHint text={ADMISSIONS_HINT} />
+                  <Hint text={ADMISSIONS_HINT} />
                 </Tab>
               </TabList>
               <TabPanels>
                 <TabPanel>
-                  <Clearance
-                    // The paragraph that introduced this list now hangs off the tab that
-                    // opens it — see PENDING_HINT in Clearance.
-                    pendingTab={<ActiveVisits date={billingDate} />}
-                    initialTab={clearanceNav.key}
-                    navNonce={clearanceNav.nonce}
-                    date={billingDate}
-                  />
+                  {visitedTabs.has(TAB_PENDING_CLEARANCE) && (
+                    <Clearance
+                      // The paragraph that introduced this list now hangs off the tab that
+                      // opens it — see PENDING_HINT in Clearance.
+                      pendingTab={<ActiveVisits date={billingDate} />}
+                      initialTab={clearanceNav.key}
+                      navNonce={clearanceNav.nonce}
+                      date={billingDate}
+                    />
+                  )}
                 </TabPanel>
                 <TabPanel>
-                 <FacilityBillsV3 locationUuid={locationUuid} billingDate={billingDate} />
+                  {visitedTabs.has(TAB_FACILITY_BILLS) && (
+                    <FacilityBillsV3 locationUuid={locationUuid} billingDate={billingDate} />
+                  )}
                 </TabPanel>
                 <TabPanel>
                   {/* The same table on the SHA payer. It was a sub-tab inside Facility
                       bills; claims are read often enough, and are enough their own thing,
                       to be reached in one click rather than two. */}
-                  <FacilityBills
-                    locationUuid={locationUuid}
-                    billingDate={billingDate}
-                    payerTab={SHA_PAYER_TAB}
-                    navStatusKey={claimsNav.statusKey}
-                    navNonce={claimsNav.nonce}
-                  />
+                  {visitedTabs.has(TAB_SHA_CLAIMS) && (
+                    <FacilityBills
+                      locationUuid={locationUuid}
+                      billingDate={billingDate}
+                      payerTab={SHA_PAYER_TAB}
+                      navStatusKey={claimsNav.statusKey}
+                      navNonce={claimsNav.nonce}
+                    />
+                  )}
                 </TabPanel>
                 <TabPanel>
-                  <PreauthorizationsTab
-                    locationUuid={locationUuid}
-                    billingDate={billingDate}
-                    onDateChange={handleDateChange}
-                  />
+                  {visitedTabs.has(TAB_PREAUTHORIZATIONS) && (
+                    <PreauthorizationsTab
+                      locationUuid={locationUuid}
+                      billingDate={billingDate}
+                      onDateChange={handleDateChange}
+                    />
+                  )}
                 </TabPanel>
                 <TabPanel>
                   {/* This tab had no panel at all — five tabs against four panels, so
                       selecting it showed the preauth list or nothing depending on how
                       Carbon indexed them. */}
-                  <AdmissionRequestsTab locationUuid={locationUuid} />
+                  {visitedTabs.has(TAB_ADMISSION_REQUESTS) && <AdmissionRequestsTab locationUuid={locationUuid} />}
                 </TabPanel>
               </TabPanels>
             </Tabs>

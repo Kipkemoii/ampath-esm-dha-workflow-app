@@ -176,13 +176,23 @@ function unwrapClaimVisit(body: unknown): ClaimsVisit | undefined {
   return (node as ClaimsVisit) ?? undefined;
 }
 
+/**
+ * The SWR key a claim's preview is cached under.
+ *
+ * Shared by the hook below and the imperative fetch further down so the two can't drift
+ * apart — a list resolving a claim and the page that opens it must land on the same key,
+ * or each pays for its own copy of the same slow HIE round trip.
+ */
+const providerClaimPreviewUrl = (hieBaseUrl: string, consentToken: string, locationUuid: string) =>
+  `${hieBaseUrl}/claim-preview/provider?consentToken=${encodeURIComponent(
+    consentToken,
+  )}&locationUuid=${encodeURIComponent(locationUuid)}`;
+
 export function useProviderClaimPreview(consentToken: string, locationUuid: string) {
   const { hieBaseUrl } = useConfig({
     externalModuleName: '@ampath/esm-dha-workflow-app',
   });
-  const url = consentToken
-    ? `${hieBaseUrl}/claim-preview/provider?consentToken=${consentToken}&locationUuid=${locationUuid}`
-    : null;
+  const url = consentToken ? providerClaimPreviewUrl(hieBaseUrl, consentToken, locationUuid) : null;
 
   const { data, error, isLoading, isValidating } = useSWR(url, openmrsFetch, {
     keepPreviousData: true,
@@ -276,11 +286,16 @@ export function claimVisitToken(claimVisit: ClaimVisitReponse): string {
 /** One claim's live state, fetched outside SWR so many can be resolved at once. */
 async function fetchProviderClaimState(consentToken: string, locationUuid: string): Promise<string | undefined> {
   const { hieBaseUrl } = await getHieBaseUrl();
-  const url = `${hieBaseUrl}/claim-preview/provider?consentToken=${encodeURIComponent(
-    consentToken,
-  )}&locationUuid=${encodeURIComponent(locationUuid)}`;
+  const url = providerClaimPreviewUrl(hieBaseUrl, consentToken, locationUuid);
   const response = await openmrsFetch(url);
-  const claim = unwrapClaimVisit(await response.json());
+  const body = await response.json();
+  // This is the very request `useProviderClaimPreview` would make, so its answer is handed
+  // to SWR under the key that hook reads — shaped as the fetcher's response, since the hook
+  // reads `data.data`. Opening a claim from a list that just resolved it then costs no
+  // further HIE call; without this the same preview was fetched twice, once for the row's
+  // status and again for the page. `revalidate: false` because the body is this fresh.
+  mutate(url, { data: body }, { revalidate: false });
+  const claim = unwrapClaimVisit(body);
   const state = (claim?.workflow_state ?? '').trim();
   return state || undefined;
 }

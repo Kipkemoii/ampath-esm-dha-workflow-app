@@ -30,21 +30,27 @@ const Preauths: React.FC<PreauthsProps> = ({ locationUuid, billingDate }) => {
     reload: reloadVisits,
   } = useFacilityClaimVisits(locationUuid, billingDate);
 
-  const loadPreviews = useCallback(async () => {
-    if (!locationUuid) return;
-    const tokens = (claimVisits ?? []).map(claimVisitToken).filter(Boolean);
-    if (!tokens.length) {
-      setRows([]);
-      return;
-    }
-    setLoadingPreview(true);
-    try {
-      const previewRows = await fetchPreauthPreviewRowsForTokens(tokens, locationUuid);
-      setRows(previewRows);
-    } finally {
-      setLoadingPreview(false);
-    }
-  }, [claimVisits, locationUuid]);
+  // `force` skips the short cache that stops the several places reading this endpoint from
+  // each paying for the same call. Refresh is someone asking for the current answer, so it
+  // goes to the HIE; the load that happens on its own is content to share.
+  const loadPreviews = useCallback(
+    async (force = false) => {
+      if (!locationUuid) return;
+      const tokens = (claimVisits ?? []).map(claimVisitToken).filter(Boolean);
+      if (!tokens.length) {
+        setRows([]);
+        return;
+      }
+      setLoadingPreview(true);
+      try {
+        const previewRows = await fetchPreauthPreviewRowsForTokens(tokens, locationUuid, { force });
+        setRows(previewRows);
+      } finally {
+        setLoadingPreview(false);
+      }
+    },
+    [claimVisits, locationUuid],
+  );
 
   useEffect(() => {
     if (visitsLoading) return;
@@ -53,7 +59,7 @@ const Preauths: React.FC<PreauthsProps> = ({ locationUuid, billingDate }) => {
 
   const handleRefresh = useCallback(() => {
     reloadVisits();
-    loadPreviews();
+    loadPreviews(true);
   }, [reloadVisits, loadPreviews]);
 
   const counts = useMemo(() => {

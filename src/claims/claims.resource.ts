@@ -53,10 +53,7 @@ export const useInterventions = (clientRegistryId: string, subBenefitCode: strin
 /**
  * Fetch patient sub-benefits (required by hie-saf interventions proxy).
  */
-export async function fetchClientSubBenefits(
-  patientId: string,
-  locationUuid: string,
-): Promise<ClientSubBenefit[]> {
+export async function fetchClientSubBenefits(patientId: string, locationUuid: string): Promise<ClientSubBenefit[]> {
   if (!patientId || !locationUuid) {
     return [];
   }
@@ -163,7 +160,12 @@ export async function fetchShaInterventionByCode(
   return null;
 }
 
-export const useBenefitUtilizations = (clientRegistryId: string, interventionCode: string, isCapitation: boolean, isPomsf: boolean) => {
+export const useBenefitUtilizations = (
+  clientRegistryId: string,
+  interventionCode: string,
+  isCapitation: boolean,
+  isPomsf: boolean,
+) => {
   const { hieBaseUrl, locationUuid } = useHie();
   const url =
     clientRegistryId && interventionCode && !isCapitation && !isPomsf
@@ -179,7 +181,7 @@ export const useBenefitUtilizations = (clientRegistryId: string, interventionCod
       benefitUtilizations: null,
       error,
       isLoadingClientSubBenefits: isLoading,
-    }
+    };
   }
 
   return {
@@ -205,7 +207,7 @@ export const usePomsfBalance = (clientRegistryId: string, isPomsf: boolean) => {
       pomsfBalance: null,
       error,
       isLoadingPomsfBalances: isLoading,
-    }
+    };
   }
 
   return {
@@ -285,9 +287,7 @@ export async function createClaimsVisit(
 
 export const usePreExistingIntervention = (patientUuid: string) => {
   const { hieBaseUrl } = useHie();
-  const url = patientUuid
-    ? `${hieBaseUrl}/bill-order/patient-claim-bill-order?patient_uuid=${patientUuid}`
-    : null;
+  const url = patientUuid ? `${hieBaseUrl}/bill-order/patient-claim-bill-order?patient_uuid=${patientUuid}` : null;
 
   const { data, error, isLoading } = useSWR<{ data: PreExistingIntervention[] }>(url, openmrsFetch);
 
@@ -300,15 +300,12 @@ export const usePreExistingIntervention = (patientUuid: string) => {
   };
 };
 
-export async function updateBillOrderConsentToken(
-  id: number,
-  consentToken: string,
-) {
+export async function updateBillOrderConsentToken(id: number, consentToken: string) {
   const { hieBaseUrl } = await getHieBaseUrl();
   const url = `${hieBaseUrl}/bill-order/${id}/consent-token`;
 
   let payload = {
-    consent_token: consentToken
+    consent_token: consentToken,
   };
 
   const result = await openmrsFetch<any>(url, {
@@ -636,7 +633,7 @@ export async function createPreauth(
   return result?.data;
 }
 
-export async function getPreauthPreview(consentToken: string, locationUuid: string) {
+async function fetchPreauthPreview(consentToken: string, locationUuid: string) {
   const { hieBaseUrl } = await getHieBaseUrl();
   const url = `${hieBaseUrl}/pre-auth/preview?consentToken=${encodeURIComponent(consentToken)}&locationUuid=${encodeURIComponent(locationUuid)}`;
   try {
@@ -654,6 +651,66 @@ export async function getPreauthPreview(consentToken: string, locationUuid: stri
     }
     throw message;
   }
+}
+
+/**
+ * Previews just asked for, and those still in flight, keyed by consent token and location.
+ *
+ * One dashboard load asks for the same preview from several places at once: the
+ * Needs-raise queue (once per bill row, and rows of the same visit share a consent token),
+ * the Status table (once per claim), the SWR hook behind a claim's interventions, and the
+ * poller following a raise. Each is a round trip to the HIE, and together they were enough
+ * to trip its rate limit — which fails whatever asks next rather than merely slowing it.
+ *
+ * So callers share one request, and its answer for a few seconds after. That window is
+ * deliberately short: this is live status someone is waiting on, so the cache is here to
+ * collapse a burst, not to hold an answer. Anything that changes a preauth clears it
+ * (`invalidatePreauthPreview`), and the pollers ask straight past it (`force`).
+ */
+const PREAUTH_PREVIEW_TTL_MS = 5_000;
+const preauthPreviewCache = new Map<string, { at: number; preview: unknown }>();
+const preauthPreviewInFlight = new Map<string, Promise<unknown>>();
+const preauthPreviewCacheKey = (consentToken: string, locationUuid: string) => `${locationUuid}|${consentToken}`;
+
+/** Drop the burst-cached preview for one claim, so the next read goes to the HIE. */
+function forgetPreauthPreview(consentToken: string, locationUuid: string) {
+  preauthPreviewCache.delete(preauthPreviewCacheKey(consentToken, locationUuid));
+}
+
+export async function getPreauthPreview(
+  consentToken: string,
+  locationUuid: string,
+  { force = false }: { force?: boolean } = {},
+) {
+  const key = preauthPreviewCacheKey(consentToken, locationUuid);
+  if (force) {
+    preauthPreviewCache.delete(key);
+  } else {
+    const cached = preauthPreviewCache.get(key);
+    if (cached && Date.now() - cached.at < PREAUTH_PREVIEW_TTL_MS) {
+      return cached.preview;
+    }
+    // Two callers asking at the same moment share one round trip rather than racing.
+    const inFlight = preauthPreviewInFlight.get(key);
+    if (inFlight) {
+      return inFlight;
+    }
+  }
+
+  // Failures are not cached: the entry is only written once an answer arrives, so a
+  // rate-limited or dropped request doesn't stick around as this claim's status.
+  const request = fetchPreauthPreview(consentToken, locationUuid)
+    .then((preview) => {
+      preauthPreviewCache.set(key, { at: Date.now(), preview });
+      return preview;
+    })
+    .finally(() => {
+      if (preauthPreviewInFlight.get(key) === request) {
+        preauthPreviewInFlight.delete(key);
+      }
+    });
+  preauthPreviewInFlight.set(key, request);
+  return request;
 }
 
 /** Unwrap HIE preview: bare object, array, or paginated `{ results: [...] }`. */
@@ -680,26 +737,17 @@ export function unwrapPreauthPreviewItems(preview: unknown): Record<string, unkn
   return [p];
 }
 
-const AWAITING_DOCTOR_STATUSES = new Set([
-  'PENDING_DOCTOR_APPROVAL',
-  'DOCTOR_REQUEST_SENT',
-  'DOCTOR_REQUEST_FAILED',
-]);
+const AWAITING_DOCTOR_STATUSES = new Set(['PENDING_DOCTOR_APPROVAL', 'DOCTOR_REQUEST_SENT', 'DOCTOR_REQUEST_FAILED']);
 
-export function isAwaitingDoctorApproval(
-  statusOrItem: string | Record<string, unknown> | null | undefined,
-): boolean {
+export function isAwaitingDoctorApproval(statusOrItem: string | Record<string, unknown> | null | undefined): boolean {
   if (!statusOrItem) return false;
   if (typeof statusOrItem === 'string') {
     return AWAITING_DOCTOR_STATUSES.has(statusOrItem.toUpperCase());
   }
   const status = String(statusOrItem.status ?? statusOrItem.preauth_status ?? '').toUpperCase();
   if (AWAITING_DOCTOR_STATUSES.has(status)) return true;
-  const needs =
-    statusOrItem.needsDoctorApproval === true ||
-    statusOrItem.needs_doctor_approval === true;
-  const approved =
-    statusOrItem.doctorApproved === true || statusOrItem.doctor_approved === true;
+  const needs = statusOrItem.needsDoctorApproval === true || statusOrItem.needs_doctor_approval === true;
+  const approved = statusOrItem.doctorApproved === true || statusOrItem.doctor_approved === true;
   return needs && !approved && status !== 'FINALISED' && status !== 'FINALIZED';
 }
 
@@ -726,11 +774,7 @@ export type PreauthPreviewRow = {
 /** True when payer asked for clarification / response on an already-raised preauth. */
 export function isPreauthNeedsClarification(status: string): boolean {
   const s = (status || '').toUpperCase();
-  return (
-    s === 'CLARIFICATION_AFTER_AUTOMATIC_CHECKS' ||
-    s === 'PENDING_CLARIFICATION' ||
-    s.includes('CLARIFICATION')
-  );
+  return s === 'CLARIFICATION_AFTER_AUTOMATIC_CHECKS' || s === 'PENDING_CLARIFICATION' || s.includes('CLARIFICATION');
 }
 
 /** Collect note text from preview row `preauthNotes` / item `responseNote`. */
@@ -768,24 +812,13 @@ function firstDoctorProfile(item: Record<string, unknown>): Record<string, unkno
   return profile && typeof profile === 'object' ? profile : null;
 }
 
-export function normalizePreauthPreviewItem(
-  item: Record<string, unknown>,
-  consentToken: string,
-): PreauthPreviewRow {
-  const interventionData = (item.interventionData ?? item.intervention_data ?? {}) as Record<
-    string,
-    unknown
-  >;
+export function normalizePreauthPreviewItem(item: Record<string, unknown>, consentToken: string): PreauthPreviewRow {
+  const interventionData = (item.interventionData ?? item.intervention_data ?? {}) as Record<string, unknown>;
   const profile = firstDoctorProfile(item);
   const interventionCode = String(
-    item.interventionCode ??
-      item.intervention_code ??
-      interventionData.code ??
-      '',
+    item.interventionCode ?? item.intervention_code ?? interventionData.code ?? '',
   ).trim();
-  const interventionName = String(
-    interventionData.name ?? item.interventionName ?? interventionCode,
-  ).trim();
+  const interventionName = String(interventionData.name ?? item.interventionName ?? interventionCode).trim();
   const status = String(item.status ?? item.preauth_status ?? '').toUpperCase();
   const preauthType = String(
     item.preauthType ??
@@ -822,8 +855,7 @@ export function normalizePreauthPreviewItem(
     preauthToken: String(item.token ?? item.preauth_code ?? item.preauthCode ?? '').trim(),
     doctorName: String(profile?.name ?? '').trim(),
     practitionerRegistrationNumber,
-    needsDoctorApproval:
-      item.needsDoctorApproval === true || item.needs_doctor_approval === true,
+    needsDoctorApproval: item.needsDoctorApproval === true || item.needs_doctor_approval === true,
     doctorApproved: item.doctorApproved === true || item.doctor_approved === true,
     serviceStart: String(item.serviceStart ?? item.service_start ?? '').trim(),
     notes: extractPreauthNotesFromItem(item),
@@ -854,8 +886,7 @@ export async function resendPreauthDoctorConsent(params: {
     });
     return result?.data;
   } catch (error: any) {
-    const message =
-      error?.responseBody?.message ?? error?.message ?? 'Failed to resend doctor consent';
+    const message = error?.responseBody?.message ?? error?.message ?? 'Failed to resend doctor consent';
     if (typeof message === 'object') {
       throw `${(message as string[])?.join?.(',') ?? JSON.stringify(message)}`;
     }
@@ -870,6 +901,7 @@ export async function resendPreauthDoctorConsent(params: {
 export async function fetchPreauthPreviewRowsForTokens(
   consentTokens: string[],
   locationUuid: string,
+  { force = false }: { force?: boolean } = {},
 ): Promise<PreauthPreviewRow[]> {
   const unique = [...new Set(consentTokens.map((t) => t.trim()).filter(Boolean))];
   const rows: PreauthPreviewRow[] = [];
@@ -880,10 +912,8 @@ export async function fetchPreauthPreviewRowsForTokens(
     const settled = await Promise.all(
       chunk.map(async (token) => {
         try {
-          const preview = await getPreauthPreview(token, locationUuid);
-          return unwrapPreauthPreviewItems(preview).map((item) =>
-            normalizePreauthPreviewItem(item, token),
-          );
+          const preview = await getPreauthPreview(token, locationUuid, { force });
+          return unwrapPreauthPreviewItems(preview).map((item) => normalizePreauthPreviewItem(item, token));
         } catch {
           return [] as PreauthPreviewRow[];
         }
@@ -899,21 +929,11 @@ export async function fetchPreauthPreviewRowsForTokens(
 
 const PREAUTH_TERMINAL_FAILURE = new Set(['REJECTED', 'CANCELLED', 'CANCELED', 'FAILED', 'DECLINED']);
 
-const PREAUTH_SUBMITTED = new Set([
-  'ACTIVE',
-  'PENDING_DOCTOR_APPROVAL',
-  'FINALISED',
-  'FINALIZED',
-]);
+const PREAUTH_SUBMITTED = new Set(['ACTIVE', 'PENDING_DOCTOR_APPROVAL', 'FINALISED', 'FINALIZED']);
 
 function interventionCodeFromPreviewItem(item: Record<string, unknown>): string {
-  const interventionData = (item.interventionData ?? item.intervention_data ?? {}) as Record<
-    string,
-    unknown
-  >;
-  return String(
-    item.interventionCode ?? item.intervention_code ?? interventionData.code ?? '',
-  ).trim();
+  const interventionData = (item.interventionData ?? item.intervention_data ?? {}) as Record<string, unknown>;
+  return String(item.interventionCode ?? item.intervention_code ?? interventionData.code ?? '').trim();
 }
 
 function statusFromPreviewItem(item: Record<string, unknown>): string {
@@ -923,12 +943,7 @@ function statusFromPreviewItem(item: Record<string, unknown>): string {
   const status = String(item.status ?? item.preauth_status ?? '').toUpperCase();
   const doctorReview = String(item.doctorReviewStatus ?? item.doctor_review_status ?? '').toUpperCase();
 
-  if (
-    doctorReview &&
-    PREAUTH_TERMINAL_FAILURE.has(doctorReview) &&
-    status !== 'FINALISED' &&
-    status !== 'FINALIZED'
-  ) {
+  if (doctorReview && PREAUTH_TERMINAL_FAILURE.has(doctorReview) && status !== 'FINALISED' && status !== 'FINALIZED') {
     return doctorReview;
   }
 
@@ -947,8 +962,7 @@ export function findPreauthPreviewForIntervention(
   const code = (interventionCode ?? '').trim();
   if (!code) return null;
   const items = unwrapPreauthPreviewItems(preview);
-  const direct =
-    items.find((item) => interventionCodeFromPreviewItem(item) === code) ?? null;
+  const direct = items.find((item) => interventionCodeFromPreviewItem(item) === code) ?? null;
   if (direct) return direct;
 
   // Some payloads only stamp the code on nested preauthItems[].
@@ -971,10 +985,7 @@ export function extractPreauthStatusForIntervention(preview: unknown, interventi
   return statusFromPreviewItem(item);
 }
 
-export function extractPreauthCodeForIntervention(
-  preview: unknown,
-  interventionCode: string,
-): string | undefined {
+export function extractPreauthCodeForIntervention(preview: unknown, interventionCode: string): string | undefined {
   const item = findPreauthPreviewForIntervention(preview, interventionCode);
   if (!item) return undefined;
   return extractPreauthCode(item);
@@ -1003,10 +1014,7 @@ export function interventionHasFailedPreauth(preview: unknown, interventionCode:
 }
 
 /** Alias for clarity at call sites that mean "resubmit", not only hard failure. */
-export function interventionAllowsPreauthResubmit(
-  preview: unknown,
-  interventionCode: string,
-): boolean {
+export function interventionAllowsPreauthResubmit(preview: unknown, interventionCode: string): boolean {
   return interventionHasFailedPreauth(preview, interventionCode);
 }
 
@@ -1030,11 +1038,7 @@ export function extractPreauthCode(preview: unknown): string | undefined {
     return undefined;
   }
   const auth = item.authorizationDetails as Record<string, unknown> | undefined;
-  const fromAuth =
-    (auth?.authCode as string) ||
-    (auth?.auth_code as string) ||
-    (auth?.token as string) ||
-    undefined;
+  const fromAuth = (auth?.authCode as string) || (auth?.auth_code as string) || (auth?.token as string) || undefined;
 
   return (
     (item.preauth_code as string) ||
@@ -1080,6 +1084,41 @@ export type PreauthCheckResult = {
   error?: string;
 };
 
+/**
+ * Read one intervention's preauth status out of a preview already in hand.
+ *
+ * Split out of `checkPreauthStatus` so a list can fetch a visit's preview once and read
+ * every one of that visit's interventions off it. The Needs-raise queue used to call
+ * `checkPreauthStatus` per bill row, and a visit's rows all share its consent token — so a
+ * patient with five interventions cost five identical calls to the same HIE endpoint.
+ */
+export function readPreauthCheck(preview: unknown, interventionCode?: string | null): PreauthCheckResult {
+  const code = (interventionCode ?? '').trim();
+  const item = code ? findPreauthPreviewForIntervention(preview, code) : unwrapPreauthPreviewItem(preview);
+  // Paginated empty results / null body → not raised
+  if (!preview || !item) {
+    return { status: '', preview, kind: 'not_raised' };
+  }
+
+  const status = code ? extractPreauthStatusForIntervention(preview, code) : extractPreauthStatus(preview);
+  const preauthCode = code ? extractPreauthCodeForIntervention(preview, code) : extractPreauthCode(preview);
+  const notes = extractPreauthNotesFromItem(item);
+
+  if (!status) {
+    // Row exists for this intervention but status blank — treat as already raised.
+    return { status: '', preview, kind: 'pending', preauthCode, notes };
+  }
+  if (isPreauthFinalised(status)) {
+    return { status: 'FINALISED', preview, kind: 'finalised', preauthCode, notes };
+  }
+  if (isPreauthTerminalFailure(status)) {
+    return { status, preview, kind: 'failed', preauthCode, notes };
+  }
+  // Clarification stays `pending` for status-tag colouring ("Needs clarification"),
+  // but is not a blocking preauth — callers use isPreauthNeedsClarification / resubmit helpers.
+  return { status, preview, kind: 'pending', preauthCode, notes };
+}
+
 /** One-shot preauth status check for lists, gates, and non-React callers. */
 export async function checkPreauthStatus(
   consentToken: string | null | undefined,
@@ -1105,36 +1144,7 @@ export async function checkPreauthStatus(
 
   try {
     const preview = await getPreauthPreview(consentToken.trim(), locationUuid.trim());
-    const code = (interventionCode ?? '').trim();
-    const item = code
-      ? findPreauthPreviewForIntervention(preview, code)
-      : unwrapPreauthPreviewItem(preview);
-    // Paginated empty results / null body → not raised
-    if (!preview || !item) {
-      return { status: '', preview, kind: 'not_raised' };
-    }
-
-    const status = code
-      ? extractPreauthStatusForIntervention(preview, code)
-      : extractPreauthStatus(preview);
-    const preauthCode = code
-      ? extractPreauthCodeForIntervention(preview, code)
-      : extractPreauthCode(preview);
-    const notes = extractPreauthNotesFromItem(item);
-
-    if (!status) {
-      // Row exists for this intervention but status blank — treat as already raised.
-      return { status: '', preview, kind: 'pending', preauthCode, notes };
-    }
-    if (isPreauthFinalised(status)) {
-      return { status: 'FINALISED', preview, kind: 'finalised', preauthCode, notes };
-    }
-    if (isPreauthTerminalFailure(status)) {
-      return { status, preview, kind: 'failed', preauthCode, notes };
-    }
-    // Clarification stays `pending` for status-tag colouring ("Needs clarification"),
-    // but is not a blocking preauth — callers use isPreauthNeedsClarification / resubmit helpers.
-    return { status, preview, kind: 'pending', preauthCode, notes };
+    return readPreauthCheck(preview, interventionCode);
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : String(e ?? 'Failed to get preauth preview');
     return {
@@ -1156,8 +1166,24 @@ export function usePreauthPreview(consentToken: string | null | undefined, locat
       ? preauthPreviewSwrKey(consentToken.trim(), locationUuid.trim())
       : null;
 
-  const { data, error, isLoading, isValidating, mutate } = useSWR(key, ([, token, loc]) =>
-    checkPreauthStatus(token, loc),
+  const { data, error, isLoading, isValidating, mutate } = useSWR(
+    key,
+    ([, token, loc]) => checkPreauthStatus(token, loc),
+    {
+      keepPreviousData: true,
+      // Every automatic trigger is off, as on `useProviderClaimPreview`. This preview is a
+      // round trip to the HIE, several components read the same claim's copy of it, and
+      // the HIE rate-limits — so it is fetched when something asks: the first read of a
+      // claim, or a mutation that invalidates it (see `invalidatePreauthPreview`). Left on,
+      // `revalidateOnFocus` alone refetched every mounted claim each time the window was
+      // clicked back into, and `revalidateIfStale` refetched on every remount.
+      //
+      // `revalidateOnMount` is deliberately left unset so SWR still fetches when there is
+      // no cached preview yet, and skips it when there is.
+      revalidateOnFocus: false,
+      revalidateOnReconnect: false,
+      revalidateIfStale: false,
+    },
   );
 
   return {
@@ -1175,6 +1201,10 @@ export function usePreauthPreview(consentToken: string | null | undefined, locat
 
 export async function invalidatePreauthPreview(consentToken: string, locationUuid: string) {
   if (!consentToken?.trim() || !locationUuid?.trim()) return;
+  // Both caches in front of the endpoint, in this order: the burst cache first, so the
+  // revalidation SWR is about to run actually reaches the HIE rather than being answered
+  // out of it.
+  forgetPreauthPreview(consentToken.trim(), locationUuid.trim());
   await globalMutate(preauthPreviewSwrKey(consentToken.trim(), locationUuid.trim()));
 }
 
@@ -1192,7 +1222,8 @@ export async function pollPreauthUntilFinalised(
     if (signal?.aborted) {
       throw new Error('Preauth poll cancelled');
     }
-    const preview = await getPreauthPreview(consentToken, locationUuid);
+    // A poll exists to see a change, so it asks past the burst cache every time.
+    const preview = await getPreauthPreview(consentToken, locationUuid, { force: true });
     const status = extractPreauthStatus(preview);
     if (isPreauthFinalised(status)) {
       return { status: 'FINALISED', preview, preauthCode: extractPreauthCode(preview) };
@@ -1224,17 +1255,13 @@ export async function pollPreauthUntilSubmitted(
     if (signal?.aborted) {
       throw new Error('Preauth poll cancelled');
     }
-    const preview = await getPreauthPreview(consentToken, locationUuid);
-    const status = code
-      ? extractPreauthStatusForIntervention(preview, code)
-      : extractPreauthStatus(preview);
+    const preview = await getPreauthPreview(consentToken, locationUuid, { force: true });
+    const status = code ? extractPreauthStatusForIntervention(preview, code) : extractPreauthStatus(preview);
     if (status && isPreauthSubmitted(status)) {
       return {
         status: isPreauthFinalised(status) ? 'FINALISED' : status,
         preview,
-        preauthCode: code
-          ? extractPreauthCodeForIntervention(preview, code)
-          : extractPreauthCode(preview),
+        preauthCode: code ? extractPreauthCodeForIntervention(preview, code) : extractPreauthCode(preview),
       };
     }
     if (status && isPreauthTerminalFailure(status)) {
@@ -1252,7 +1279,7 @@ export const getServiceType = (selectedIntervention: Intervention, visitType?: V
   if (paymentMechanism.trim().toUpperCase() === 'CAPITATION') {
     return 'CAPITATION';
   }
-  if (["PER DIEM", "PER_DIEM"].includes(paymentMechanism.trim().toUpperCase())) {
+  if (['PER DIEM', 'PER_DIEM'].includes(paymentMechanism.trim().toUpperCase())) {
     return 'INPATIENT';
   }
   if (accessPoint.trim().toUpperCase() === 'IP') {
@@ -1268,7 +1295,11 @@ export const getServiceType = (selectedIntervention: Intervention, visitType?: V
 };
 
 export const createPreauthRequest = async (preauthRequest: PreauthRequest) => {
-    const hieBaseUrl = await getHieBaseUrl();
-    const postUrl = `${hieBaseUrl}/pre-auth/request`;
-    return openmrsFetch<{}>(postUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: preauthRequest });
+  const hieBaseUrl = await getHieBaseUrl();
+  const postUrl = `${hieBaseUrl}/pre-auth/request`;
+  return openmrsFetch<{}>(postUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: preauthRequest,
+  });
 };
