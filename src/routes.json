@@ -285,6 +285,30 @@
       "offline": true
     },
     {
+      "name": "elective-preauth-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "electivePreauthLink",
+      "meta": {
+        "slot": "patient-chart-elective-preauth-dashboard-slot",
+        "path": "elective-preauth",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "elective-preauth-details",
+      "slot": "patient-chart-elective-preauth-dashboard-slot",
+      "component": "electivePreauth",
+      "order": 1,
+      "meta": {
+        "title": "Elective Preauth",
+        "view": "elective-preauth"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
       "name": "emt-dashboard-link",
       "component": "emtDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -450,6 +474,11 @@
       "name": "admissions-form-entry",
       "component": "formEntryWorkspace",
       "window": "admissions-form-window"
+    },
+    {
+      "name": "elective-preauth-request-workspace",
+      "component": "electivePreauthRequestWorkspace",
+      "window": "elective-preauth-request-window"
     }
   ],
   "workspaceWindows2": [
@@ -458,6 +487,12 @@
       "group": "admissions-form-group",
       "canMaximize": true,
       "width": "extra-wide"
+    },
+    {
+      "name": "elective-preauth-request-window",
+      "group": "patient-chart",
+      "canMaximize": true,
+      "width": "wider"
     }
   ],
   "workspaceGroups2": [

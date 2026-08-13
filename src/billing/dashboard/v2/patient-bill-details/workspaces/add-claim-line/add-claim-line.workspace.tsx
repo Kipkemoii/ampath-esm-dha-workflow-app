@@ -93,6 +93,7 @@ const AddClaimLineWorkspace: React.FC<AddClaimLineWorkspaceProps> = ({
       unitPrice: String(billItem.item_price),
       quantity: String(billItem.item_quantity),
       locationUuid: locationUuid,
+      orderNo: String(billItem.order_no ?? ''),
     };
     const code = preauthCode || getStoredPreauthCode(resolvedToken, billItem.intervention_code);
     if (code) {

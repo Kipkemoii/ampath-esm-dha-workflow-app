@@ -188,7 +188,31 @@ export const configSchema = {
   pmfSchemeNames: {
     _type: Type.Array,
     _default: ["POMSF", "USALAMA", "TSC"]
-  }
+  },
+  electivePreauth: {
+    encounterTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Preauth encounter type used when saving elective capture obs',
+      _default: '18b10189-a89f-430d-83e9-14663fef258c',
+    },
+    clientRegistryIdentifierTypeUuid: {
+      _type: Type.UUID,
+      _description: 'Patient identifier type UUID for Client Registry (CR) number',
+      _default: 'e88dc246-3614-4ee3-8141-1f2a83054e72',
+    },
+    encounterRoleUuid: {
+      _type: Type.String,
+      _description:
+        'Encounter role UUID for the session provider on elective preauth encounters (optional; defaults to Clinician/Unknown)',
+      _default: '',
+    },
+    plannedServiceObsConceptUuid: {
+      _type: Type.String,
+      _description:
+        'Text concept UUID that stores the planned orderable (order concept) UUID on elective preauth encounters. Leave empty to use the module default.',
+      _default: '',
+    },
+  },
 };
 
 export type Config = {
@@ -254,7 +278,13 @@ export interface ConfigObject {
   cashPaymentModeUuid: string;
   subBenefitCodesWithHiddenClaimWidget: Array<string>;
   startClaimVisitLocationAttributeUuid: string;
-  pmfSchemeNames: Array<string>
+  pmfSchemeNames: Array<string>;
+  electivePreauth: {
+    encounterTypeUuid: string;
+    clientRegistryIdentifierTypeUuid: string;
+    encounterRoleUuid: string;
+    plannedServiceObsConceptUuid: string;
+  };
 }
 
 const queueEntryActions = ['move', 'call', 'edit', 'transition', 'signOff', 'remove', 'delete', 'undo'] as const;

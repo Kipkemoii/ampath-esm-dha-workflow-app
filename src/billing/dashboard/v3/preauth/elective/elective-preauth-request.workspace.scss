@@ -1,0 +1,125 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  height: 100%;
+  min-height: 100%;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+  gap: 0.75rem;
+  flex: 1 1 auto;
+  overflow: auto;
+  padding: 1rem 1rem 0.5rem;
+  width: 100%;
+
+  /* Body gap owns vertical rhythm — Carbon form items also add margin-bottom. */
+  :global(.cds--form-item) {
+    margin-bottom: 0;
+  }
+}
+
+.hint {
+  margin: 0;
+  color: var(--cds-text-secondary, #525252);
+  font-size: 0.875rem;
+}
+
+.coverage {
+  padding: 0.75rem 1rem;
+  background: var(--cds-layer-01, #f4f4f4);
+  border-radius: 0.25rem;
+}
+
+.coverage p {
+  margin: 0.35rem 0 0;
+  font-size: 0.875rem;
+}
+
+.meta {
+  color: var(--cds-text-secondary, #525252);
+}
+
+.field {
+  width: 100%;
+}
+
+/* Carbon DatePicker is display:flex; a width:100% class on it can let the
+   flatpickr calendar reserve a tall empty block below the input. */
+.dateField {
+  width: 100%;
+  max-width: 100%;
+
+  :global(.cds--date-picker) {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  :global(.cds--date-picker-container) {
+    width: 100%;
+  }
+
+  :global(.cds--date-picker__input) {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  :global(.flatpickr-calendar) {
+    position: absolute;
+    z-index: 10000;
+  }
+
+  :global(.flatpickr-calendar:not(.open)) {
+    display: none !important;
+  }
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0;
+
+  h5 {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+  }
+
+  :global(.cds--form-item) {
+    margin-bottom: 0;
+  }
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+
+  > * {
+    flex: 1 1 12rem;
+    min-width: 12rem;
+    max-width: 100%;
+  }
+}
+
+.buttonSet {
+  margin-top: auto;
+  padding: 0.75rem 1rem 1rem;
+  border-top: 1px solid var(--cds-border-subtle-01, #e0e0e0);
+  width: 100%;
+}

@@ -156,7 +156,10 @@ export async function sendClaimsOTP(patientId: string, locationUuid: string, int
   return data;
 }
 
-/** Pre-visit OTP authorize (elective). Returns HIE authorization with `token` / `guid`. */
+/**
+ * Pre-visit OTP authorize (elective). Kept for v2 Raise workspace imports.
+ * Prefer `authorizeElectivePreauthWithOtp` from elective-authorize.resource for new code.
+ */
 export async function authorizeClaimsWithOtp(params: {
   patientId: string;
   otp: string;
@@ -339,7 +342,11 @@ export async function sendDischargeOTP(consentToken: string, patientId: string, 
   return data;
 }
 
-export async function getAuthorizations(locationUuid: string, crId?: string, token?: string): Promise<any> {
+export async function getAuthorizations(
+  locationUuid: string,
+  crId?: string,
+  token?: string,
+): Promise<Authorization[]> {
   const hieBaseUrl = await getHieBaseUrl();
 
   const params = new URLSearchParams({
@@ -355,17 +362,69 @@ export async function getAuthorizations(locationUuid: string, crId?: string, tok
   }
 
   const url = `${hieBaseUrl}/claim-authorizations?${params.toString()}`;
-
   const response = await openmrsFetch(url);
+  // openmrsFetch returns parsed JSON on `.data` (not a Response with `.json()`).
+  const data = (response as { data?: unknown; ok?: boolean })?.data ?? response;
 
-  const data = await response.json();
-
-  if (!response.ok) {
-    const errorText = data.message || 'Failed to fetch authorizations';
-    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+  if ((response as { ok?: boolean })?.ok === false) {
+    throw new Error('Failed to fetch authorizations');
   }
 
-  return data;
+  if (Array.isArray(data)) {
+    return data as Authorization[];
+  }
+  if (data && typeof data === 'object') {
+    return [data as Authorization];
+  }
+  return [];
+}
+
+/** Statuses that can back an elective preauth consent_token (pre-visit authorization). */
+const PREVISIT_USABLE_STATUSES = new Set(['AUTHORIZED_PENDING_VISIT']);
+
+/**
+ * Validate or resolve a pre-visit authorization token via GET /claim-authorizations
+ * (HIE GET /api/v1/claims/authorizations).
+ *
+ * Elective OTP minting uses elective-authorize.resource (authorizeElectivePreauthWithOtp).
+ * This helper is for lookup / biometrics confirmation of AUTHORIZED_PENDING_VISIT.
+ * See https://hie-docs.dha.go.ke/docs/scenarios/scenario-4-shif-op-ffs-elective-preauth
+ */
+export async function resolvePreVisitConsentAuthorization(opts: {
+  locationUuid: string;
+  consentToken?: string | null;
+  beneficiaryCode?: string | null;
+}): Promise<Authorization | null> {
+  const locationUuid = (opts.locationUuid ?? '').trim();
+  const consentToken = (opts.consentToken ?? '').trim();
+  const beneficiaryCode = (opts.beneficiaryCode ?? '').trim();
+  if (!locationUuid) {
+    throw new Error('Missing location for authorization lookup');
+  }
+
+  if (consentToken) {
+    const byToken = await getAuthorizations(locationUuid, undefined, consentToken);
+    const hit =
+      byToken.find((a) => String(a?.token ?? '').trim() === consentToken) ?? byToken[0] ?? null;
+    if (!hit?.token) return null;
+    const status = String(hit.status ?? '').trim().toUpperCase();
+    if (status && !PREVISIT_USABLE_STATUSES.has(status) && status !== 'PENDING') {
+      throw new Error(`Consent token status is ${status}; expected AUTHORIZED_PENDING_VISIT.`);
+    }
+    if (status === 'PENDING') {
+      throw new Error('Authorization is still PENDING (e.g. biometrics in progress). Finish consent, then retry.');
+    }
+    return hit;
+  }
+
+  if (!beneficiaryCode) return null;
+
+  const byBeneficiary = await getAuthorizations(locationUuid, beneficiaryCode, undefined);
+  const usable = byBeneficiary.filter((a) =>
+    PREVISIT_USABLE_STATUSES.has(String(a?.status ?? '').trim().toUpperCase()),
+  );
+  const preferred = usable[0] ?? null;
+  return preferred?.token ? preferred : null;
 }
 
 export async function cancelPendingAuthorizations(consentToken: string, locationUuid: string): Promise<any> {
@@ -389,8 +448,10 @@ export async function cancelPendingAuthorizations(consentToken: string, location
   const data = await response.json();
 
   if (!response.ok) {
-    const errorText = data.message || 'Failed to cancel pending authorization';
-    throw new Error(`Request failed with ${response.status}: ${errorText}`);
+    const details = Array.isArray(data?.details) ? data.details.join('; ') : '';
+    const errorText = [data?.message, data?.error, details].filter(Boolean).join(' — ') ||
+      'Failed to cancel pending authorization';
+    throw new Error(String(errorText));
   }
 
   return data;
@@ -401,8 +462,5 @@ export async function cancelAllPendingAuthorizations(locationUuid: string, crId:
 
   const pending = authorizations.filter((auth) => auth.status === 'PENDING');
 
-  // for (const authorization of pending) {
-  //   await cancelPendingAuthorizations(authorization.token);
-  // }
   await Promise.all(pending.map((auth) => cancelPendingAuthorizations(auth.token, locationUuid)));
 }

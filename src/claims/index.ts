@@ -323,18 +323,43 @@ export interface MemberBalance {
   balance: number;
 }
 export interface PreauthRequest {
-  consentToken: string;
+  consentToken?: string;
   patientUuid: string;
   orderNo: string;
   subBenefitCode: string;
   interventionCode: string;
   serviceType: string;
   locationUuid: string;
-  billableServiceUuid: string;
-  priceUuid: string;
+  billableServiceUuid?: string;
+  priceUuid?: string;
+  encounterUuid?: string;
+  expectedServiceStartDate?: string;
   requiresPreauth: boolean;
   normalPreauth: boolean;
   electivePreauth: boolean;
-  applicableDocumentTypes: string;
-  requiredPreauthDocumentTypes: string;
+  applicableDocumentTypes?: string;
+  requiredPreauthDocumentTypes?: string;
+}
+
+/** Local holding row from GET /pre-auth/request */
+export interface PreAuthRequestRecord {
+  id: number;
+  patientUuid: string;
+  orderNo: string;
+  subBenefitCode: string;
+  interventionCode: string;
+  consentToken?: string | null;
+  encounterUuid?: string | null;
+  expectedServiceStartDate?: string | null;
+  serviceType: string;
+  locationUuid: string;
+  billableServiceUuid?: string | null;
+  priceUuid?: string | null;
+  requiresPreauth?: boolean;
+  normalPreauth?: boolean;
+  electivePreauth?: boolean;
+  applicableDocumentTypes?: string;
+  requiredPreauthDocumentTypes?: string;
+  status?: string;
+  dateCreated?: string;
 }

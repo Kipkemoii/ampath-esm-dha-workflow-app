@@ -16,19 +16,33 @@ import {
   TextArea,
   TextInput,
 } from '@carbon/react';
-import { showSnackbar, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
+import { showSnackbar, useConfig, useSession, type DefaultWorkspaceProps } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import dayjs from 'dayjs';
 import {
+  cancelPreauth,
   createPreauth,
+  extractHieErrorMessage,
   fetchShaInterventionByCode,
+  findExistingPreauthForCrAndShaCode,
+  getServiceType,
   pollPreauthUntilSubmitted,
   preauthAttachmentFieldName,
+  type ExistingPreauthMatch,
   type PreauthFormPayload,
 } from '../../../../claims/claims.resource';
-import { cancelAllPendingAuthorizations, sendClaimsOTP, authorizeClaimsWithOtp } from '../../../../registry/hie.resource';
+import { resolvePreVisitConsentAuthorization, sendClaimsOTP } from '../../../../registry/hie.resource';
+import type { PatientContactResult } from '../../../../registry/hie.types';
+import {
+  createElectivePreauth,
+  extractElectiveAuthorizationToken,
+  fetchElectivePatientContacts,
+  resolveOrCreateElectivePreVisitAuthorization,
+  sendElectivePreauthOtp,
+} from './elective/elective-authorize.resource';
 import { addClaimDiagnosis, fetchPatientDiagnosesForBilling, preferredDiagnosisForPreauth } from '../../../billing-claims.resource';
 import { ensureInterventionOnVisit } from '../../../../claims/interventions.resource';
+import type { ConfigObject } from '../../../../config-schema';
 import { type AmrsVisitDiagnosis } from '../../../types';
 import { type PatientFacilityBillDetails } from '../types';
 import PreauthAttachments, { type PreauthAttachmentRow } from './preauth-attachments.component';
@@ -44,6 +58,7 @@ import {
   searchHealthWorkerRegistry,
   searchOpenMrsProviders,
   storePreauthCode,
+  usePreauthBillableServices,
   type DiagnosisConceptHit,
   type HwrSearchResult,
   type OpenMrsProviderHit,
@@ -53,6 +68,31 @@ import {
 import styles from './preauth.workspace.scss';
 
 export type { PreauthInterventionProps };
+
+type ServicePrice = {
+  uuid?: string;
+  name?: string;
+  price?: number;
+  paymentMode?: { uuid?: string; name?: string };
+};
+
+type BillableServiceOption = {
+  uuid: string;
+  name: string;
+  servicePrices?: ServicePrice[];
+};
+
+function unitPriceFromBillableService(
+  item: BillableServiceOption | null | undefined,
+  shaPaymentModeUuid: string,
+): string {
+  const prices = item?.servicePrices ?? [];
+  if (!prices.length) return '';
+  const sha = prices.find((sp) => sp.paymentMode?.uuid === shaPaymentModeUuid);
+  const pick = sha ?? prices[0];
+  if (pick?.price == null || Number.isNaN(Number(pick.price))) return '';
+  return String(pick.price);
+}
 
 /** ComboBox row: visit diagnosis (ETL) or concept-dictionary hit. */
 type DiagnosisPick =
@@ -199,17 +239,30 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
 }) => {
   const { t } = useTranslation();
   const session = useSession();
+  const { shaPaymentModeUuid } = useConfig<ConfigObject>();
+  const { lineItems: billableItems, isLoading: loadingBillableItems } = usePreauthBillableServices();
   const [dirty, setDirty] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [polling, setPolling] = useState(false);
   const [consentMethod, setConsentMethod] = useState<'biometric' | 'otp'>('otp');
-  const [consentDone, setConsentDone] = useState(Boolean(consentTokenProp) && !isElective);
+  // Elective must mint a pre-visit authorization token (AUTHORIZED_PENDING_VISIT) —
+  // do not treat a prior visit claim token as ready consent.
+  const [consentDone, setConsentDone] = useState(isElective ? false : Boolean(consentTokenProp));
   const [otpSent, setOtpSent] = useState(false);
   const [otp, setOtp] = useState('');
   const [sendingOtp, setSendingOtp] = useState(false);
-  const [activeConsentToken, setActiveConsentToken] = useState(consentTokenProp || '');
+  /** Phase 2 step 6a — contact confirmed with patient before OTP. */
+  const [patientContacts, setPatientContacts] = useState<PatientContactResult[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState('');
+  const [loadingContacts, setLoadingContacts] = useState(false);
+  const [activeConsentToken, setActiveConsentToken] = useState(isElective ? '' : consentTokenProp || '');
   const [expectedServiceStartDate, setExpectedServiceStartDate] = useState(toIsoLocal());
   const abortRef = useRef<AbortController | null>(null);
+  /** Skip unsaved-changes prompt after a successful submit (state may still say submitting/dirty). */
+  const allowCloseWithoutPromptRef = useRef(false);
+  const [existingPreauth, setExistingPreauth] = useState<ExistingPreauthMatch | null>(null);
+  const [checkingExistingPreauth, setCheckingExistingPreauth] = useState(false);
+  const [cancellingExistingPreauth, setCancellingExistingPreauth] = useState(false);
 
   // Specialty from launch props + bill item; SHA coverage may enrich after mount
   // (visit/claim payloads often omit requires_*_preauth even for oncology codes).
@@ -231,6 +284,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   const [unitPrice, setUnitPrice] = useState(() =>
     String(billItem.item_price ?? billItem.item_total_price ?? '').trim(),
   );
+  const [billPriceLookupDone, setBillPriceLookupDone] = useState(false);
+  const [hasBillUnitPrice, setHasBillUnitPrice] = useState(() =>
+    Boolean(String(billItem.item_price ?? billItem.item_total_price ?? '').trim()),
+  );
+  const [selectedBillableService, setSelectedBillableService] = useState<BillableServiceOption | null>(null);
 
   // Diagnosis: prefill from ETL encounter-diagnosis; search uses concept dictionary (ICD-11).
   const [visitDiagnoses, setVisitDiagnoses] = useState<AmrsVisitDiagnosis[]>([]);
@@ -330,18 +388,97 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   });
 
   useEffect(() => {
-    // Normal preauth requires an existing claim token. Elective obtains one via authorize.
+    // Normal Raise needs the claim visit consent token. Elective may open without one
+    // and resolve a pre-visit token via GET /claim-authorizations (not /claims-authorize).
     if (!isElective && !consentTokenProp) {
       showSnackbar({
         kind: 'error',
         title: t('missingConsentToken', 'Missing claim token'),
-        subtitle: t('missingConsentTokenDetail', 'A preexisting visit claim token is required to raise preauth.'),
+        subtitle: t(
+          'missingConsentTokenDetail',
+          'A preexisting visit claim token is required to raise preauth.',
+        ),
       });
       closeWorkspace?.();
     }
   }, [consentTokenProp, isElective, closeWorkspace, t]);
 
+  // Phase 2 step 6a — GET contacts so OTP can target beneficiary_contact_id.
+  useEffect(() => {
+    if (!isElective || consentMethod !== 'otp') return;
+    const patientId = crNo.trim();
+    if (!patientId || !locationUuid) {
+      setPatientContacts([]);
+      setSelectedContactId('');
+      return;
+    }
+    let cancelled = false;
+    setLoadingContacts(true);
+    (async () => {
+      try {
+        const rows = await fetchElectivePatientContacts(patientId, locationUuid);
+        if (cancelled) return;
+        setPatientContacts(rows);
+        const preferred = rows.find((c) => c.isConfirmed) ?? rows[0];
+        setSelectedContactId(preferred?.id != null ? String(preferred.id) : '');
+      } catch {
+        if (!cancelled) {
+          setPatientContacts([]);
+          setSelectedContactId('');
+        }
+      } finally {
+        if (!cancelled) setLoadingContacts(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isElective, consentMethod, crNo, locationUuid]);
+
   const consentToken = activeConsentToken;
+
+  // Detect an existing active preauth for the same CR + SHA intervention code.
+  useEffect(() => {
+    const patientId = (billItem.cr_no ?? '').trim();
+    const code = (intervention.code || billItem.intervention_code || '').trim();
+    const patientIdUuid = (patientUuid || billItem.patient_uuid || '').trim();
+    if (!locationUuid || !code || (!patientId && !consentTokenProp && !patientIdUuid)) {
+      setExistingPreauth(null);
+      return;
+    }
+
+    let cancelled = false;
+    setCheckingExistingPreauth(true);
+    (async () => {
+      try {
+        const match = await findExistingPreauthForCrAndShaCode({
+          beneficiaryCr: patientId,
+          interventionCode: code,
+          locationUuid,
+          consentToken: isElective ? undefined : consentTokenProp,
+          patientUuid: patientIdUuid || undefined,
+        });
+        if (!cancelled) setExistingPreauth(match);
+      } catch {
+        if (!cancelled) setExistingPreauth(null);
+      } finally {
+        if (!cancelled) setCheckingExistingPreauth(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    billItem.cr_no,
+    billItem.intervention_code,
+    billItem.patient_uuid,
+    consentTokenProp,
+    intervention.code,
+    isElective,
+    locationUuid,
+    patientUuid,
+  ]);
 
   // Enrich specialty flags from SHA interventions coverage when launch props lack them.
   useEffect(() => {
@@ -380,7 +517,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   }, [billItem.cr_no, billItem.intervention_code, intervention.code, locationUuid]);
 
   useEffect(() => {
-    promptBeforeClosing?.(() => dirty || submitting || polling);
+    promptBeforeClosing?.(() => {
+      if (allowCloseWithoutPromptRef.current) return false;
+      return dirty || submitting || polling;
+    });
   }, [dirty, submitting, polling, promptBeforeClosing]);
 
   useEffect(() => () => {
@@ -498,26 +638,41 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }, 300);
   };
   // Resolve unit_price from patient facility bill lines (match intervention + service name).
+  // Elective holds often have no bill line yet — fall back to billable-service catalog picker.
   useEffect(() => {
     const uuid = patientUuid || billItem.patient_uuid;
     const code = (intervention.code || billItem.intervention_code || '').trim();
-    if (!uuid || !locationUuid || !code) return;
+    if (!uuid || !locationUuid || !code) {
+      setBillPriceLookupDone(true);
+      return;
+    }
 
     let cancelled = false;
+    setBillPriceLookupDone(false);
     (async () => {
-      const { unitPrice: fromBills, billLine } = await resolveUnitPriceFromPatientBills({
-        patientUuid: uuid,
-        locationUuid,
-        billingDate: billItem.bill_date,
-        interventionCode: code,
-        serviceHint: billItem.billable_service || intervention.name || code,
-      });
-      if (cancelled || !fromBills) return;
-      setUnitPrice(fromBills);
-      setCostPerSession((prev) => (prev.trim() ? prev : fromBills));
-      // Prefer matched billable_service label when launch used intervention name only
-      if (billLine?.billable_service && !(billItem.billable_service || '').trim()) {
-        // billItem is a prop — display uses billableService derived from it; unit price is enough
+      try {
+        const { unitPrice: fromBills, billLine } = await resolveUnitPriceFromPatientBills({
+          patientUuid: uuid,
+          locationUuid,
+          billingDate: billItem.bill_date,
+          interventionCode: code,
+          serviceHint: billItem.billable_service || intervention.name || code,
+        });
+        if (cancelled) return;
+        if (fromBills) {
+          setUnitPrice(fromBills);
+          setHasBillUnitPrice(true);
+          setSelectedBillableService(null);
+          setCostPerSession((prev) => (prev.trim() ? prev : fromBills));
+          // Prefer matched billable_service label when launch used intervention name only
+          if (billLine?.billable_service && !(billItem.billable_service || '').trim()) {
+            // billItem is a prop — display uses billableService derived from it; unit price is enough
+          }
+        } else {
+          setHasBillUnitPrice(false);
+        }
+      } finally {
+        if (!cancelled) setBillPriceLookupDone(true);
       }
     })();
 
@@ -535,6 +690,9 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     locationUuid,
     specialty.requiresRenalPreauth,
   ]);
+
+  // Elective preauth usually has no patient bill yet — always offer the catalog picker.
+  const needsBillableServicePicker = isElective;
 
   // Prefill specialty fields from POC Pre-authorization form (encounter, else latest obs).
   useEffect(() => {
@@ -741,13 +899,37 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       showSnackbar({ kind: 'error', title: 'Missing CR number', subtitle: 'Cannot send OTP without patient CR id.' });
       return;
     }
+    if (isElective && !selectedContactId && patientContacts.length > 0) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Select a contact',
+        subtitle: 'Confirm which patient contact should receive the OTP.',
+      });
+      return;
+    }
     setSendingOtp(true);
     try {
-      await cancelAllPendingAuthorizations(locationUuid, crNo);
-      const response = await sendClaimsOTP(crNo, locationUuid, intervention.code);
-      if (response?.message?.includes('OTP') || response) {
-        setOtpSent(true);
-        showSnackbar({ kind: 'success', title: 'OTP sent' });
+      if (isElective) {
+        // Phase 2 step 7a — elective-only OTP helper (not normal sendClaimsOTP).
+        const response = await sendElectivePreauthOtp({
+          patientId: crNo,
+          locationUuid,
+          interventionCode: intervention.code,
+          beneficiaryContactId: selectedContactId || undefined,
+        });
+        if ((response as any)?.message?.includes('OTP') || response) {
+          setOtpSent(true);
+          setConsentDone(false);
+          showSnackbar({ kind: 'success', title: 'OTP sent' });
+        }
+      } else {
+        // Do not cancelAllPendingAuthorizations — that can wipe in-flight consent for this CR.
+        const response = await sendClaimsOTP(crNo, locationUuid, intervention.code);
+        if (response?.message?.includes('OTP') || response) {
+          setOtpSent(true);
+          setConsentDone(false);
+          showSnackbar({ kind: 'success', title: 'OTP sent' });
+        }
       }
     } catch (e: any) {
       showSnackbar({ kind: 'error', title: 'Failed to send OTP', subtitle: String(e?.message ?? e) });
@@ -756,54 +938,107 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     }
   };
 
+  const resolveElectiveServiceType = (): string => {
+    const fromBill = String(billItem.service_type ?? '').trim().toUpperCase();
+    if (fromBill === 'OUTPATIENT' || fromBill === 'INPATIENT' || fromBill === 'CAPITATION') {
+      return fromBill;
+    }
+    try {
+      return getServiceType(intervention as any, 'OUTPATIENT') || 'OUTPATIENT';
+    } catch {
+      return 'OUTPATIENT';
+    }
+  };
+
   const handleVerifyOtp = async () => {
     if (!otp || otp.length < 4) {
       showSnackbar({ kind: 'error', title: 'Enter OTP' });
       return;
     }
-    if (isElective) {
-      if (!crNo) {
-        showSnackbar({ kind: 'error', title: 'Missing CR number', subtitle: 'Cannot authorize without patient CR id.' });
-        return;
-      }
-      setSendingOtp(true);
-      try {
-        const auth = await authorizeClaimsWithOtp({
-          patientId: crNo,
-          otp: otp.trim(),
-          interventions: [intervention.code],
-          serviceType: (billItem.service_type as string) || 'OUTPATIENT',
-          locationUuid,
-        });
-        const token = String(auth?.token ?? auth?.consent_token ?? '').trim();
-        if (!token) {
-          throw new Error('Authorize succeeded but no token was returned.');
-        }
-        setActiveConsentToken(token);
-        setConsentDone(true);
-        showSnackbar({ kind: 'success', title: 'Pre-visit authorization complete' });
-      } catch (e: any) {
-        showSnackbar({ kind: 'error', title: 'Authorize failed', subtitle: String(e?.message ?? e) });
-      } finally {
-        setSendingOtp(false);
-      }
-      return;
-    }
-    setConsentDone(true);
-    showSnackbar({ kind: 'success', title: 'OTP verified' });
-  };
 
-  const handleConfirmBiometric = () => {
-    if (isElective && !activeConsentToken) {
+    // Elective: Confirm OTP locally only. HIE authorize runs on Submit so Send OTP /
+    // Confirm never hit /claims-authorize or create a preauth.
+    if (isElective) {
+      setConsentDone(true);
       showSnackbar({
-        kind: 'info',
-        title: 'Use OTP for elective',
-        subtitle: 'Elective pre-visit authorize currently uses OTP. Biometrics authorize is available via the Claims widget.',
+        kind: 'success',
+        title: 'OTP confirmed',
+        subtitle: 'Pre-visit authorization will be created when you submit the preauth.',
       });
       return;
     }
-    setConsentDone(true);
-    showSnackbar({ kind: 'success', title: 'Biometric consent recorded' });
+
+    setSendingOtp(true);
+    try {
+      const token = String(activeConsentToken || consentTokenProp || '').trim();
+      if (!token) {
+        throw new Error('A claim consent token is required.');
+      }
+      setActiveConsentToken(token);
+      setConsentDone(true);
+      showSnackbar({
+        kind: 'success',
+        title: 'Consent verified',
+      });
+    } catch (e: any) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Consent token verification failed',
+        subtitle: String(e?.message ?? e),
+      });
+    } finally {
+      setSendingOtp(false);
+    }
+  };
+
+  const handleConfirmBiometric = async () => {
+    setSendingOtp(true);
+    try {
+      if (!isElective) {
+        const token = String(activeConsentToken || consentTokenProp || '').trim();
+        if (!token) {
+          throw new Error('A claim consent token is required.');
+        }
+        setActiveConsentToken(token);
+        setConsentDone(true);
+        showSnackbar({ kind: 'success', title: 'Consent verified' });
+        return;
+      }
+
+      // Elective biometrics: after iframe authorize, resolve AUTHORIZED_PENDING_VISIT only
+      // (do not accept a visit claim token).
+      const auth = await resolvePreVisitConsentAuthorization({
+        locationUuid,
+        beneficiaryCode: crNo,
+      });
+      const token = String(auth?.token ?? '').trim();
+      const status = String(auth?.status ?? '').trim().toUpperCase();
+      if (!token) {
+        throw new Error(
+          'No pre-visit authorization found. Finish biometric authorize, then confirm here.',
+        );
+      }
+      if (status && status !== 'AUTHORIZED_PENDING_VISIT') {
+        throw new Error(
+          `Expected AUTHORIZED_PENDING_VISIT for elective preauth, got ${status}. Complete pre-visit biometric authorize first.`,
+        );
+      }
+      setActiveConsentToken(token);
+      setConsentDone(true);
+      showSnackbar({
+        kind: 'success',
+        title: 'Pre-visit authorization verified',
+        subtitle: auth?.status ? `Status: ${auth.status}` : undefined,
+      });
+    } catch (e: any) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Consent token verification failed',
+        subtitle: String(e?.message ?? e),
+      });
+    } finally {
+      setSendingOtp(false);
+    }
   };
 
   const handleAttachmentsChange = (updater: (prev: PreauthAttachmentRow[]) => PreauthAttachmentRow[]) => {
@@ -932,19 +1167,72 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     return payload;
   };
 
-  const handleSubmit = async () => {
-    if (!consentToken) {
+  const handleCancelExistingPreauth = async () => {
+    const code = String(intervention.code || billItem.intervention_code || '').trim();
+    const token = String(
+      existingPreauth?.consentToken || activeConsentToken || consentTokenProp || '',
+    ).trim();
+    if (!token || !code || !locationUuid) {
       showSnackbar({
         kind: 'error',
-        title: 'Missing authorization',
-        subtitle: isElective
-          ? 'Complete pre-visit OTP authorize before submitting the elective preauth.'
-          : 'A claim token is required.',
+        title: 'Cannot cancel preauth',
+        subtitle: 'Missing consent token or intervention code for this preauth.',
       });
       return;
     }
+    setCancellingExistingPreauth(true);
+    try {
+      await cancelPreauth({
+        consentToken: token,
+        interventionCode: code,
+        locationUuid,
+      });
+      setExistingPreauth(null);
+      showSnackbar({
+        kind: 'success',
+        title: 'Preauth cancelled',
+        subtitle: `${code} was cancelled. You can raise a new preauth.`,
+      });
+    } catch (e: any) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Cancel failed',
+        subtitle: extractHieErrorMessage(e, 'Failed to cancel preauth'),
+      });
+    } finally {
+      setCancellingExistingPreauth(false);
+    }
+  };
+
+  const handleSubmit = async () => {
     if (!consentDone) {
       showSnackbar({ kind: 'error', title: 'Consent required', subtitle: 'Complete OTP or biometric consent first.' });
+      return;
+    }
+    if (existingPreauth?.blocking) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Existing preauth found',
+        subtitle: `An active preauth already exists for ${intervention.code} (status: ${existingPreauth.status}${
+          existingPreauth.preauthCode ? `, code: ${existingPreauth.preauthCode}` : ''
+        }).`,
+      });
+      return;
+    }
+    if (isElective && consentMethod === 'otp' && (!otp || otp.length < 4)) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Missing OTP',
+        subtitle: 'Send OTP, enter the code, confirm it, then submit.',
+      });
+      return;
+    }
+    if (!isElective && !consentToken) {
+      showSnackbar({
+        kind: 'error',
+        title: 'Missing authorization',
+        subtitle: 'A claim token is required.',
+      });
       return;
     }
     const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
@@ -958,7 +1246,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       !icdCode.trim() && 'ICD-11 diagnosis',
       !doctorId.trim() && 'Doctor National ID',
       !providerEmail.trim() && 'Provider notification email',
-      !resolvedUnitPrice && 'Unit price (from bill)',
+      !resolvedUnitPrice &&
+        (needsBillableServicePicker ? 'Unit price (select a billable service)' : 'Unit price (from bill)'),
       isElective && !expectedServiceStartDate && 'Expected service start date',
       needsClinicalIndications &&
         !clinicalIndications.trim() &&
@@ -986,26 +1275,72 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     setSubmitting(true);
     abortRef.current = new AbortController();
     try {
-      if (!isElective) {
-        await ensureInterventionOnVisit(consentToken, intervention.code, locationUuid);
+      let tokenForPreauth = consentToken;
+
+      if (isElective) {
+        // Elective is pre-visit: mint AUTHORIZED_PENDING_VISIT via authorize, then POST /preauths.
+        // Do not close/reject existing open claim visits.
+        if (consentMethod === 'otp') {
+          const auth = await resolveOrCreateElectivePreVisitAuthorization({
+            patientId: crNo,
+            otp,
+            interventions: [intervention.code],
+            serviceType: resolveElectiveServiceType(),
+            locationUuid,
+            beneficiaryContactId: selectedContactId || undefined,
+          });
+          tokenForPreauth = extractElectiveAuthorizationToken(auth);
+          if (!tokenForPreauth) {
+            throw new Error('Authorize succeeded but no authorization token was returned.');
+          }
+          setActiveConsentToken(tokenForPreauth);
+        } else if (!tokenForPreauth) {
+          throw new Error(
+            'Missing pre-visit authorization token. Confirm biometric consent, then submit.',
+          );
+        }
+      } else {
+        await ensureInterventionOnVisit(tokenForPreauth, intervention.code, locationUuid);
       }
+
       const payload = buildPayload();
-      await createPreauth(
-        payload,
-        {
-          code: interventionForSubmit.code,
-          requiresRadiologyPreauth: interventionForSubmit.requiresRadiologyPreauth,
-          requiresOncologyPreauth: interventionForSubmit.requiresOncologyPreauth,
-          requiresOpticalPreauth: interventionForSubmit.requiresOpticalPreauth,
-          requiresRenalPreauth: interventionForSubmit.requiresRenalPreauth,
-          requiresSurgicalPreauth: interventionForSubmit.requiresSurgicalPreauth,
-        },
-        consentToken,
-      );
+      if (isElective && tokenForPreauth) {
+        payload.diagnoses = (payload.diagnoses ?? []).map((d) => ({
+          ...d,
+          consent_token: tokenForPreauth,
+        }));
+      }
+      if (isElective) {
+        await createElectivePreauth(
+          payload,
+          {
+            code: interventionForSubmit.code,
+            requiresRadiologyPreauth: interventionForSubmit.requiresRadiologyPreauth,
+            requiresOncologyPreauth: interventionForSubmit.requiresOncologyPreauth,
+            requiresOpticalPreauth: interventionForSubmit.requiresOpticalPreauth,
+            requiresRenalPreauth: interventionForSubmit.requiresRenalPreauth,
+            requiresSurgicalPreauth: interventionForSubmit.requiresSurgicalPreauth,
+          },
+          tokenForPreauth,
+        );
+      } else {
+        await createPreauth(
+          payload,
+          {
+            code: interventionForSubmit.code,
+            requiresRadiologyPreauth: interventionForSubmit.requiresRadiologyPreauth,
+            requiresOncologyPreauth: interventionForSubmit.requiresOncologyPreauth,
+            requiresOpticalPreauth: interventionForSubmit.requiresOpticalPreauth,
+            requiresRenalPreauth: interventionForSubmit.requiresRenalPreauth,
+            requiresSurgicalPreauth: interventionForSubmit.requiresSurgicalPreauth,
+          },
+          tokenForPreauth,
+        );
+      }
 
       setPolling(true);
       const polled = await pollPreauthUntilSubmitted(
-        consentToken,
+        tokenForPreauth,
         locationUuid,
         intervention.code,
         { signal: abortRef.current.signal },
@@ -1014,7 +1349,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       const preauthCode = polled.preauthCode;
 
       if (preauthCode) {
-        storePreauthCode(consentToken, intervention.code, preauthCode);
+        storePreauthCode(tokenForPreauth, intervention.code, preauthCode);
       }
 
       // Sync selected ICD onto the claim (normal / post-claim only).
@@ -1022,7 +1357,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         try {
           const visitDx = selectedDx?.kind === 'visit' ? selectedDx.dx : null;
           await addClaimDiagnosis({
-            consentToken,
+            consentToken: tokenForPreauth,
             interventionCode: intervention.code,
             icdCode: icdCode.trim(),
             locationUuid,
@@ -1053,18 +1388,23 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
             ? `Code: ${preauthCode}`
             : `Status: ${status}`,
       });
-      onSuccess?.({ consentToken, preauthCode, status });
+      onSuccess?.({ consentToken: tokenForPreauth, preauthCode, status });
+      allowCloseWithoutPromptRef.current = true;
       setDirty(false);
-      closeWorkspace?.();
+      setSubmitting(false);
+      setPolling(false);
+      closeWorkspace?.({ discardUnsavedChanges: true } as any);
     } catch (e: any) {
       showSnackbar({
         kind: 'error',
         title: 'Preauth failed',
-        subtitle: String(e?.message ?? e),
+        subtitle: extractHieErrorMessage(e, 'Failed to create preauth'),
       });
     } finally {
-      setSubmitting(false);
-      setPolling(false);
+      if (!allowCloseWithoutPromptRef.current) {
+        setSubmitting(false);
+        setPolling(false);
+      }
     }
   };
 
@@ -1087,6 +1427,47 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           </Tag>
         </div>
 
+        {checkingExistingPreauth ? (
+          <InlineLoading description="Checking for existing preauth…" />
+        ) : existingPreauth ? (
+          <div
+            className={`${styles.existingBanner} ${
+              existingPreauth.blocking ? styles.existingBannerError : styles.existingBannerWarning
+            }`}
+            role="status"
+          >
+            <p className={styles.existingBannerTitle}>
+              {existingPreauth.blocking ? 'Existing active preauth' : 'Prior preauth found'}
+            </p>
+            <p className={styles.existingBannerMeta}>
+              {[
+                `SHA ${intervention.code}`,
+                `Status: ${existingPreauth.status}`,
+                existingPreauth.preauthCode ? `Code: ${existingPreauth.preauthCode}` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ')}
+            </p>
+            <p className={styles.existingBannerHint}>
+              {existingPreauth.blocking
+                ? 'Submit is blocked to avoid duplicates.'
+                : String(existingPreauth.status).toUpperCase().includes('EXPIRED')
+                  ? 'This preauth has expired. You can raise a new one.'
+                  : 'You may resubmit after correcting the prior request.'}
+            </p>
+            <div className={styles.existingBannerActions}>
+              <button
+                type="button"
+                className={styles.existingBannerCancel}
+                onClick={() => void handleCancelExistingPreauth()}
+                disabled={submitting || polling || cancellingExistingPreauth}
+              >
+                {cancellingExistingPreauth ? 'Cancelling…' : 'Cancel preauth'}
+              </button>
+            </div>
+          </div>
+        ) : null}
+
         {isElective ? (
           <section className={styles.section}>
             <h5>Expected service start</h5>
@@ -1108,20 +1489,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           </section>
         ) : null}
 
-        <InlineNotification
-          kind="info"
-          lowContrast
-          hideCloseButton
-          title={isElective ? 'Pre-visit authorization token' : 'Claim token'}
-          subtitle={
-            consentToken
-              ? `${consentToken.slice(0, 8)}…${consentToken.slice(-4)}`
-              : isElective
-                ? 'Complete OTP authorize below to obtain a pre-visit token.'
-                : '—'
-          }
-        />
-
         <section className={styles.section}>
           <h5>Consent</h5>
           <RadioButtonGroup
@@ -1138,7 +1505,45 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
           </RadioButtonGroup>
           {consentMethod === 'otp' ? (
             <div className={styles.row}>
-              <Button kind="tertiary" size="sm" onClick={handleSendOtp} disabled={sendingOtp || consentDone}>
+              {isElective ? (
+                loadingContacts ? (
+                  <InlineLoading description="Loading contacts…" />
+                ) : (
+                  <Dropdown
+                    id="preauth-otp-contact"
+                    titleText="Patient contact (OTP)"
+                    label="Select contact"
+                    items={patientContacts}
+                    itemToString={(item: PatientContactResult | null) =>
+                      item
+                        ? `${item.contactType || 'Contact'}: ${item.contactValue}${
+                            item.isConfirmed ? ' (confirmed)' : ''
+                          }`
+                        : ''
+                    }
+                    selectedItem={
+                      patientContacts.find((c) => String(c.id) === selectedContactId) ?? null
+                    }
+                    onChange={({ selectedItem }) => {
+                      setSelectedContactId(selectedItem?.id != null ? String(selectedItem.id) : '');
+                      setOtpSent(false);
+                      setConsentDone(false);
+                      setOtp('');
+                    }}
+                  />
+                )
+              ) : null}
+              <Button
+                type="button"
+                kind="tertiary"
+                size="sm"
+                onClick={handleSendOtp}
+                disabled={
+                  sendingOtp ||
+                  consentDone ||
+                  (isElective && (loadingContacts || (!selectedContactId && patientContacts.length > 0)))
+                }
+              >
                 {sendingOtp ? <InlineLoading description="Sending…" /> : 'Send OTP'}
               </Button>
               <TextInput
@@ -1148,8 +1553,14 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
                 disabled={!otpSent || consentDone}
                 onChange={(e) => setOtp(e.target.value)}
               />
-              <Button kind="primary" size="sm" onClick={handleVerifyOtp} disabled={!otpSent || consentDone}>
-                Verify
+              <Button
+                type="button"
+                kind="primary"
+                size="sm"
+                onClick={handleVerifyOtp}
+                disabled={!otpSent || consentDone}
+              >
+                Confirm OTP
               </Button>
             </div>
           ) : (
@@ -1225,9 +1636,54 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
               setProviderEmail(e.target.value);
             }}
           />
+
+          {needsBillableServicePicker ? (
+            <div className={styles.searchBlock}>
+              <p className={styles.fieldHint}>
+                No unit price on a patient bill for this intervention. Select a billable service to
+                use its SHA tariff as the preauth unit price.
+              </p>
+              {loadingBillableItems ? (
+                <InlineLoading description="Loading billable services…" />
+              ) : (
+                <ComboBox
+                  id="preauth-billable-service"
+                  titleText="Billable service"
+                  placeholder="Search billable service"
+                  items={(billableItems ?? []) as BillableServiceOption[]}
+                  itemToString={(item: BillableServiceOption | null) => item?.name ?? ''}
+                  selectedItem={selectedBillableService}
+                  onChange={({ selectedItem }) => {
+                    markDirty();
+                    const item = (selectedItem as BillableServiceOption | null) ?? null;
+                    setSelectedBillableService(item);
+                    const price = unitPriceFromBillableService(item, shaPaymentModeUuid);
+                    setUnitPrice(price);
+                    if (price) {
+                      setCostPerSession((prev) => (prev.trim() ? prev : price));
+                    }
+                  }}
+                />
+              )}
+              {selectedBillableService && !unitPrice.trim() ? (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title="No price on service"
+                  subtitle="This billable service has no SHA (or other) price configured."
+                />
+              ) : null}
+            </div>
+          ) : null}
+          {!billPriceLookupDone && isElective ? (
+            <InlineLoading description="Looking up unit price from patient bills…" />
+          ) : null}
           <TextInput
             id="unit-price"
-            labelText="Unit price (from bill)"
+            labelText={
+              needsBillableServicePicker ? 'Unit price (from billable service)' : 'Unit price (from bill)'
+            }
             type="number"
             value={unitPrice}
             readOnly
@@ -1785,7 +2241,11 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         <Button kind="secondary" onClick={() => closeWorkspace()} disabled={submitting || polling}>
           Cancel
         </Button>
-        <Button kind="primary" onClick={handleSubmit} disabled={!consentDone || submitting || polling}>
+        <Button
+          kind="primary"
+          onClick={handleSubmit}
+          disabled={!consentDone || submitting || polling || Boolean(existingPreauth?.blocking) || checkingExistingPreauth}
+        >
           {polling ? (
             <InlineLoading description="Confirming submission…" />
           ) : submitting ? (

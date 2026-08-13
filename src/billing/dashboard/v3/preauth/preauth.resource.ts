@@ -1,5 +1,7 @@
 import { openmrsFetch, restBaseUrl, type Visit } from '@openmrs/esm-framework';
 import dayjs from 'dayjs';
+import { useState } from 'react';
+import useSWR from 'swr';
 import { fetchFacilityPreauthBills, fetchPatientFacilityBillDetails } from '../../../billing-claims.resource';
 import { fetchShaInterventionByCode } from '../../../../claims/claims.resource';
 import { type Intervention } from '../../../../claims';
@@ -557,16 +559,26 @@ export function dateToServiceIso(date: Date | undefined, timeOrEndOfDay: string 
 }
 
 /** POC Pre-authorization Form encounter type. */
+export const PREAUTH_FORM_UUID = 'cce578f6-b3e2-3077-91ab-9016cf0f4fa5';
 export const PREAUTH_ENCOUNTER_TYPE_UUID = '18b10189-a89f-430d-83e9-14663fef258c';
 
 /** Clinical notes / indications concept — same UUID as admissions clinical notes. */
 export const CLINICAL_INDICATIONS_CONCEPT_UUID = '5e4dc798-2cce-4a1a-97e9-bcf22d64b07c';
 
 export const PREAUTH_FORM_CONCEPTS = {
+  typeOfIntervention: 'aea44bfb-c8b1-4cce-b891-af74181d0f57',
   clinicalIndication: CLINICAL_INDICATIONS_CONCEPT_UUID,
   startDate: 'bb85532e-8f7e-476f-81d7-5580e0385852',
+  /** Same concept as startDate — stores elective expected service start on the preauth encounter. */
+  expectedServiceStartDate: 'bb85532e-8f7e-476f-81d7-5580e0385852',
   sessionNumber: '86f4e2e2-c2e8-4d0b-9ed7-34900d55ae09',
   frequencyOfSessions: 'a40396d3-3f9b-49b6-902a-a804f3d0e2a0',
+  clinicalIndicationRenal: '85b45e49-2428-4898-b9f8-62a1b8a4b4e4',
+  newRequest: 'aad64a84-1a63-47e3-a806-fb704b52b709',
+  lens: 'f0e18a8e-5912-4b5b-aae0-6f83b5de77af',
+  eyeExaminationAmount: 'a04a2d91-e540-45d4-a650-70bf4cab0b3f',
+  frameAmount: '424b5c35-f37f-4ec7-8b4a-a64c34c5f5ef',
+  lensAmount: '2dfe99ac-b32b-4cb9-b6e7-8e557a43624b',
   complaintGroup: '9014962e-3efe-46b0-a393-c8c8bddadaa7',
   complaint: 'a8a6ddb6-1350-11df-a1f1-0026b9348838',
   otherComplaint: 'a8a06fc6-1350-11df-a1f1-0026b9348838',
@@ -578,8 +590,25 @@ export const PREAUTH_FORM_CONCEPTS = {
   accidentRelated: '855b3a01-53c9-4129-923d-79863d318580',
   coInsured: '415dbca0-2d9b-4d6a-98b7-b855a023cbbb',
   coInsuredDetails: '226c4f3a-3db3-4244-adc3-bc224b90d8fe',
+  doctor: 'a8a8c96e-1350-11df-a1f1-0026b9348838',
   yes: 'a899b35c-1350-11df-a1f1-0026b9348838',
   no: 'a899b42e-1350-11df-a1f1-0026b9348838',
+  other: 'a8aaf3e2-1350-11df-a1f1-0026b9348838',
+  /**
+   * Text obs that stores the planned orderable concept UUID (elective capture / edit).
+   * Override via electivePreauth.plannedServiceObsConceptUuid if this UUID is not in your dictionary.
+   */
+  plannedServiceConcept: 'c0ffee00-e1e2-4a3b-9c0d-e1e2e3e4e5e6',
+} as const;
+
+/** Coded answers for `typeOfIntervention`. */
+export const PREAUTH_INTERVENTION_TYPE = {
+  surgical: '63c079d9-87fb-4bea-b860-863bff0e29c5',
+  renal: '597896cd-2841-42e9-8fb0-4292f82ac7b6',
+  normal: 'a8a09ac8-1350-11df-a1f1-0026b9348838',
+  imaging: '5771e408-a5e5-402b-9f29-b76106dfc71a',
+  optical: 'a8a06788-1350-11df-a1f1-0026b9348838',
+  oncology: '073ea366-834b-49bd-b4db-ce4e6c61bbc3',
 } as const;
 
 const FREQUENCY_CONCEPT_TO_HIE: Record<string, string> = {
@@ -704,6 +733,7 @@ const COMPLAINT_CONCEPT_TO_LABEL: Record<string, string> = {
 export type PreauthFormFieldKey =
   | 'clinicalIndications'
   | 'startDate'
+  | 'expectedServiceStartDate'
   | 'sessionsRequired'
   | 'frequency'
   | 'chiefComplaint'
@@ -720,6 +750,8 @@ export type PreauthFormFieldKey =
 export type PreauthFormValues = {
   clinicalIndications: string;
   startDate: string;
+  /** Elective expected service start — same obs concept as startDate on the POC form. */
+  expectedServiceStartDate: string;
   sessionsRequired: string;
   frequency: string;
   chiefComplaint: string;
@@ -741,6 +773,7 @@ function emptyPreauthFormValues(source: PreauthFormValues['source'] = 'none'): P
   return {
     clinicalIndications: '',
     startDate: '',
+    expectedServiceStartDate: '',
     sessionsRequired: '',
     frequency: '',
     chiefComplaint: '',
@@ -872,6 +905,9 @@ function mapObsToPreauthFormValues(
   const start = obsDateIso(byConcept.get(C.startDate));
   values.startDate = start;
   markFound(values, 'startDate', Boolean(start));
+  // Elective expected service start is stored on the same POC form date concept.
+  values.expectedServiceStartDate = start;
+  markFound(values, 'expectedServiceStartDate', Boolean(start));
 
   const sessions = obsNumericValue(byConcept.get(C.sessionNumber));
   values.sessionsRequired = sessions;
@@ -1001,14 +1037,32 @@ async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<
 
 /**
  * Prefill values from POC Pre-authorization Form:
- * 1) latest PREAUTHORIZATION encounter obs
- * 2) else latest obs per concept
+ * 1) specific encounter when encounterUuid is provided (elective hold Raise)
+ * 2) else latest PREAUTHORIZATION encounter obs
+ * 3) else latest obs per concept
  */
-export async function fetchPreauthFormValues(patientUuid: string): Promise<PreauthFormValues> {
+export async function fetchPreauthFormValues(
+  patientUuid: string,
+  encounterUuid?: string,
+): Promise<PreauthFormValues> {
   const uuid = (patientUuid ?? '').trim();
   if (!uuid) return emptyPreauthFormValues('none');
 
-  const encounter = await fetchLatestPreauthEncounter(uuid);
+  const encounterId = (encounterUuid ?? '').trim();
+  let encounter: Record<string, unknown> | null = null;
+  if (encounterId) {
+    try {
+      const full = await openmrsFetch(`${restBaseUrl}/encounter/${encounterId}?v=full`);
+      if (full?.data && typeof full.data === 'object') {
+        encounter = full.data as Record<string, unknown>;
+      }
+    } catch {
+      encounter = null;
+    }
+  }
+  if (!encounter) {
+    encounter = await fetchLatestPreauthEncounter(uuid);
+  }
   if (encounter) {
     const obs = flattenObs(Array.isArray(encounter.obs) ? encounter.obs : []);
     const surgeryRaw = String(encounter.encounterDatetime ?? '');
@@ -1016,7 +1070,10 @@ export async function fetchPreauthFormValues(patientUuid: string): Promise<Preau
       ? dayjs(surgeryRaw).format('YYYY-MM-DDTHH:mm:ssZ')
       : '';
     const fromEncounter = mapObsToPreauthFormValues(obs, 'encounter', surgeryDate);
-    if (fromEncounter.found.size > 0) {
+    // When a specific encounter was requested (elective), return that mapping even if empty —
+    // do not fall back to unrelated latest obs. Normal preauth (no encounterId) still falls
+    // through to per-concept latest when the latest encounter has no mappable obs.
+    if (fromEncounter.found.size > 0 || encounterId) {
       return fromEncounter;
     }
     // Encounter present but no mappable obs — fall through to per-concept latest
@@ -1053,6 +1110,73 @@ export async function fetchPreauthFormValues(patientUuid: string): Promise<Preau
 export async function fetchLatestClinicalIndicationsObs(patientUuid: string): Promise<string> {
   const values = await fetchPreauthFormValues(patientUuid);
   return values.clinicalIndications;
+}
+
+export type PreauthBillableService = {
+  uuid: string;
+  name: string;
+  shortName?: string;
+  serviceStatus?: string;
+  serviceType?: { uuid?: string; display?: string };
+  servicePrices?: Array<{
+    uuid?: string;
+    name?: string;
+    price?: number;
+    paymentMode?: { uuid?: string; name?: string };
+  }>;
+  concept?: { uuid?: string };
+};
+
+const PREAUTH_BILLABLE_PAGE_SIZE = 500; // OpenMRS REST absolute max on this server
+const PREAUTH_BILLABLE_REPRESENTATION =
+  'custom:(uuid,name,shortName,serviceStatus,serviceType:(uuid,display),servicePrices:(uuid,name,price,paymentMode),concept:(uuid))';
+
+/**
+ * Fetches the full billable-service catalog in pages of ≤500
+ * (server rejects higher limits with "absolute limit at 500").
+ */
+async function fetchAllPreauthBillableServices(): Promise<PreauthBillableService[]> {
+  const all: PreauthBillableService[] = [];
+  let startIndex = 0;
+
+  for (;;) {
+    const url =
+      `${restBaseUrl}/billing/billableService?v=${PREAUTH_BILLABLE_REPRESENTATION}` +
+      `&limit=${PREAUTH_BILLABLE_PAGE_SIZE}&startIndex=${startIndex}`;
+    const { data } = await openmrsFetch<{ results: PreauthBillableService[] }>(url);
+    const page = data?.results ?? [];
+    all.push(...page);
+    if (page.length < PREAUTH_BILLABLE_PAGE_SIZE) {
+      break;
+    }
+    startIndex += PREAUTH_BILLABLE_PAGE_SIZE;
+  }
+
+  return all;
+}
+
+/**
+ * Billable-service catalog for the Raise preauth form only.
+ * Kept separate from create-order `useBillableItems` so limit / filtering
+ * changes here do not affect billing or switch-intervention workspaces.
+ */
+export function usePreauthBillableServices() {
+  const { data, isLoading, error } = useSWR('preauth-billable-services', fetchAllPreauthBillableServices);
+  const [searchTerm, setSearchTerm] = useState('');
+  const q = searchTerm.trim().toLowerCase();
+  const lineItems = (data ?? []).filter((item) =>
+    String(item?.name ?? '')
+      .toLowerCase()
+      .includes(q),
+  );
+
+  return {
+    lineItems,
+    isLoading,
+    error,
+    searchTerm,
+    setSearchTerm,
+  };
 }
 
 /** Reusable preauth status check — prefer these over calling getPreauthPreview directly. */

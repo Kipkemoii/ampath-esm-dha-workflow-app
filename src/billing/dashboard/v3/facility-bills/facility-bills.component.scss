@@ -1,3 +1,6 @@
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
 .clickableData {
   color: var(--brand-01);
   font-weight: 600;
@@ -6,4 +9,64 @@
 .clickableData:hover {
   color: var(--brand-02);
   text-decoration: underline;
+}
+
+.panel {
+  padding: layout.$spacing-05;
+  border: 1px solid $ui-03;
+  background-color: $ui-01;
+}
+
+.subPanel {
+  padding-top: layout.$spacing-05;
+}
+
+.statusFilters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: layout.$spacing-03;
+  margin-bottom: layout.$spacing-05;
+}
+
+.statusFilterBtn {
+  max-width: 100%;
+}
+
+.statusFilterCount,
+.statusFilterCountOn {
+  display: inline-block;
+  margin-left: layout.$spacing-03;
+  min-width: 1.15rem;
+  padding: 0 layout.$spacing-02;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  text-align: center;
+}
+
+.statusFilterCount {
+  background-color: $ui-03;
+  color: $ui-05;
+}
+
+.statusFilterCountOn {
+  background-color: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+.tableCard {
+  overflow-x: auto;
+}
+
+.pill {
+  display: inline-block;
+  margin-left: layout.$spacing-03;
+  min-width: 1.15rem;
+  padding: 0 layout.$spacing-02;
+  border-radius: 999px;
+  background-color: var(--brand-01);
+  color: #ffffff;
+  font-size: 0.68rem;
+  line-height: 1.15rem;
+  text-align: center;
 }

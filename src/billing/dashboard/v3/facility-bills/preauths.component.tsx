@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { Button } from '@carbon/react';
 import { claimVisitToken, useFacilityClaimVisits } from '../../../billing-claims.resource';
 import { fetchPreauthPreviewRowsForTokens, type PreauthPreviewRow } from '../../../../claims/claims.resource';
 import { PREAUTH_BUCKETS, preauthBucketKeyForStatus, type StatusBucket } from './claim-status';
@@ -15,11 +15,16 @@ interface PreauthsProps {
 }
 
 /**
- * Preauthorisations tab — lists HIE preauths from GET /pre-auth/preview
- * (one call per claim-visit consent token for the selected date).
- * Pending rows that need doctor SMS approval can resend doctor consent.
+ * Status view under Preauthorizations — lists HIE preauths from GET /pre-auth/preview.
+ *
+ * Status filters are a wrapping chip row (not nested Tabs / ContentSwitcher) so they
+ * stay clear of Accounting → Preauthorizations → Needs raise / Elective / Status.
  */
 const Preauths: React.FC<PreauthsProps> = ({ locationUuid, billingDate }) => {
+  const statusItems: StatusBucket[] = useMemo(
+    () => [...PREAUTH_BUCKETS, { key: '', label: 'All', statuses: [] }],
+    [],
+  );
   const [statusFilter, setStatusFilter] = useState<string>(() => defaultBucketKey(PREAUTH_BUCKETS));
   const [rows, setRows] = useState<PreauthPreviewRow[]>([]);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -79,50 +84,42 @@ const Preauths: React.FC<PreauthsProps> = ({ locationUuid, billingDate }) => {
     return rows.filter((r) => preauthBucketKeyForStatus(r.status) === statusFilter);
   }, [rows, statusFilter]);
 
-  const statusTabItems: StatusBucket[] = [...PREAUTH_BUCKETS, { key: '', label: 'All', statuses: [] }];
-  const statusTabIndex = Math.max(
-    0,
-    statusTabItems.findIndex((b) => b.key === statusFilter),
-  );
-  const countPill = (key: string) => <span className={styles.pill}>{key ? (counts[key] ?? 0) : rows.length}</span>;
-
   const loading = visitsLoading || loadingPreview;
 
   return (
-    // Not `.panel`: the Preauthorizations tab that renders this has already drawn the box,
-    // and a second one around the same table put a border inside a border. No heading or
-    // blurb either — the dashboard tab names this, and its hint says what the two views
-    // are for, including the doctor-consent resend that paragraph used to explain.
-    <div className={styles.subPanel}>
-      <Tabs
-        selectedIndex={statusTabIndex}
-        onChange={({ selectedIndex }) => setStatusFilter(statusTabItems[selectedIndex]?.key ?? '')}
-      >
-        <TabList aria-label="Preauth statuses" className={styles.statusTabs} scrollDebounceWait={200}>
-          {statusTabItems.map((bucket) => (
-            <Tab key={bucket.key || 'all'}>
+    <div>
+      <div className={styles.statusFilters} role="tablist" aria-label="Preauth statuses">
+        {statusItems.map((bucket) => {
+          const key = bucket.key || 'all';
+          const selected = statusFilter === bucket.key;
+          const count = bucket.key ? (counts[bucket.key] ?? 0) : rows.length;
+          return (
+            <Button
+              key={key}
+              role="tab"
+              aria-selected={selected}
+              size="sm"
+              kind={selected ? 'primary' : 'tertiary'}
+              className={styles.statusFilterBtn}
+              onClick={() => setStatusFilter(bucket.key)}
+            >
               {bucket.label}
-              {countPill(bucket.key)}
-            </Tab>
-          ))}
-        </TabList>
-        <TabPanels>
-          {statusTabItems.map((bucket) => (
-            <TabPanel key={bucket.key || 'all'}>
-              {statusFilter === bucket.key ? (
-                <div className={styles.tableCard}>
-                  <PreauthPreviewTable
-                    rows={filteredRows}
-                    locationUuid={locationUuid}
-                    loading={loading}
-                    onRefresh={handleRefresh}
-                  />
-                </div>
-              ) : null}
-            </TabPanel>
-          ))}
-        </TabPanels>
-      </Tabs>
+              <span className={selected ? styles.statusFilterCountOn : styles.statusFilterCount}>
+                {count}
+              </span>
+            </Button>
+          );
+        })}
+      </div>
+
+      <div className={styles.tableCard}>
+        <PreauthPreviewTable
+          rows={filteredRows}
+          locationUuid={locationUuid}
+          loading={loading}
+          onRefresh={handleRefresh}
+        />
+      </div>
     </div>
   );
 };

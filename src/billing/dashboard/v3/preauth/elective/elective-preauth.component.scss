@@ -1,0 +1,15 @@
+@use '@carbon/layout';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.widgetContainer {
+  background-color: $ui-background;
+  border: 1px solid #e0e0e0;
+  margin-bottom: layout.$spacing-05;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}

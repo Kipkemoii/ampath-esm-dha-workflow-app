@@ -15,6 +15,7 @@ import { admissionsDashboardMeta } from './dashboard-meta/admissions-dashboard.m
 import { patientChartAdmissionsMetaData } from './dashboard-meta/inpatient-admissions.meta';
 import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
+import { electivePreauthMeta } from './dashboard-meta/elective-preauth.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -160,6 +161,17 @@ export const emtHandoverWorkspace = getAsyncLifecycle(
 );
 
 export const caseSummary = getAsyncLifecycle(() => import('./case-summary/case-summary.extension'), options);
+
+export const electivePreauthLink = getSyncLifecycle(
+  openMrsCreateDashboardLink(electivePreauthMeta as any),
+  options,
+);
+
+export const electivePreauth = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/preauth/elective/elective-preauth.component'),
+  options,
+);
+
 export const billingDashboardLink = getAsyncLifecycle(
   () => import('./billing/billing-dashboard-link.component'),
   options,
@@ -244,5 +256,10 @@ export const generateOrderBillButton = getAsyncLifecycle(
 
 export const payerPreviewWorkspace = getAsyncLifecycle(
   () => import('./billing/dashboard/v3/claim-visits/payer-preview/payer-preview-workspace.component'),
+  options,
+);
+
+export const electivePreauthRequestWorkspace = getAsyncLifecycle(
+  () => import('./billing/dashboard/v3/preauth/elective/elective-preauth-request.workspace'),
   options,
 );

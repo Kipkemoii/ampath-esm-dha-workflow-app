@@ -48,7 +48,13 @@ export interface BiometricsStatus {
 export interface Authorization {
   token: string;
   status: string;
-  authorizationType: ('OTP' | 'SHA')[];
+  authorizationType?: ('OTP' | 'SHA')[] | string[];
+  guid?: string;
+  authCode?: string;
+  isOpen?: boolean;
+  overallPreauthFinalised?: boolean;
+  beneficiaryCode?: string;
+  label?: string;
 }
 
 export interface BiometricResult {

@@ -53,8 +53,14 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
     setCurrentView(newView);
     setSelectedPatientUuid(patientUuid);
   }
-  function formatStatusColumn(status: string) {
-    const statusArr = status.split(',');
+  function formatStatusColumn(status: string | null | undefined) {
+    if (status == null || status === '') {
+      return '—';
+    }
+    const statusArr = String(status)
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
 
     if (statusArr.length > 0) {
       const hasPostedBill = statusArr.some((s) => {
@@ -63,17 +69,14 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
       if (hasPostedBill) {
         return 'PARTIALLY PAID';
       }
-      const hasPendingBill = statusArr.some((s) => {
-        return s === 'PENDING';
-      });
+      const hasPendingBill = statusArr.some((s) => s === 'PENDING');
       if (hasPendingBill) {
         return 'PENDING';
       }
 
       return 'PAID';
-    } else {
-      return status;
     }
+    return String(status);
   }
 
   const formatDate = (date?: string | null) => {

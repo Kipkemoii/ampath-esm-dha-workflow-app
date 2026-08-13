@@ -59,6 +59,7 @@ const AddClaimLineModal: React.FC<addClaimLineModalProps> = ({
       unitPrice: String(billItem.item_price),
       quantity: String(billItem.item_quantity),
       locationUuid: locationUuid,
+      orderNo: String(billItem.order_no ?? ''),
     };
   }
   function holderFunction(){

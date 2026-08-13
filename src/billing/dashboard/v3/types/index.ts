@@ -287,6 +287,9 @@ export type AddClaimLineDto = {
   unitPrice: string;
   quantity: string;
   locationUuid: string;
+  orderNo: string;
+  /** Best-effort; hie-saf may not forward yet */
+  preauthCode?: string;
 };
 
 export type RemoveClaimLineDto = {
