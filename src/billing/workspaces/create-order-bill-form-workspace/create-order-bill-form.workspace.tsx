@@ -334,7 +334,13 @@ const CreateOrderBillForm: React.FC<CreateOrderBillFormProps> = ({
             try {
                 await createOrderBillInHie(hiePayload);
             } catch (error) {
-                await removePatientBill(billUuidResp);
+                if (currentDayBills && currentDayBills.length) {
+                    await updatePatientBill(billUuidResp, {
+                        lineItems: currentDayBills[0]?.lineItems ?? [],
+                    });
+                } else {
+                    await removePatientBill(billUuidResp);
+                }
                 throw error;
             }
         } else {
