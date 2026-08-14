@@ -44,6 +44,12 @@ const ClaimsConsentExtension: React.FC<ClaimsConsentExtensionProps> = ({
   useEffect(() => {
     if (authGuid) {
       onAuthGuidReceived?.(authGuid);
+      onClientConsent({ authGuid });
+
+      showSnackbar({
+        kind: 'success',
+        title: 'Biometrics Verified',
+      });
     }
   }, [authGuid, onAuthGuidReceived]);
 
