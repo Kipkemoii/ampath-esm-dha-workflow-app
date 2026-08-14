@@ -1,9 +1,10 @@
-import React, { forwardRef, useEffect, useState } from 'react';
+import React, { forwardRef, useEffect, useMemo, useState } from 'react';
 import styles from './dialysis-chart.scss';
 import { type VisitSummaryResponse, type VitalReading } from '../type';
 import { showSnackbar, useSession } from '@openmrs/esm-framework';
 import { fetchCaseSummary } from '../../../../../billing-claims.resource';
 import { normalizeVitals } from '../case-summary/case-summary-helper';
+import { extractDialysisData } from './dialysis-helper';
 
 const DEMO_SESSION = {
   facility: {
@@ -154,7 +155,6 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
       const normalizedVitals = normalizeVitals(res.vitals);
       setVitals(normalizedVitals);
     } catch (err) {
-      console.log(err);
       showSnackbar({
         kind: 'error',
         title: 'An error occured while fetching Case summary',
@@ -162,6 +162,8 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
       });
     }
   };
+
+  const extracted = useMemo(() => extractDialysisData(dialysisSummary?.clinicalNotes ?? []), [dialysisSummary]);
 
   useEffect(() => {
     if (!locationUuid) return;
@@ -197,16 +199,17 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
 
         <SectionBlock number="1" title="Pre-Dialysis Assessment">
           <div className={styles['dc-field-grid']}>
-            <Field label="Weight Before" value={s.preAssessment.weightBefore} />
+            <Field label="Weight Before" value={''} />
             <Field label="Temperature" value={dialysisSummary?.vitals?.temperature} />
             <Field label="Pulse" value={dialysisSummary?.vitals?.pulse} />
             <Field label="BP" value={dialysisSummary?.vitals?.bloodPressure} />
             <Field label="Resp. Rate" value={dialysisSummary?.vitals?.respiratoryRate} />
             <Field label="Oxygen Sat." value={dialysisSummary?.vitals?.spo2} />
-            <Field label="Blood Sugar" value={s.preAssessment.bloodSugar} />
-            <Field label="Access Type" value={s.preAssessment.accessType} />
-            <Field label="Access Site" value={s.preAssessment.accessSite} />
-            <Field label="Doctor/Nephrologist" value={s.preAssessment.doctor} />
+            <Field label="Blood Sugar" value={''} />
+            <Field label="Access Type" value={extracted?.preAssessment?.accessType} />
+            <Field label="Access Site" value={''} />
+            <Field label="Notes" value={extracted?.preAssessment?.notes} />
+            <Field label="Doctor/Nephrologist" value={''} />
           </div>
         </SectionBlock>
 
@@ -227,24 +230,24 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
             <thead>
               <tr>
                 <th>Time</th>
-                <th>BP</th>
-                <th>Pulse</th>
-                <th>Temp</th>
                 <th>UF Removed</th>
                 <th>Heparin</th>
                 <th>Remarks</th>
+                <th>BP</th>
+                <th>Pulse</th>
+                <th>Temp</th>
               </tr>
             </thead>
             <tbody>
-              {s.monitoring.map((row, i) => (
+              {extracted?.monitoring?.map((row, i) => (
                 <tr key={i}>
                   <td>{row.time}</td>
-                  <td>{row.bp}</td>
-                  <td>{row.pulse}</td>
-                  <td>{row.temp}</td>
                   <td>{row.ufRemoved}</td>
                   <td>{row.heparin}</td>
                   <td>{row.remarks}</td>
+                  <td>{''}</td>
+                  <td>{''}</td>
+                  <td>{''}</td>
                 </tr>
               ))}
             </tbody>
@@ -253,14 +256,14 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
 
         <SectionBlock number="4" title="Post-Dialysis Assessment">
           <div className={styles['dc-field-grid']}>
-            <Field label="Weight After" value={s.postAssessment.weightAfter} />
-            <Field label="Total UF Achieved" value={s.postAssessment.totalUfAchieved} />
+            <Field label="Weight After" value={''} />
+            <Field label="Total UF Achieved" value={extracted?.postAssessment.totalUfAchieved} />
             <Field label="BP" value={s.postAssessment.bp} />
             <Field label="Pulse" value={s.postAssessment.pulse} />
-            <Field label="Temperature" value={s.postAssessment.temperature} />
-            <Field label="Access Site" value={s.postAssessment.accessSite} />
-            <Field label="Condition" value={s.postAssessment.condition} />
-            <Field label="Complications" value={s.postAssessment.complications} />
+            <Field label="Temperature" value={extracted?.postAssessment?.temperature} />
+            <Field label="Access Site" value={extracted?.postAssessment?.accessSite} />
+            <Field label="Condition" value={extracted?.postAssessment?.condition} />
+            <Field label="Complications" value={extracted?.postAssessment?.complications} />
           </div>
         </SectionBlock>
 
