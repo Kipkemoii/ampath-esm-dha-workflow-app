@@ -126,6 +126,8 @@ const EmtQueue: React.FC = () => {
 
   const columns = [
     { id: 'patientName', header: 'Patient', key: 'patientName' },
+    { id: 'crId', header: 'CR ID', key: 'crId' },
+    { id: 'caseNumber', header: 'Case number', key: 'caseNumber' },
     { id: 'ambulance', header: 'Ambulance', key: 'ambulance' },
     { id: 'requestedAt', header: 'Requested', key: 'requestedAt' },
     { id: 'interventions', header: 'Interventions', key: 'interventions' },

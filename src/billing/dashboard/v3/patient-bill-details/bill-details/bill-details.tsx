@@ -88,6 +88,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
     handleCloseAddClaimItemModal();
     invalidateProviderClaimPreview();
   }
+
   function interventionAddedToClaimLine(b: PatientFacilityBillDetails) {
     if (b.intervention_code && b.has_claim_line === 0) {
       // if (claimsVisit && claimsVisit.invoices) {
