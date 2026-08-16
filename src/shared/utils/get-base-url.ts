@@ -25,3 +25,8 @@ export async function getClaimsKey() {
   const { claimsKey } = await getConfig(moduleName);
   return claimsKey ?? null;
 }
+
+export async function getCashPaymentModeUuid() {
+  const { cashPaymentModeUuid } = await getConfig(moduleName);
+  return cashPaymentModeUuid ?? null;
+}

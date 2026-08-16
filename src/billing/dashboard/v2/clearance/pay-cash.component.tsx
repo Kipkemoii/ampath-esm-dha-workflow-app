@@ -21,6 +21,7 @@ import styles from './pay-cash.scss';
 import { updateBillItemStatus } from '../../../api/billing.api';
 import { Snackbar } from '@openmrs/esm-styleguide/src/snackbars/snackbar.component';
 import { payBillItem } from '../../../billing-claims.resource';
+import { getCashPaymentModeUuid } from '../../../../shared/utils/get-base-url';
 
 interface PayCashComponentProps {
   lineItems?: PendingLineItem[];
@@ -67,8 +68,9 @@ const PayCashComponent: React.FC<PayCashComponentProps> = ({
     closeWorkspace('pay-cash-workspace', { ignoreChanges: true });
   };
   const payForBillItem = async (billItem: PendingLineItem) => {
+    const cashPaymentModeUuid = await getCashPaymentModeUuid();
     const payload = {
-      instanceType: '63eff7a4-6f82-43c4-a333-dbcc58fe9f74',
+      instanceType: cashPaymentModeUuid,
       amountTendered: (billItem.quantity ?? 0) * (billItem.price ?? 0),
       amount: (billItem.quantity ?? 0) * (billItem.price ?? 0),
     };
