@@ -30,7 +30,7 @@ interface billDetailsProps {
   locationUuid: string;
   claimsVisit: ClaimsVisit;
 }
-type BillingScope = 'OPD' | 'INPATIENT';
+
 const BillDetails: React.FC<billDetailsProps> = ({
   patientBillDetails,
   patientPayments,
@@ -43,7 +43,6 @@ const BillDetails: React.FC<billDetailsProps> = ({
   const [showAddClaimLineModal, setShowAddClaimLineModal] = useState<boolean>(false);
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
   const setDiagnosisInterventionCode = useMemo(() => getConsultationBillIntervantionCode(), [patientBillDetails]);
-  const [billingScope, setBillingScope] = useState<BillingScope>('OPD');
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
 
   const scopedBillDetails = patientBillDetails;
@@ -222,18 +221,6 @@ const BillDetails: React.FC<billDetailsProps> = ({
 
   return (
     <>
-      <RadioButtonGroup
-        className={styles.radioGroup}
-        name="billing-scope"
-        valueSelected={billingScope}
-        onChange={(value) => setBillingScope(value as BillingScope)}
-        invalidText="Invalid selection"
-        warnText="Please notice the warning"
-      >
-        <RadioButton id="outpatient" labelText="OPD" value="OPD" />
-        <RadioButton id="inpatient" labelText="INPATIENT" value="INPATIENT" />
-      </RadioButtonGroup>
-
       {billDetailsLayout}
 
       {showPaymentModal && selectedBillItem && (

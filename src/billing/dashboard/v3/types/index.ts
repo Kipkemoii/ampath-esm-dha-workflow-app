@@ -382,3 +382,12 @@ export type SwitchInterventionDto = {
   locationUuid: string;
   billedAmount: string;
 };
+
+export type PatientBillVisit = {
+  visit_id: string;
+  patient_id: string;
+  date_started: string;
+  visit_uuid: string;
+  visit_type: string;
+  consent_token: string;
+};

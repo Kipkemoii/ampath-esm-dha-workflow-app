@@ -9,6 +9,7 @@ import PatientBillDetails from '../patient-bill-details/patient-bill-details';
 import TableToolbar from '../shared/table-toolbar.component';
 import EmptyState from '../shared/empty-state.component';
 import { type PatientBill } from '../../v2/types';
+import PatientVisitDetailsComponent from '../patient-bill-details/patient-visit-details';
 
 interface facilityBillsProps {
   billingDate: string;
@@ -115,7 +116,8 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                     <TableHeader>No</TableHeader>
                     <TableHeader>Date</TableHeader>
                     <TableHeader>Patient</TableHeader>
-                    <TableHeader>Status</TableHeader>
+                    <TableHeader> Claim Status</TableHeader>
+                    <TableHeader> Cash Status</TableHeader>
                     <TableHeader>Identifier</TableHeader>
                   </TableRow>
                 </TableHead>
@@ -132,6 +134,9 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
                           >
                             {fb.patient_name}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Tag type={fb.claim_status === 'DRAFT' ? 'gray' : 'green'}>{fb.claim_status}</Tag>
                         </TableCell>
                         <TableCell>
                           {(() => {
@@ -164,7 +169,7 @@ const FacilityBillsV3: React.FC<facilityBillsProps> = ({ billingDate, locationUu
             </Button>
           </div>
           <div>
-            <PatientBillDetails
+            <PatientVisitDetailsComponent
               locationUuid={locationUuid}
               billingDate={billingDate}
               patientUuid={selectedPatientUuid}

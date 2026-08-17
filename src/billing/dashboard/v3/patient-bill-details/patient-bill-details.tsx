@@ -18,6 +18,8 @@ import { showSnackbar } from '@openmrs/esm-styleguide';
 import {
   Column,
   Grid,
+  RadioButton,
+  RadioButtonGroup,
   StructuredListBody,
   StructuredListCell,
   StructuredListRow,
@@ -43,6 +45,8 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
   const [patientBillDetails, setPatientBillDetails] = useState<PatientFacilityBillDetails[]>([]);
   const [consentToken, setConsentToken] = useState<string>('');
   const [patientBillPayments, setPatientBillPayments] = useState<PatientPayment[]>([]);
+  const [visitType, setVisitType] = useState('opd');
+  const showVisitTabs = visitType === 'opd' || visitType === 'inpatient';
   const facilityPatientDetail = useMemo(() => {
     return patientBillDetails[0] ?? null;
   }, [patientBillDetails]);
@@ -71,7 +75,6 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
     [visitDiagnosis, maternityDiagnosis, encounterDiagnosis],
   );
   const [claimsVisit, setClaimsVisit] = useState<ClaimsVisit>();
-
 
   const [visitDiagnosisLoading, setVisitDiagnosisLoading] = useState<boolean>(true);
   const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
@@ -276,21 +279,29 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
                 <StructuredListBody>
                   <StructuredListRow className={styles.amountRow}>
                     <StructuredListCell className={styles.fieldLabel}>Total amount</StructuredListCell>
-                    <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(billTotalAmount)}</StructuredListCell>
+                    <StructuredListCell className={styles.amountValue}>
+                      Ksh {formatCurrency(billTotalAmount)}
+                    </StructuredListCell>
                   </StructuredListRow>
                   {amountClaimed > 0 && (
                     <StructuredListRow className={styles.amountRow}>
                       <StructuredListCell className={styles.fieldLabel}>Claim amount</StructuredListCell>
-                      <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(amountClaimed)}</StructuredListCell>
+                      <StructuredListCell className={styles.amountValue}>
+                        Ksh {formatCurrency(amountClaimed)}
+                      </StructuredListCell>
                     </StructuredListRow>
                   )}
                   <StructuredListRow className={styles.amountRow}>
                     <StructuredListCell className={styles.fieldLabel}>Amount paid</StructuredListCell>
-                    <StructuredListCell className={styles.amountValue}>Ksh {formatCurrency(billPaidAmount)}</StructuredListCell>
+                    <StructuredListCell className={styles.amountValue}>
+                      Ksh {formatCurrency(billPaidAmount)}
+                    </StructuredListCell>
                   </StructuredListRow>
                   <StructuredListRow className={styles.balanceRow}>
                     <StructuredListCell className={styles.balanceLabel}>Balance</StructuredListCell>
-                    <StructuredListCell className={styles.balanceValue}>Ksh {formatCurrency(billBalance)}</StructuredListCell>
+                    <StructuredListCell className={styles.balanceValue}>
+                      Ksh {formatCurrency(billBalance)}
+                    </StructuredListCell>
                   </StructuredListRow>
                 </StructuredListBody>
               </StructuredListWrapper>
@@ -298,6 +309,17 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
           </Column>
         </Grid>
         <div>
+          <RadioButtonGroup
+            name="care setting"
+            valueSelected={visitType}
+            onChange={(value) => setVisitType(String(value ?? 'opd'))}
+          >
+            <RadioButton id="opd" labelText="OPD" value="opd" />
+            <RadioButton id="inpatient" labelText="INPATIENT" value="inpatient" />
+          </RadioButtonGroup>
+        </div>
+
+        {visitType && (
           <Tabs>
             <TabList scrollDebounceWait={200}>
               <Tab>Bill Details</Tab>
@@ -318,23 +340,21 @@ const PatientBillDetails: React.FC<patientBillDetailsProps> = ({ patientUuid, lo
               </TabPanel>
               <TabPanel>
                 {locationUuid && consentToken ? (
-                  <>
-                    <PatientClaimDetails
-                      locationUuid={locationUuid}
-                      patientBillDetails={patientBillDetails}
-                      consentToken={consentToken}
-                      onBillDetailsChange={getPatientBillDetails}
-                      billingDate={billingDate}
-                      onLoadingClaimVisit={onLoadingClaimVisit}
-                    />
-                  </>
+                  <PatientClaimDetails
+                    locationUuid={locationUuid}
+                    patientBillDetails={patientBillDetails}
+                    consentToken={consentToken}
+                    onBillDetailsChange={getPatientBillDetails}
+                    billingDate={billingDate}
+                    onLoadingClaimVisit={onLoadingClaimVisit}
+                  />
                 ) : (
                   <></>
                 )}
               </TabPanel>
             </TabPanels>
           </Tabs>
-        </div>
+        )}
       </div>
     </>
   );

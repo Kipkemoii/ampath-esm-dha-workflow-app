@@ -12,7 +12,7 @@ import ActiveVisits from './active-visits/active-visits.component';
 import Clearance from './clearance/clearance.component';
 import { billBalance, getPayableBills } from './cash-checklist/cash-checklist.resource';
 import { getClearanceCounts } from '../../../shared/services/consultation-clearance.resource';
-import { useFacilityClaimVisits } from '../../billing-claims.resource';
+import { fetchClaimsDashboard, useFacilityClaimVisits } from '../../billing-claims.resource';
 import { CLAIM_BUCKETS } from './facility-bills/claim-status';
 import {
   MetricsCard,
@@ -143,6 +143,8 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   const session = useSession();
   const locationUuid = session.sessionLocation?.uuid ?? '';
   const [billingDate, setBillingDate] = useState<string>(() => lastSelectedDate ?? today());
+  const [summaryStartDate, setSummaryStartDate] = useState<string>(() => today());
+  const [summaryEndDate, setSummaryEndDate] = useState<string>(() => today());
   const [awaiting, setAwaiting] = useState(0);
   const [cashDue, setCashDue] = useState(0);
   const [selectedTab, setSelectedTab] = useState(() => lastSelectedTab ?? 0);
@@ -198,82 +200,73 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
 
   const claimTileValue = (bucketKey: string) => (claimCountsReady ? (claimCounts[bucketKey] ?? 0) : 0);
 
+  const claimSummaryDefaults = useMemo(
+    () => ({
+      draft: null,
+      submitted: null,
+      failed_to_submit: null,
+      closed: null,
+      approved: null,
+      rejected: null,
+      in_review: null,
+      sent_back: null,
+      paid: null,
+    }),
+    [],
+  );
+
+  const [claimsSummary, setClaimsSummary] = useState<Record<string, number | null>>(claimSummaryDefaults);
+
+  useEffect(() => {
+    if (!locationUuid) return;
+
+    const summaryResponse = async () => {
+      try {
+        const startDate = summaryStartDate || today();
+        const endDate = summaryEndDate || startDate;
+        const res = await fetchClaimsDashboard(startDate, endDate, locationUuid);
+        const rawSummary = Array.isArray(res) && res.length > 0 ? res[0] : {};
+        const nextSummary = Object.fromEntries(
+          Object.keys(claimSummaryDefaults).map((key) => {
+            const value = rawSummary?.[key];
+            return [key, value == null ? null : Number(value)];
+          }),
+        ) as Record<string, number | null>;
+        setClaimsSummary({ ...claimSummaryDefaults, ...nextSummary });
+      } catch (error) {
+        console.error('Failed to fetch claims summary', error);
+      }
+    };
+
+    summaryResponse();
+  }, [claimSummaryDefaults, locationUuid, summaryEndDate, summaryStartDate]);
+
   const summary: {
     key: string;
     label: string;
     unit: string;
-    value: number;
-    tab: number;
+    value: number | null;
     color?: 'red';
-    /** Hung off the tile's title, for a number that needs qualifying. */
-    hint?: string;
-    clearKey?: string;
-    billsStatusKey?: string;
-    claimsStatusKey?: string;
-  }[] = [
-    {
-      key: 'awaiting',
-      label: 'Awaiting clearance',
-      unit: 'Patients',
-      value: awaiting,
-      tab: TAB_PENDING_CLEARANCE,
-      clearKey: 'pending',
-    },
-    {
-      key: 'cashdue',
-      label: 'Facility bills',
-      unit: 'Patients',
-      value: cashDue,
-      tab: TAB_FACILITY_BILLS,
-      // The tile counts bills still owing, so it lands on the bucket holding them rather
-      // than on whichever one was last being read.
-      billsStatusKey: 'pending',
-    },
-    // Straight to the bucket being counted: the SHA claims tab, Drafts / Rejected.
-    {
-      key: 'draft',
-      label: 'Draft claims',
-      unit: 'Claims',
-      value: claimTileValue('draft'),
-      tab: TAB_SHA_CLAIMS,
-      hint: CLAIM_COUNT_HINT,
-      claimsStatusKey: 'draft',
-    },
-    {
-      key: 'rejected',
-      label: 'Rejected claims',
-      unit: 'Claims',
-      value: claimTileValue('rejected'),
-      color: 'red',
-      tab: TAB_SHA_CLAIMS,
-      hint: CLAIM_COUNT_HINT,
-      claimsStatusKey: 'rejected',
-    },
-  ];
-
-  const handleTileClick = (s: {
-    tab: number;
-    clearKey?: string;
-    billsStatusKey?: string;
-    claimsStatusKey?: string;
-  }) => {
-    setSelectedTab(s.tab);
-    if (s.clearKey) {
-      setClearanceNav((p) => ({ key: s.clearKey, nonce: p.nonce + 1 }));
-    }
-    if (s.billsStatusKey) {
-      setBillsNav((p) => ({ statusKey: s.billsStatusKey, nonce: p.nonce + 1 }));
-    }
-    if (s.claimsStatusKey) {
-      setClaimsNav((p) => ({ statusKey: s.claimsStatusKey, nonce: p.nonce + 1 }));
-    }
-  };
+  }[] = useMemo(
+    () =>
+      Object.entries(claimsSummary).map(([key, value]) => ({
+        key,
+        label: key
+          .split('_')
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(' '),
+        unit: 'Claims',
+        value,
+      })),
+    [claimsSummary],
+  );
 
   const handleDateChange = (value: string) => {
     const next = value || today();
     lastSelectedDate = next;
     setBillingDate(next);
   };
+
   return (
     <>
       <div className={styles.bcLayout}>
@@ -285,16 +278,33 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             <h3 className={styles.bcTitle}>Billing &amp; Claims</h3>
           </div>
         </div>
+        <div className={styles.summaryFilterRow}>
+          <DatePicker
+            datePickerType="range"
+            dateFormat="Y-m-d"
+            value={[summaryStartDate, summaryEndDate]}
+            onChange={(dates) => {
+              const [startDate, endDate] = dates ?? [];
+              const nextStart = startDate ? (startDate as Date).toLocaleDateString('en-CA') : today();
+              const nextEnd = endDate ? (endDate as Date).toLocaleDateString('en-CA') : nextStart;
+              setSummaryStartDate(nextStart);
+              setSummaryEndDate(nextEnd);
+            }}
+          >
+            <DatePickerInput id="summary-start-date" labelText="Start date" placeholder="yyyy-mm-dd" size="sm" />
+            <DatePickerInput id="summary-end-date" labelText="End date" placeholder="yyyy-mm-dd" size="sm" />
+          </DatePicker>
+        </div>
         <div className={styles.summaryRow}>
           {summary.map((s) => (
-            <button key={s.key} type="button" className={styles.metricButton} onClick={() => handleTileClick(s)}>
+            <div key={s.key} className={styles.metricButton}>
               <MetricsCard>
-                <MetricsCardHeader title={s.label}>{s.hint && <Hint text={s.hint} />}</MetricsCardHeader>
+                <MetricsCardHeader title={s.label}></MetricsCardHeader>
                 <MetricsCardBody>
-                  <MetricsCardItem label={s.unit} value={s.value ? s.value : '--'} color={s.color} />
+                  <MetricsCardItem label="" value={s.value ?? '--'} color={s.color} />
                 </MetricsCardBody>
               </MetricsCard>
-            </button>
+            </div>
           ))}
         </div>
         <div className={styles.bcContent}>

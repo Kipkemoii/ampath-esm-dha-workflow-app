@@ -35,12 +35,13 @@ import {
   type AmrsVisitDiagnosisDto,
   type AmrsVisitDiagnosisResponse,
   type BedOccupancy,
-  PayerPreviewResponse,
+  type PayerPreviewResponse,
   PayerPreviewResult,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import { VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
+import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
+import { type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -913,4 +914,57 @@ export function usePayerClaimPreview(invoiceNo: string, locationUuid: string) {
     isLoading,
     isValidating,
   };
+}
+
+export async function fetchPatientVisits(
+  patientUuid: string,
+  billingDate: string,
+  locationUuid: string,
+): Promise<PatientBillVisit[]> {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url =
+      `${etlBaseUrl}/patient/patient-visits` +
+      `?patientUuid=${encodeURIComponent(patientUuid)}` +
+      `&locationUuid=${encodeURIComponent(locationUuid)}` +
+      `&billingDate=${encodeURIComponent(billingDate)}`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient visits');
+  }
+}
+
+export async function fetchPatientBillDetails(visitUuid: string) {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/facility/patient/bill?visitUuid=${visitUuid}`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
+}
+
+export async function fetchClaimsDashboard(startDate: string, endDate: string, locationUuid: string) {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/claims-dashboard?startDate=${startDate}&endDate=${endDate}&locationUuids=${locationUuid}`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.result ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
 }
