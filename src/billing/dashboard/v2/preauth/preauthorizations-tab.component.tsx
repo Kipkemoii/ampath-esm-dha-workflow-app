@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import PreauthList from './preauth-list.component';
 import Preauths from '../facility-bills/preauths.component';
+import ElectiveRequestsList from '../../v3/preauth/elective/elective-requests-list.component';
 import styles from '../facility-bills/facility-bills.component.scss';
 
 interface PreauthorizationsTabProps {
@@ -13,6 +14,7 @@ interface PreauthorizationsTabProps {
 /**
  * Preauthorizations dashboard tab:
  * - Needs raise: queue of interventions still needing preauth (raise from facility bill details)
+ * - Elective requests: holding rows from chart elective capture
  * - Status: live HIE preview / doctor-consent resend (monitoring only)
  */
 const PreauthorizationsTab: React.FC<PreauthorizationsTabProps> = ({ locationUuid, billingDate, onDateChange }) => {
@@ -31,6 +33,7 @@ const PreauthorizationsTab: React.FC<PreauthorizationsTabProps> = ({ locationUui
       <Tabs selectedIndex={subTab} onChange={({ selectedIndex }) => setSubTab(selectedIndex)}>
         <TabList aria-label="Preauthorization views" scrollDebounceWait={200}>
           <Tab>Needs raise</Tab>
+          <Tab>Elective requests</Tab>
           <Tab>Status</Tab>
         </TabList>
         <TabPanels>
@@ -39,7 +42,8 @@ const PreauthorizationsTab: React.FC<PreauthorizationsTabProps> = ({ locationUui
               <PreauthList locationUuid={locationUuid} billingDate={billingDate} onDateChange={onDateChange} />
             )}
           </TabPanel>
-          <TabPanel>{visited.has(1) && <Preauths locationUuid={locationUuid} billingDate={billingDate} />}</TabPanel>
+          <TabPanel>{visited.has(1) && <ElectiveRequestsList locationUuid={locationUuid} />}</TabPanel>
+          <TabPanel>{visited.has(2) && <Preauths locationUuid={locationUuid} billingDate={billingDate} />}</TabPanel>
         </TabPanels>
       </Tabs>
     </div>
