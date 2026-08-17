@@ -1752,7 +1752,7 @@ export const getServiceType = (selectedIntervention: Intervention, visitType?: V
 };
 
 export const createPreauthRequest = async (preauthRequest: PreauthRequest) => {
-  const hieBaseUrl = await getHieBaseUrl();
+  const { hieBaseUrl } = await getHieBaseUrl();
   const postUrl = `${hieBaseUrl}/pre-auth/request`;
   return openmrsFetch<{}>(postUrl, {
     method: 'POST',
