@@ -477,6 +477,7 @@ export interface PatientBill {
   paid_status: string;
   visit_start_date: string;
   cr_id: string;
+  claim_status: string;
 }
 
 export interface PendingLineItem {
