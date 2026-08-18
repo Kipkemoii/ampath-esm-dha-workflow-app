@@ -59,8 +59,10 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   };
 
   const getPatientBillDetails = async () => {
-    const res = await fetchPatientBillDetails(selectedVisit?.visit_uuid ?? '');
-    setPatientBillDetails(res);
+    if (selectedVisit) {
+      const res = await fetchPatientBillDetails(selectedVisit.visit_uuid ?? '');
+      setPatientBillDetails(res);
+    }
   };
 
   const handVisitTypeChange = (value: any) => {

@@ -21,7 +21,7 @@ const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
   patientBillDetails,
   onBillDetailsChange,
   billingDate,
-  onLoadingClaimVisit
+  onLoadingClaimVisit,
 }) => {
   const [patientBill, setPatientBill] = useState<PatientFacilityBillDetails>();
   const { claimVisit, isLoading, isValidating } = useProviderClaimPreview(consentToken, locationUuid);
@@ -30,13 +30,13 @@ const PatientClaimDetails: React.FC<patientClaimDetailsProps> = ({
     if (claimVisit && !isLoading && !isValidating) {
       onLoadingClaimVisit(claimVisit);
     }
-  }, [claimVisit, isLoading, isValidating])
+  }, [claimVisit, isLoading, isValidating]);
 
   useEffect(() => {
-    if (consentToken && locationUuid) {
+    if (consentToken && locationUuid && patientBillDetails && patientBillDetails.length) {
       getPatientBill();
     }
-  }, [consentToken, locationUuid]);
+  }, [consentToken, locationUuid, patientBillDetails]);
 
   if (isLoading && !claimVisit) {
     return <InlineLoading description="Loading data...please wait" />;
