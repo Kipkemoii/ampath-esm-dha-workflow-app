@@ -968,3 +968,23 @@ export async function fetchClaimsDashboard(startDate: string, endDate: string, l
     throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
   }
 }
+
+export async function fetchClaimsDashboardPatientChart(
+  indicator: string,
+  startDate: string,
+  endDate: string,
+  locationUuid: string,
+) {
+  const etlBaseUrl = await getEtlBaseUrl();
+  try {
+    const url = `${etlBaseUrl}/claims-dahsboard-patient-list?indicator=${indicator}&startDate=${startDate}&endDate=${endDate}&locationUuids=${locationUuid}&limit=30`;
+
+    const response = await openmrsFetch(url);
+    const data = await response.json();
+    return data.results.results ?? [];
+  } catch (err) {
+    console.error(err);
+
+    throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
+  }
+}

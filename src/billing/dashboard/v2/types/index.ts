@@ -513,3 +513,13 @@ export type BillPayment = {
   amount_tendered: number;
   bill_id: string;
 };
+
+export type ClaimPatientList = {
+  patient_name: string;
+  age: string;
+  gender: string;
+  county_sub_county: string;
+  village_estate_landmark: string;
+  phone_number: string;
+  diagnosis: string;
+};
