@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import styles from './billing-claims-dashboard.component.scss';
-import { DatePicker, DatePickerInput, Tab, TabList, TabPanel, TabPanels, Tabs, Tooltip } from '@carbon/react';
+import { DatePicker, DatePickerInput, Modal, Tab, TabList, TabPanel, TabPanels, Tabs, Tooltip } from '@carbon/react';
 import { Information, Wallet } from '@carbon/react/icons';
 import FacilityBills, {
   CASH_PAYER_TAB,
@@ -24,6 +24,7 @@ import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facil
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
 import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
+import BillingAndClaimsPatientChart from './billing-and-claims-patient-chart.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -159,6 +160,7 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
   // sharing billsNav would send both lists to the same bucket.
   const [claimsNav, setClaimsNav] = useState<{ statusKey?: string; nonce: number }>({ nonce: 0 });
   const visitedTabs = useVisitedTabs(selectedTab);
+  const [indicator, setIndicator] = useState<string | null>(null);
 
   useEffect(() => {
     lastSelectedTab = selectedTab;
@@ -267,6 +269,10 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
     setBillingDate(next);
   };
 
+  const openSummaryEntry = useMemo(() => summary.find((s) => s.key === indicator) ?? null, [summary, indicator]);
+
+  const closeSummaryModal = () => setIndicator(null);
+
   return (
     <>
       <div className={styles.bcLayout}>
@@ -297,14 +303,14 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
         </div>
         <div className={styles.summaryRow}>
           {summary.map((s) => (
-            <div key={s.key} className={styles.metricButton}>
+            <button key={s.key} type="button" className={styles.metricButton} onClick={() => setIndicator(s.key)}>
               <MetricsCard>
                 <MetricsCardHeader title={s.label}></MetricsCardHeader>
                 <MetricsCardBody>
                   <MetricsCardItem label="" value={s.value ?? '--'} color={s.color} />
                 </MetricsCardBody>
               </MetricsCard>
-            </div>
+            </button>
           ))}
         </div>
         <div className={styles.bcContent}>
@@ -399,6 +405,22 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
           </div>
         </div>
       </div>
+      <Modal
+        open={openSummaryEntry !== null}
+        modalHeading={openSummaryEntry?.label ?? ''}
+        passiveModal
+        onRequestClose={closeSummaryModal}
+        size="md"
+      >
+        {openSummaryEntry && (
+          <BillingAndClaimsPatientChart
+            indicator={openSummaryEntry.key}
+            startDate={summaryStartDate}
+            endDate={summaryEndDate}
+            locationUuid={locationUuid}
+          />
+        )}
+      </Modal>
     </>
   );
 };
