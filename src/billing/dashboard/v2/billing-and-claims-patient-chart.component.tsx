@@ -1,60 +1,45 @@
-import React, { useEffect, useState } from 'react';
-import { Loading, Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
-import { fetchClaimsDashboardPatientChart } from '../../billing-claims.resource';
-import { type ClaimPatientList } from './types';
+import React  from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@carbon/react';
+import { type ClaimVisit } from '../../types';
+import { formatDate } from '@openmrs/esm-framework';
 
 interface BillingAndClaimsPatientChartProps {
-  indicator: string;
-  startDate: string;
-  endDate: string;
-  locationUuid: string;
+  claimVisits: ClaimVisit[];
 }
-const BillingAndClaimsPatientChart: React.FC<BillingAndClaimsPatientChartProps> = ({
-  indicator,
-  startDate,
-  endDate,
-  locationUuid,
-}) => {
-  const [patientList, setPatientList] = useState<ClaimPatientList[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const getClaimsDashboardPatientChart = async () => {
-    setIsLoading(true);
-    const res = await fetchClaimsDashboardPatientChart(indicator, startDate, endDate, locationUuid);
-    setPatientList(res);
-    setIsLoading(false);
-  };
+const BillingAndClaimsPatientChart: React.FC<BillingAndClaimsPatientChartProps> = ({claimVisits}) => {
 
-  useEffect(() => {
-    getClaimsDashboardPatientChart();
-  }, [indicator]);
+  if(!claimVisits || claimVisits.length === 0){
+     return <>No Data to display</>
+  }
+
+
   return (
     <>
-      {isLoading && <Loading />}
       <Table aria-label="table" size="lg">
         <TableHead>
           <TableRow>
             <TableHeader>#</TableHeader>
-            <TableHeader>Name</TableHeader>
-            <TableHeader>Age</TableHeader>
-            <TableHeader>Gender</TableHeader>
-            <TableHeader>County/Subcounty</TableHeader>
-            <TableHeader>Phone</TableHeader>
-            <TableHeader>Diagnosis</TableHeader>
+            <TableHeader>CR</TableHeader>
+            <TableHeader>Visit Start</TableHeader>
+            <TableHeader>Service Type</TableHeader>
+            <TableHeader>Provider Status</TableHeader>
+            <TableHeader>Payer Status</TableHeader>
+            <TableHeader>Total Claim Amount</TableHeader>
           </TableRow>
         </TableHead>
         <TableBody>
-          {patientList &&
-            patientList.length &&
-            patientList.map((p, i) => {
+          {claimVisits &&
+            claimVisits.length &&
+            claimVisits.map((v, i) => {
               return (
-                <TableRow>
-                  <TableCell>{i}</TableCell>
-                  <TableCell>{p.patient_name}</TableCell>
-                  <TableCell>{p.age}</TableCell>
-                  <TableCell>{p.gender}</TableCell>
-                  <TableCell>{p.county_sub_county}</TableCell>
-                  <TableCell>{p.phone_number}</TableCell>
-                  <TableCell>{p.diagnosis}</TableCell>
+                <TableRow key={v.id}>
+                  <TableCell>{i + 1}</TableCell>
+                  <TableCell>{v.patientId}</TableCell>
+                  <TableCell>{v.visitStart}</TableCell>
+                  <TableCell>{v.serviceType}</TableCell>
+                  <TableCell>{v.providerStatus}</TableCell>
+                  <TableCell>{v.payerStatus}</TableCell>
+                  <TableCell>{v.totalClaimAmount}</TableCell>
                 </TableRow>
               );
             })}

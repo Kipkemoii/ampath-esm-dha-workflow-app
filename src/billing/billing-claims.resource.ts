@@ -37,11 +37,13 @@ import {
   type BedOccupancy,
   type PayerPreviewResponse,
   PayerPreviewResult,
+  ClaimVisit,
+  FetchClaimVisitDto,
 } from './types';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { type VisitSummaryResponse } from './dashboard/v3/patient-bill-details/attachments/type';
-import { type PatientBillVisit } from './dashboard/v3/types';
+import { ClaimsDashboardStatsData, ClaimsDashboardStatsDataResp, type PatientBillVisit } from './dashboard/v3/types';
 
 export async function fetchFacilityBills(facilityBillsDto: FacilityBillsDto): Promise<PatientBill[]> {
   const etlBaseUrl = await getEtlBaseUrl();
@@ -954,14 +956,26 @@ export async function fetchPatientBillDetails(visitUuid: string) {
   }
 }
 
-export async function fetchClaimsDashboard(startDate: string, endDate: string, locationUuid: string) {
+export async function fetchClaimsDashboard(
+  startDate: string,
+  endDate: string,
+  locationUuid: string,
+): Promise<ClaimsDashboardStatsData | null> {
   const etlBaseUrl = await getEtlBaseUrl();
   try {
     const url = `${etlBaseUrl}/claims-dashboard?startDate=${startDate}&endDate=${endDate}&locationUuids=${locationUuid}`;
-
     const response = await openmrsFetch(url);
     const data = await response.json();
-    return data.result ?? [];
+    if ('result' in data) {
+      const results = data.result;
+      if (results.length > 0) {
+        return results[0];
+      } else {
+        return null;
+      }
+    } else {
+      return null;
+    }
   } catch (err) {
     console.error(err);
 
@@ -987,4 +1001,15 @@ export async function fetchClaimsDashboardPatientChart(
 
     throw new Error(err instanceof Error ? err.message : 'An error occured while fetching patient bill details');
   }
+}
+
+export async function fethClaimVisits(fetchClaimVisitDto: FetchClaimVisitDto): Promise<ClaimVisit[]> {
+  const { hieBaseUrl } = await getHieBaseUrl();
+  const fetchClaimsPayload: FetchClaimVisitDto = {
+    ...fetchClaimVisitDto,
+  };
+  const queryString = new URLSearchParams(fetchClaimsPayload).toString();
+  const response = await openmrsFetch(`${hieBaseUrl}/claims-visit?${queryString}`);
+  const data = (await response.json()) as ClaimVisit[];
+  return data;
 }
