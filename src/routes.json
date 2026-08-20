@@ -309,6 +309,30 @@
       "offline": true
     },
     {
+      "name": "shr-dashboard",
+      "slot": "patient-chart-dashboard-slot",
+      "component": "shrDashboardLink",
+      "meta": {
+        "slot": "patient-chart-shared-health-record-dashboard-slot",
+        "path": "shr-v2",
+        "layoutMode": "anchored"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "name": "shr-details",
+      "slot": "patient-chart-shared-health-record-dashboard-slot",
+      "component": "sharedHealthRecord",
+      "order": 1,
+      "meta": {
+        "title": "SHR",
+        "view": "shr-v2"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
       "name": "emt-dashboard-link",
       "component": "emtDashboardLink",
       "slot": "homepage-dashboard-slot",
@@ -479,6 +503,11 @@
       "name": "elective-preauth-request-workspace",
       "component": "electivePreauthRequestWorkspace",
       "window": "elective-preauth-request-window"
+    },
+    {
+      "name": "shr-consent-workspace",
+      "component": "shrConsentWorkspace",
+      "window": "shr-consent-window"
     }
   ],
   "workspaceWindows2": [
@@ -493,6 +522,12 @@
       "group": "patient-chart",
       "canMaximize": true,
       "width": "wider"
+    },
+    {
+      "name": "shr-consent-window",
+      "group": "patient-chart",
+      "canMaximize": false,
+      "width": "narrow"
     }
   ],
   "workspaceGroups2": [

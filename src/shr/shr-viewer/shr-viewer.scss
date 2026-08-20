@@ -1,0 +1,155 @@
+@use '@carbon/colors';
+@use '@carbon/layout';
+@use '@carbon/type';
+
+.viewer {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-05;
+  padding: layout.$spacing-05;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.title {
+  @include type.type-style('heading-03');
+  margin: 0;
+  color: colors.$gray-100;
+}
+
+.provenance {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  margin: layout.$spacing-02 0 0;
+  overflow-wrap: anywhere;
+}
+
+.connected {
+  color: colors.$green-50;
+}
+
+.headerActions {
+  display: flex;
+  gap: layout.$spacing-03;
+  flex-shrink: 0;
+}
+
+.tiles {
+  display: grid;
+  // minmax(0, 1fr) rather than 1fr so a long source-system name shrinks the tile
+  // instead of forcing the whole dashboard wider than its container.
+  grid-template-columns: repeat(auto-fit, minmax(min(11rem, 100%), 1fr));
+  gap: layout.$spacing-03;
+}
+
+.tile {
+  min-width: 0;
+}
+
+.tileLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  display: block;
+}
+
+.tileValue {
+  @include type.type-style('productive-heading-04');
+  color: colors.$gray-100;
+  margin-top: layout.$spacing-02;
+  overflow-wrap: anywhere;
+}
+
+.tileValueText {
+  @include type.type-style('heading-compact-01');
+  color: colors.$gray-100;
+  margin-top: layout.$spacing-03;
+  overflow-wrap: anywhere;
+}
+
+// Carbon tabs don't scroll on their own inside a narrow chart column.
+.tabs {
+  min-width: 0;
+  overflow-x: auto;
+}
+
+.tableWrap {
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.summaryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+  padding-top: layout.$spacing-05;
+}
+
+.summaryRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-03 0;
+  border-bottom: 1px solid colors.$gray-20;
+  min-width: 0;
+}
+
+.summaryLabel {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-100;
+  display: flex;
+  align-items: center;
+  gap: layout.$spacing-03;
+  min-width: 0;
+}
+
+.summaryCount {
+  @include type.type-style('heading-compact-01');
+  color: colors.$gray-100;
+  flex-shrink: 0;
+}
+
+.categoryEmpty {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  padding: layout.$spacing-06 0;
+  text-align: center;
+}
+
+.detailPanel {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-03 0;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(12rem, 100%), 1fr));
+  gap: layout.$spacing-04;
+  min-width: 0;
+}
+
+.detailField {
+  min-width: 0;
+}
+
+.detailLabel {
+  @include type.type-style('label-01');
+  color: colors.$gray-70;
+  display: block;
+}
+
+.detailValue {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-100;
+  overflow-wrap: anywhere;
+}

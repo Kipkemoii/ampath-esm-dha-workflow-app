@@ -189,6 +189,38 @@ export const configSchema = {
     _type: Type.Array,
     _default: ["POMSF", "USALAMA", "TSC"]
   },
+  /**
+   * Which FHIR resource types the SHR record viewer requests and how it labels them.
+   *
+   * Only the types with shapes confirmed against this HIE/SHR backend are defaulted on.
+   * `AllergyIntolerance`, `Immunization` and `DocumentReference` are deliberately absent —
+   * there is no evidence the SHR returns them yet. Adding a category later should be a
+   * config change only, once the SHR backend owner confirms it is supported.
+   */
+  shrResourceTypes: {
+    _type: Type.Array,
+    _description:
+      'FHIR resource types to request from the SHR patient-records endpoint, and how ' +
+      'to label them as tabs in the viewer. Order controls tab order.',
+    _default: [
+      { resourceType: 'Condition', label: 'Conditions' },
+      { resourceType: 'MedicationRequest', label: 'Medications' },
+      { resourceType: 'Encounter', label: 'Encounters' },
+      { resourceType: 'Observation', label: 'Lab results' },
+      { resourceType: 'ServiceRequest', label: 'Requests' },
+      { resourceType: 'Specimen', label: 'Specimens' },
+    ],
+    _elements: {
+      resourceType: {
+        _type: Type.String,
+        _description: 'FHIR resource type name, spelled exactly as the SHR returns it, e.g. "MedicationRequest".',
+      },
+      label: {
+        _type: Type.String,
+        _description: 'Clinician-facing tab label for this resource type, e.g. "Medications".',
+      },
+    },
+  },
   electivePreauth: {
     encounterTypeUuid: {
       _type: Type.UUID,
@@ -214,6 +246,12 @@ export const configSchema = {
     },
   },
 };
+
+/** One SHR record-viewer category: a FHIR resource type plus its clinician-facing tab label. */
+export interface ShrResourceTypeConfig {
+  resourceType: string;
+  label: string;
+}
 
 export type Config = {
   casualGreeting: boolean;
@@ -279,6 +317,7 @@ export interface ConfigObject {
   subBenefitCodesWithHiddenClaimWidget: Array<string>;
   startClaimVisitLocationAttributeUuid: string;
   pmfSchemeNames: Array<string>;
+  shrResourceTypes: Array<ShrResourceTypeConfig>;
   electivePreauth: {
     encounterTypeUuid: string;
     clientRegistryIdentifierTypeUuid: string;
