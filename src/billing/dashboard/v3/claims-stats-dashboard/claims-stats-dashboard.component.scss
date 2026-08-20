@@ -1,0 +1,16 @@
+.claimStatsLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.summaryRow{
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    column-gap: 5px;
+}
+.claimStatsHeader{
+    justify-content: center;
+    text-align: center;
+    margin-bottom: 15px;
+}

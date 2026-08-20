@@ -20,11 +20,11 @@ import {
   MetricsCardBody,
   MetricsCardItem,
 } from '../../../service-queues/metrics/metrics-cards/metrics-card.component';
-import FacilityAndWorkerSlot from '../../../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import PreauthorizationsTab from './preauth/preauthorizations-tab.component';
 import AdmissionRequestsTab from './admissions/admission-requests-tab.component';
 import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
 import BillingAndClaimsPatientChart from './billing-and-claims-patient-chart.component';
+import ClaimsStatsDashboard from '../v3/claims-stats-dashboard/claims-stats-dashboard.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -217,59 +217,12 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
     [],
   );
 
-  const [claimsSummary, setClaimsSummary] = useState<Record<string, number | null>>(claimSummaryDefaults);
-
-  useEffect(() => {
-    if (!locationUuid) return;
-
-    const summaryResponse = async () => {
-      try {
-        const startDate = summaryStartDate || today();
-        const endDate = summaryEndDate || startDate;
-        const res = await fetchClaimsDashboard(startDate, endDate, locationUuid);
-        const rawSummary = Array.isArray(res) && res.length > 0 ? res[0] : {};
-        const nextSummary = Object.fromEntries(
-          Object.keys(claimSummaryDefaults).map((key) => {
-            const value = rawSummary?.[key];
-            return [key, value == null ? null : Number(value)];
-          }),
-        ) as Record<string, number | null>;
-        setClaimsSummary({ ...claimSummaryDefaults, ...nextSummary });
-      } catch (error) {
-        console.error('Failed to fetch claims summary', error);
-      }
-    };
-
-    summaryResponse();
-  }, [claimSummaryDefaults, locationUuid, summaryEndDate, summaryStartDate]);
-
-  const summary: {
-    key: string;
-    label: string;
-    unit: string;
-    value: number | null;
-    color?: 'red';
-  }[] = useMemo(
-    () =>
-      Object.entries(claimsSummary).map(([key, value]) => ({
-        key,
-        label: key
-          .split('_')
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(' '),
-        unit: 'Claims',
-        value,
-      })),
-    [claimsSummary],
-  );
 
   const handleDateChange = (value: string) => {
     const next = value || today();
     lastSelectedDate = next;
     setBillingDate(next);
   };
-
-  const openSummaryEntry = useMemo(() => summary.find((s) => s.key === indicator) ?? null, [summary, indicator]);
 
   const closeSummaryModal = () => setIndicator(null);
 
@@ -284,38 +237,9 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             <h3 className={styles.bcTitle}>Billing &amp; Claims</h3>
           </div>
         </div>
-        <div className={styles.summaryFilterRow}>
-          <DatePicker
-            datePickerType="range"
-            dateFormat="Y-m-d"
-            value={[summaryStartDate, summaryEndDate]}
-            onChange={(dates) => {
-              const [startDate, endDate] = dates ?? [];
-              const nextStart = startDate ? (startDate as Date).toLocaleDateString('en-CA') : today();
-              const nextEnd = endDate ? (endDate as Date).toLocaleDateString('en-CA') : nextStart;
-              setSummaryStartDate(nextStart);
-              setSummaryEndDate(nextEnd);
-            }}
-          >
-            <DatePickerInput id="summary-start-date" labelText="Start date" placeholder="yyyy-mm-dd" size="sm" />
-            <DatePickerInput id="summary-end-date" labelText="End date" placeholder="yyyy-mm-dd" size="sm" />
-          </DatePicker>
-        </div>
-        <div className={styles.summaryRow}>
-          {summary.map((s) => (
-            <button key={s.key} type="button" className={styles.metricButton} onClick={() => setIndicator(s.key)}>
-              <MetricsCard>
-                <MetricsCardHeader title={s.label}></MetricsCardHeader>
-                <MetricsCardBody>
-                  <MetricsCardItem label="" value={s.value ?? '--'} color={s.color} />
-                </MetricsCardBody>
-              </MetricsCard>
-            </button>
-          ))}
-        </div>
-        <div className={styles.bcContent}>
-          <div className={styles.bcContentTabs}>
-            <DatePicker
+        <div className={styles.bcFilterRow}>
+           <div>
+             <DatePicker
               className={styles.tabRowDate}
               datePickerType="single"
               dateFormat="Y-m-d"
@@ -325,6 +249,15 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             >
               <DatePickerInput id="billing-date" labelText="" placeholder="yyyy-mm-dd" size="sm" />
             </DatePicker>
+           </div>
+        </div>
+        <div className={styles.bcClaimStatsRow}>
+            <ClaimsStatsDashboard reportDate={billingDate} locationUuid={locationUuid}/>
+        </div>
+
+        <div className={styles.bcContent}>
+          <div className={styles.bcContentTabs}>
+           
             <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
               {/* Tab list hidden while a bill's details are open, but a visited panel stays
                   mounted so FacilityBills keeps its selected patient and fetched data.
@@ -405,22 +338,6 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
           </div>
         </div>
       </div>
-      <Modal
-        open={openSummaryEntry !== null}
-        modalHeading={openSummaryEntry?.label ?? ''}
-        passiveModal
-        onRequestClose={closeSummaryModal}
-        size="md"
-      >
-        {openSummaryEntry && (
-          <BillingAndClaimsPatientChart
-            indicator={openSummaryEntry.key}
-            startDate={summaryStartDate}
-            endDate={summaryEndDate}
-            locationUuid={locationUuid}
-          />
-        )}
-      </Modal>
     </>
   );
 };

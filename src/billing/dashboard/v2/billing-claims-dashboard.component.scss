@@ -207,3 +207,15 @@
 .hiddenTabList {
     display: none;
 }
+
+.bcFilterRow{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  justify-content: flex-end;
+}
+.bcClaimStatsRow{
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+}

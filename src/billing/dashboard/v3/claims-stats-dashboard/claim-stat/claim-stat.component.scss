@@ -1,0 +1,23 @@
+.claimStatLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    text-align: center;
+    .claimStatContent{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        text-align: center;
+    }
+}
+
+.statsTitle{
+    font-weight: 400;
+    color: #525252;
+}
+.navStat{
+    color: blue;
+}
+.navStat:hover{
+    cursor: pointer;
+}

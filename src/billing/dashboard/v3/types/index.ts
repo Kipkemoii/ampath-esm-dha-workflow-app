@@ -391,3 +391,37 @@ export type PatientBillVisit = {
   visit_type: string;
   consent_token: string;
 };
+
+export type ClaimsDashboardStatsDataResp = {
+  result: ClaimsDashboardStatsData;
+}
+
+export type ClaimsDashboardStatsData = {
+  draft: number | null;
+  submitted: number | null;
+  failed_to_submmit: number | null;
+  closed: number | null;
+  approved: number | null;
+  rejected: number | null;
+  in_review: number | null;
+  sent_back: number | null;
+  paid: number | null;
+};
+
+export enum ClaimProviderStatus {
+  Draft = 'DRAFT',
+  Pending = 'PENDING',
+  SubmissionReady = 'SUBMISSION_READY',
+  OnHold = 'ON_HOLD',
+  TimeBarred = 'TIME_BARRED',
+  Closed = 'CLOSED',
+  Submitted = 'SUBMITTED'
+};
+export enum ClaimPayerStatus {
+  Paid = 'PAID',
+  Rejected = 'REJECTED',
+  Approved = 'APPROVED',
+  SentForPaymentProcessing = 'SENT_FOR_PAYMENT_PROCESSING',
+  Appealed = 'APPEALED',
+  TimeBarred = 'TIME_BARRED'
+}

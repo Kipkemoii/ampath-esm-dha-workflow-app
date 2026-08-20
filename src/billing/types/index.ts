@@ -352,3 +352,36 @@ interface DoctorProfile {
   practitionerLicenceValidity: string; // date
   practitionerQualifications: string;
 }
+
+export type ClaimVisit = {
+  id: number;
+  locationUuid: string;
+  patientId: string;
+  serviceType: string;
+  claimVisitId: string;
+  claimVisitNumber: string;
+  visitStart: string;
+  authorizationCode: string;
+  providerStatus: string;
+  providerAuthStatus: string;
+  payerStatus: string;
+  payerAuthStatus: string;
+  totalClaimAmount: string;
+  totalClaimNetAmount: string;
+  totalClaimCoPay: string;
+  totalClaimDiscount: string;
+  authorizationGuid: string;
+  invoiceNo: string;
+  dateCreated: Date;
+}
+
+export type FetchClaimVisitDto = {
+  consentToken?: string;
+  locationUuid?: string;
+  visitDate?: string;
+  patientId?: string;
+  providerStatus?: string;
+  providerAuthStatus?: string;
+  payerStatus?: string;
+  payerAuthStatus?: string;
+}

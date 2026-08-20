@@ -40,6 +40,7 @@ import { type BedOccupancy } from '../../../types';
 import styles from './inpatient-requests.component.scss';
 import DashboardCard from '../shared/dash-board-card/dash-board-card.component';
 import { AdmissionEncounterTypeUuids } from '../../../../admissions/constants';
+import { formatToTitleCase } from '../../../../shared/utils/format-title-case';
 
 interface inpatientRequestsProps {
   locationUuid: string;
@@ -246,14 +247,6 @@ const InpatientRequests: React.FC<inpatientRequestsProps> = ({ locationUuid, req
       setBedOccupancy(null);
       setBedStats([]);
     }
-  }
-  function formatToTitleCase(str: string) {
-    if (!str) return '';
-    return str
-      .replace(/_/g, ' ')
-      .replace(/([a-z])([A-Z])/g, '$1 $2')
-      .toLowerCase()
-      .replace(/\b\w/g, (char) => char.toUpperCase());
   }
   const generateAdmitPatientPayload = (): AdmitPatientDto => {
     return {
