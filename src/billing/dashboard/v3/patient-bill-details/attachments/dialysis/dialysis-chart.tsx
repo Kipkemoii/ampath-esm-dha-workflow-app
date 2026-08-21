@@ -214,7 +214,7 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
         </SectionBlock>
 
         <SectionBlock number="2" title="Physician Prescription">
-          <div className={styles['dc-field-grid']}>
+          {/* <div className={styles['dc-field-grid']}>
             <Field label="Dialyzer Type" value={s.prescription.dialyzerType} />
             <Field label="BFR" value={s.prescription.bfr} />
             <Field label="DFR" value={s.prescription.dfr} />
@@ -222,6 +222,39 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
             <Field label="UF Goal" value={s.prescription.ufGoal} />
             <Field label="Heparin Dose" value={s.prescription.heparinDose} />
             <Field label="Dialysate Composition" value={s.prescription.dialysateComposition} />
+          </div> */}
+          <div className={styles['dc-table']}>
+            <h4>Medications</h4>
+
+            {dialysisSummary?.medications?.length ? (
+              <table className={styles.medicationsTable}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Drug</th>
+                    <th>Dose</th>
+                    <th>Route</th>
+                    <th>Frequency</th>
+                    <th>Duration</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {dialysisSummary?.medications.map((medication, index) => (
+                    <tr key={index}>
+                      <td>{medication.date}</td>
+                      <td>{medication.drug}</td>
+                      <td>{medication.dose}</td>
+                      <td>{medication.route}</td>
+                      <td>{medication.frequency}</td>
+                      <td>{medication.duration}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className={styles.noMedications}>No medications prescribed</div>
+            )}
           </div>
         </SectionBlock>
 
@@ -258,8 +291,8 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
           <div className={styles['dc-field-grid']}>
             <Field label="Weight After" value={''} />
             <Field label="Total UF Achieved" value={extracted?.postAssessment.totalUfAchieved} />
-            <Field label="BP" value={s.postAssessment.bp} />
-            <Field label="Pulse" value={s.postAssessment.pulse} />
+            <Field label="BP" value={extracted?.postAssessment?.bloodPressure} />
+            <Field label="Pulse" value={''} />
             <Field label="Temperature" value={extracted?.postAssessment?.temperature} />
             <Field label="Access Site" value={extracted?.postAssessment?.accessSite} />
             <Field label="Condition" value={extracted?.postAssessment?.condition} />
@@ -268,27 +301,29 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
         </SectionBlock>
 
         <SectionBlock number="5" title="Dialysis Summary">
-          <div className={styles['dc-field-grid']}>
+          {/* <div className={styles['dc-field-grid']}>
             <Field label="Prescribed Duration" value={s.summary.prescribedDuration} />
             <Field label="Actual Duration" value={s.summary.actualDuration} />
             <Field label="Adequacy Achieved" value={s.summary.adequacyAchieved} />
             <Field label="Tolerated Procedure" value={s.summary.toleratedProcedure} />
-          </div>
+          </div> */}
           <div className={styles['dc-notes']}>
             <div className={styles['dc-field-label']}>Comments</div>
-            <p className={styles['dc-note-text']}>{s.summary.comments}</p>
-            <p className={styles['dc-note-text']}>Next dialysis date: {s.summary.nextSessionDate}</p>
+            <p className={styles['dc-note-text']}>{extracted?.postAssessment?.remarks}</p>
+            <p className={styles['dc-note-text']}>Next dialysis date: {}</p>
           </div>
           <div className={styles['dc-notes']}>
             <div className={styles['dc-field-label']}>Additional Remarks / Emergency Instructions</div>
             <p className={styles['dc-note-text']}>
-              {s.summary.additionalRemarks || <span className={styles['dc-empty']}>None recorded</span>}
+              {extracted?.postAssessment?.postDialysisRemarks || (
+                <span className={styles['dc-empty']}>None recorded</span>
+              )}
             </p>
           </div>
         </SectionBlock>
 
         <section className={styles['dc-signoff']}>
-          <div className={styles['dc-signoff-block']}>
+          {/* <div className={styles['dc-signoff-block']}>
             <div className={styles['dc-signoff-title']}>Dialysis Nurse</div>
             <Field label="Name" value={s.signoff.nurse.name} />
             <Field label="Reg. No" value={s.signoff.nurse.regNo} />
@@ -301,7 +336,7 @@ const DialysisChart = forwardRef<HTMLDivElement, DialysisChartProps>(({ session 
             <Field label="Reg. No" value={s.signoff.doctor.regNo} />
             <Field label="Date" value={s.signoff.doctor.date} />
             <div className={styles['dc-signature-line']} />
-          </div>
+          </div> */}
           <div className={`${styles['dc-signoff-block']} ${styles['dc-signoff-stamp']}`}>
             <div className={styles['dc-signoff-title']}>Hospital Stamp</div>
             <div className={styles['dc-stamp-placeholder']}>stamp area</div>

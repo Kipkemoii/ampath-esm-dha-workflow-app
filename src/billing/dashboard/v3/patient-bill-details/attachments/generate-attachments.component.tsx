@@ -17,6 +17,7 @@ import FinalBillComponent from './final-bill.component';
 import CaseSummary from './case-summary/case-summary';
 import DialysisChart from './dialysis/dialysis-chart';
 import GeneralDischargeSummary from './general-discharge-summary/general-discharge-summary';
+import LabOrdersComponent from './lab-results/lab-orders.component';
 
 interface GenerateAttachmentsProps extends DefaultWorkspaceProps {
   claimInterventions: VisitIntervention;
@@ -58,6 +59,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
   const dialysisRef = useRef<HTMLDivElement>(null);
   const caseSummaryRef = useRef<HTMLDivElement>(null);
   const generalDischargeSummary = useRef<HTMLDivElement>(null);
+  const labResultsRef = useRef<HTMLDivElement>(null);
 
   if (!claimInterventions) return null;
 
@@ -185,6 +187,9 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         break;
       case 'GENERAL_DISCHARGE_SUMMARY':
         element = generalDischargeSummary.current;
+        break;
+      case 'LAB_RESULTS':
+        element = labResultsRef.current;
         break;
 
       default:
@@ -337,6 +342,7 @@ const GenerateAttachments: React.FC<GenerateAttachmentsProps> = ({
         <CaseSummary ref={caseSummaryRef} patientUuid={patientUuid} billingDate={billingDate} />
         <DialysisChart ref={dialysisRef} patientUuid={patientUuid} />
         <GeneralDischargeSummary ref={generalDischargeSummary} patientUuid={patientUuid} />
+        <LabOrdersComponent ref={labResultsRef} patientUuid={patientUuid} billingDate={billingDate} />
       </div>
     </>
   );

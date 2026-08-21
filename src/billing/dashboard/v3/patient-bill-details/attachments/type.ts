@@ -137,10 +137,6 @@ export interface LabOrder {
   results: LabResult[];
 }
 
-export interface LabResult {
-  [key: string]: any;
-}
-
 export type VitalReading = {
   label: string;
   value: string;
@@ -160,6 +156,7 @@ export interface VisitSummaryAdmissionDetails {
   admissionReason?: string;
   status?: 'ADMITTED' | 'DISCHARGED' | 'TRANSFERRED' | 'PENDING' | string;
   diagnosis?: string;
+  otherConditions: string;
 }
 export interface VisitSummaryDialysis {
   facility: VisitSummaryDialysisFacility;
@@ -170,6 +167,7 @@ export interface VisitSummaryDialysis {
   postAssessment: VisitSummaryDialysisPostAssessment;
   summary: VisitSummaryDialysisSummary;
   signoff: VisitSummaryDialysisSignoff;
+  labOrders: LabOrdersData;
 }
 
 export interface VisitSummaryDialysisFacility {
@@ -256,4 +254,27 @@ export interface VisitSummaryDialysisSignatory {
   name: string;
   regNo: string;
   date: string;
+}
+
+export interface LabResult {
+  test: string;
+  value: string;
+  units?: string;
+  datetime: string;
+  range?: string;
+}
+
+export interface LabOrder {
+  uuid: string;
+  test: string;
+  orderNumber: string;
+  orderedDate: string;
+  action: string;
+  pending: boolean;
+  fulfillerStatus?: string;
+  results: LabResult[];
+}
+
+interface LabOrdersData {
+  labOrders: LabOrder[];
 }

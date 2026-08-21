@@ -167,16 +167,16 @@ const GeneralDischargeSummary = forwardRef<HTMLDivElement, GeneralDischargeSumma
           <SectionBlock number="3" title="Medical Data">
             <div className={styles['ds-field-grid']}>
               <Field label="Discharge Diagnosis" value={dischargeSummary?.inpatientDetails?.diagnosis} />
-              <Field label="Other Conditions" value={s.clinical.otherConditions} />
-              <Field label="Clinical Findings" value={s.clinical.findings} />
+              <Field label="Other Conditions" value={dischargeSummary?.inpatientDetails?.otherConditions} />
+              {/* <Field label="Clinical Findings" value={s.clinical.findings} />
               <Field label="Treatment" value={s.clinical.treatment} />
-              <Field label="Operations / Procedures" value={s.clinical.operations} />
+              <Field label="Operations / Procedures" value={s.clinical.operations} /> */}
               {dischargeSummary?.labOrders ? (
                 <Field label="Laboratory Findings" value={dischargeSummary?.labOrders?.map((o, i) => o.test)} />
               ) : (
                 <></>
               )}
-              <Field label="Imaging Findings" value={s.clinical.imagingFindings} />
+              {/* <Field label="Imaging Findings" value={s.clinical.imagingFindings} /> */}
               <Field
                 label="Referrals / Other Instructions"
                 value={dischargeSummary?.inpatientDetails?.referringFacility}
