@@ -1,13 +1,45 @@
 import { execSync } from 'node:child_process';
+import { readFileSync, writeFileSync } from 'node:fs';
 
+/**
+ * Bump OpenMRS packages in the lockfile to current `next`, without committing
+ * resolved version numbers into package.json (form-engine-lib / patient-chart pattern).
+ */
 try {
-  // NB for other places use '@openmrs/*@next'; here we want to ignore patient-common-lib
-  execSync(`yarn up --fixed '@openmrs/*@next' 'openmrs@next'`, {
+  execSync(`yarn up '@openmrs/*@next' 'openmrs@next'`, {
     stdio: ['ignore', 'inherit', 'inherit'],
     windowsHide: true,
   });
 } catch (error) {
   console.error(`Error while updating dependencies: ${error.message ?? error}`);
+  process.exit(1);
+}
+
+try {
+  const pkgPath = 'package.json';
+  const pkg = JSON.parse(readFileSync(pkgPath, 'utf8'));
+  for (const section of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+    const deps = pkg[section];
+    if (!deps) continue;
+    for (const name of Object.keys(deps)) {
+      if (name === 'openmrs' || name.startsWith('@openmrs/')) {
+        deps[name] = 'next';
+      }
+    }
+  }
+  writeFileSync(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`);
+} catch (error) {
+  console.error(`Error while restoring next ranges in package.json: ${error.message ?? error}`);
+  process.exit(1);
+}
+
+try {
+  execSync(`yarn`, {
+    stdio: ['ignore', 'inherit', 'inherit'],
+    windowsHide: true,
+  });
+} catch (error) {
+  console.error(`Error while reinstalling after package.json reset: ${error.message ?? error}`);
   process.exit(1);
 }
 
@@ -27,9 +59,8 @@ try {
     windowsHide: true,
   });
   process.exit(0);
-} catch (error) {
-  // git diff-index --quite HEAD --
-  // exits with status 1 if there are changes; we only need to run yarn verify if there are changes
+} catch {
+  // Changes exist — run verify
 }
 
 try {
