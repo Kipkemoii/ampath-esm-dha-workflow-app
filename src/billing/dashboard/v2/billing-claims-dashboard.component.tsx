@@ -25,6 +25,7 @@ import AdmissionRequestsTab from './admissions/admission-requests-tab.component'
 import FacilityBillsV3 from '../v3/facility-bills/facility-bills.component';
 import BillingAndClaimsPatientChart from './billing-and-claims-patient-chart.component';
 import ClaimsStatsDashboard from '../v3/claims-stats-dashboard/claims-stats-dashboard.component';
+import Chart from '../../../dashboard/charts/chart.component';
 interface billingClaimsDashboardProps {}
 
 const today = () => new Date().toLocaleDateString('en-CA');
@@ -75,6 +76,7 @@ const PREAUTH_HINT =
   'Preauths for the selected date. Needs raise lists items still waiting for one; Status shows their live position at SHA and can resend doctor consent.';
 const ADMISSIONS_HINT =
   'Patients a clinician has asked to admit at this facility. Admit one to a bed, or start the SHA claim for the inpatient visit it opens.';
+const CHART_HINT = 'Charts showing daily, weekly and monthly claims summary';
 
 /* Said on the two claim tiles, because their number is not the live one. See the comment on
    claimCounts: the state stored against a claim is the state it was in when its visit was
@@ -217,7 +219,6 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
     [],
   );
 
-
   const handleDateChange = (value: string) => {
     const next = value || today();
     lastSelectedDate = next;
@@ -238,8 +239,8 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
           </div>
         </div>
         <div className={styles.bcFilterRow}>
-           <div>
-             <DatePicker
+          <div>
+            <DatePicker
               className={styles.tabRowDate}
               datePickerType="single"
               dateFormat="Y-m-d"
@@ -249,15 +250,14 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
             >
               <DatePickerInput id="billing-date" labelText="" placeholder="yyyy-mm-dd" size="sm" />
             </DatePicker>
-           </div>
+          </div>
         </div>
         <div className={styles.bcClaimStatsRow}>
-            <ClaimsStatsDashboard reportDate={billingDate} locationUuid={locationUuid}/>
+          <ClaimsStatsDashboard reportDate={billingDate} locationUuid={locationUuid} />
         </div>
 
         <div className={styles.bcContent}>
           <div className={styles.bcContentTabs}>
-           
             <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex)}>
               {/* Tab list hidden while a bill's details are open, but a visited panel stays
                   mounted so FacilityBills keeps its selected patient and fetched data.
@@ -284,6 +284,10 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                 <Tab>
                   Admission Requests
                   <Hint text={ADMISSIONS_HINT} />
+                </Tab>
+                <Tab>
+                  Charts
+                  <Hint text={CHART_HINT} />
                 </Tab>
               </TabList>
               <TabPanels>
@@ -332,6 +336,9 @@ const BillingClaimsDashboard: React.FC<billingClaimsDashboardProps> = () => {
                       selecting it showed the preauth list or nothing depending on how
                       Carbon indexed them. */}
                   {visitedTabs.has(TAB_ADMISSION_REQUESTS) && <AdmissionRequestsTab locationUuid={locationUuid} />}
+                </TabPanel>
+                <TabPanel>
+                  <Chart dashboardId="4b876667-307a-4458-a9cd-283331970ae1" />
                 </TabPanel>
               </TabPanels>
             </Tabs>

@@ -35,6 +35,7 @@ export interface ExtractedDialysisData {
     heparin: string;
     remarks: string;
   }>;
+
   postAssessment: {
     totalUfAchieved: string;
     accessSite: string;
@@ -43,6 +44,17 @@ export interface ExtractedDialysisData {
     temperature: string;
     venousPressure: string;
     arterialPressure: string;
+    bloodPressure: string;
+    dialysisSessionNumber: string;
+    remarks: string;
+    typeOfDialysisAccess: string;
+    medicationPrecribed: string;
+    intervention: string;
+    labResults: string;
+    expectedOutcome: string;
+    postDialysisRemarks: string;
+    dialyzer: string;
+    nursingDiagnosis: string;
   };
 }
 
@@ -81,8 +93,19 @@ export function extractDialysisData(clinicalNotes: ClinicalNote[] = []): Extract
       getFieldValue(hemoNote?.fields, 'INTERVENTION') ??
       '—',
     temperature: getFieldValue(hemoNote?.fields, 'DIALYSATE TEMPERATURE'),
+    bloodPressure: getFieldValue(hemoNote?.fields, 'PRE-DIALYSIS DIASTOLIC BLOOD PRESSURE'),
+    dialysisSessionNumber: getFieldValue(hemoNote?.fields, 'DIALYSIS SESSION NUMBER'),
+    remarks: getFieldValue(hemoNote?.fields, 'REMARKS'),
+    typeOfDialysisAccess: getFieldValue(hemoNote?.fields, 'TYPE OF DIALYSIS ACCESS'),
+    medicationPrecribed: getFieldValue(hemoNote?.fields, 'MEDICATION PRESCRIBED'),
+    intervention: getFieldValue(hemoNote?.fields, 'INTERVENTION'),
+    labResults: getFieldValue(hemoNote?.fields, 'LAB RESULTS'),
+    expectedOutcome: getFieldValue(hemoNote?.fields, 'EXPECTED OUTCOME'),
+    postDialysisRemarks: getFieldValue(hemoNote?.fields, 'POST DIALYSIS REMARKS'),
+    dialyzer: getFieldValue(hemoNote?.fields, 'DIALYZER'),
     venousPressure: getFieldValue(hemoNote?.fields, 'VENOUS PRESSURE'),
     arterialPressure: getFieldValue(hemoNote?.fields, 'ARTERIAL PRESSURE'),
+    nursingDiagnosis: getFieldValue(hemoNote?.fields, 'NURSING DIAGNOSIS'),
     // No "complications" label appears anywhere in this sample payload —
     // defaults to 'None' rather than silently fabricating a value.
     complications: getFieldValue(hemoNote?.fields, 'COMPLICATION') ?? 'None',
