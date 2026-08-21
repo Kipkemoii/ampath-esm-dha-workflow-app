@@ -148,14 +148,8 @@ export async function fetchProviderClaimPreview(
   providerClaimPreviewDto: ProviderClaimPreviewDto,
 ): Promise<ClaimsVisit> {
   const { hieBaseUrl } = await getHieBaseUrl();
-  const providerClaimPreviewUrl = `${hieBaseUrl}/claim-preview/provider`;
-  const response = await openmrsFetch(providerClaimPreviewUrl, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(providerClaimPreviewDto),
-  });
+  const providerClaimPreviewUrl = `${hieBaseUrl}/claim-preview/provider?consentToken=${providerClaimPreviewDto.consentToken}&locationUuid=${providerClaimPreviewDto.locationUuid}`;
+  const response = await openmrsFetch(providerClaimPreviewUrl);
   const data = (await response.json()) as ClaimsVisit;
   return data ?? null;
 }

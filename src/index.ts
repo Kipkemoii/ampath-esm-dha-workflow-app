@@ -17,6 +17,7 @@ import { caseSummaryMeta } from './dashboard-meta/case-summary.meta';
 import { emtDashboardMeta } from './dashboard-meta/emt-dashboard.meta';
 import { electivePreauthMeta } from './dashboard-meta/elective-preauth.meta';
 import { shrDashboardMeta } from './dashboard-meta/shr-dashboard.meta';
+import { claimsAdminDashboardMeta } from './dashboard-meta/claims-admin.meta';
 
 export const moduleName = '@ampath/esm-dha-workflow-app';
 
@@ -273,3 +274,5 @@ export const shrConsentWorkspace = getAsyncLifecycle(
   () => import('./shr/workspaces/shr-consent-workspace/shr-consent.workspace'),
   options,
 );
+
+export const claimsAdminLink = getSyncLifecycle(createDashboardLink(claimsAdminDashboardMeta), options);

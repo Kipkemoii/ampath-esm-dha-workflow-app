@@ -1,0 +1,28 @@
+.detailsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  margin: 0;
+}
+
+.detailRow {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+
+  dt {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    color: #6f6f6f;
+  }
+
+  dd {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #161616;
+    overflow-wrap: anywhere;
+  }
+}

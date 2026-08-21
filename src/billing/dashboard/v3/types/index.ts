@@ -415,8 +415,9 @@ export enum ClaimProviderStatus {
   OnHold = 'ON_HOLD',
   TimeBarred = 'TIME_BARRED',
   Closed = 'CLOSED',
-  Submitted = 'SUBMITTED'
-};
+  Submitted = 'SUBMITTED',
+  FailedToSubmit = 'FAILED_TO_SUBMIT'
+}
 export enum ClaimPayerStatus {
   Paid = 'PAID',
   Rejected = 'REJECTED',

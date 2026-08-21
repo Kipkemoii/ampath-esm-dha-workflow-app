@@ -386,6 +386,21 @@
       "name": "generate-order-bill-button-slot",
       "slot": "generate-order-bill-button-slot",
       "component": "generateOrderBillButton"
+    },
+    {
+      "name": "claims-admin-dashboard-link",
+      "component": "claimsAdminLink",
+      "privileges": [
+        "O3 View Service Queue Admin Panel"
+      ],
+      "slot": "app-menu-slot",
+      "meta": {
+        "name": "claims-admin",
+        "slot": "claims-admin-dashboard-slot",
+        "title": "Claims Admin"
+      },
+      "online": true,
+      "offline": true
     }
   ],
   "workspaces": [

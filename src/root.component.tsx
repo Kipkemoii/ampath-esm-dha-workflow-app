@@ -15,6 +15,7 @@ import Mortuary from './mortuary/mortuary.component';
 import ServiceQueueAdminDashboard from './service-queues/admin/service-queue-admin-dashboard.component';
 import AdmissionsDashboard from './admissions/admissions-dashboard.component';
 import EmtQueue from './emt/emt-queue.component';
+import ClaimsAdminDashboard from './billing/admin/claims-admin-dashboard.component';
 
 const Root: React.FC = () => {
   const spaBasePath = window.spaBase;
@@ -40,6 +41,7 @@ const Root: React.FC = () => {
           <Route path="service-queue-admin" element={<ServiceQueueAdminDashboard />} />
           <Route path="admissions-dashboard" element={<AdmissionsDashboard />} />
           <Route path="emt" element={<EmtQueue />} />
+           <Route path="claims-admin" element={<ClaimsAdminDashboard />} />
         </Routes>
       </main>
       <WorkspaceContainer contextKey="home" />

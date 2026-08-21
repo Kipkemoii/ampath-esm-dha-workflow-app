@@ -1,0 +1,13 @@
+.adminClaimsListLayout{
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    row-gap: 5px;
+}
+.actionRow{
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-end;
+    width: 100%;
+    column-gap: 5px;
+}
