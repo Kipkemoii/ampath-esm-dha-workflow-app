@@ -55,7 +55,10 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   const getPatientVisits = async () => {
     const res = await fetchPatientVisits(patientUuid, billingDate, locationUuid);
     setPatientVisits(res);
-    setSelectedVisit(res[0]);
+    if (res.length > 0) {
+      setSelectedVisit(res[0]);
+      setSelectedVisitUuid(res[0].visit_uuid);
+    }
   };
 
   const getPatientBillDetails = async () => {
@@ -65,11 +68,10 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     }
   };
 
-  const handVisitTypeChange = (value: any) => {
-    const selectedVisit = patientVisits.find((v) => {
-      return (v.visit_uuid = value.target.value);
-    });
-    setSelectedVisit(selectedVisit);
+  const handleVisitTypeChange = (selectedValue: string) => {
+    const nextVisit = patientVisits.find((v) => v.visit_uuid === selectedValue);
+    setSelectedVisitUuid(selectedValue);
+    setSelectedVisit(nextVisit);
   };
 
   useEffect(() => {
@@ -190,19 +192,17 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
 
   return (
     <>
-      <RadioButtonGroup name="care setting" valueSelected={selectedVisitUuid} onChange={handVisitTypeChange}>
+      <RadioButtonGroup name="care-setting" valueSelected={selectedVisitUuid} onChange={handleVisitTypeChange}>
         {patientVisits &&
-          patientVisits?.map((v) => {
-            return (
-              <div className={styles.radioButton}>
-                <RadioButton
-                  id={v.visit_uuid}
-                  labelText={`${v.visit_type}: ${formatDate(parseDate(v.date_started))}`}
-                  value={v.visit_uuid}
-                />
-              </div>
-            );
-          })}
+          patientVisits.map((v) => (
+            <RadioButton
+              className={styles.radioButton}
+              key={v.visit_uuid}
+              id={v.visit_uuid}
+              labelText={`${v.visit_type}: ${formatDate(parseDate(v.date_started))}`}
+              value={v.visit_uuid}
+            />
+          ))}
       </RadioButtonGroup>
       {selectedVisit?.visit_uuid && (
         <Tabs>
