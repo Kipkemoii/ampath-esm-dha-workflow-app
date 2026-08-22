@@ -194,7 +194,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     <>
       <RadioButtonGroup name="care-setting" valueSelected={selectedVisitUuid} onChange={handleVisitTypeChange}>
         {patientVisits &&
-          patientVisits.map((v) => (
+          patientVisits?.map((v) => (
             <RadioButton
               className={styles.radioButton}
               key={v.visit_uuid}
