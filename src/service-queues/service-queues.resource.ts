@@ -1,4 +1,13 @@
-import { type Encounter, formatDate, openmrsFetch, parseDate, restBaseUrl, useSession } from '@openmrs/esm-framework';
+import {
+  type Encounter,
+  formatDate,
+  openmrsFetch,
+  parseDate,
+  restBaseUrl,
+  useConfig,
+  useSession,
+  useVisit,
+} from '@openmrs/esm-framework';
 import {
   type QueueEntryResponse,
   type Identifer,
@@ -21,6 +30,8 @@ import {
   type ServiceQueueDailyReportResp,
   type ServiceQueueReportPatientList,
 } from '../shared/types';
+import { getConsentToken, getPaymentMode } from '../shared/services/claims.resource';
+import { type ConfigObject } from '../config-schema';
 
 export function serveQueueEntry(servicePointName: string, ticketNumber: string, status: string) {
   const abortController = new AbortController();
@@ -371,3 +382,85 @@ export async function getRegistrationQueueList(
   const result: { data: RegistrationQueueList[] } = await response.json();
   return result.data ?? [];
 }
+
+export const useActiveVisitBills = (visitUuid: string | null) => {
+  const url = visitUuid ? `${restBaseUrl}/billing/bill?visitUuid=${visitUuid}` : null;
+
+  const { data, error, isLoading, isValidating } = useSWR<{
+    data: {
+      results: Array<{
+        uuid: string;
+        status: string;
+        patient: {
+          uuid: string;
+        };
+        lineItems: Array<{
+          uuid: string;
+          billableService: string;
+          priceName: string;
+          status: string;
+        }>;
+      }>;
+    };
+  }>(url, openmrsFetch, {
+    keepPreviousData: true,
+  });
+
+  return {
+    bills: data?.data?.results,
+    error,
+    isLoading,
+    isValidating,
+  };
+};
+
+export const usePatientBill = (patientUuid: string) => {
+  const { activeVisit, isLoading: isLoadingVisit, isValidating: isValidatingVisit } = useVisit(patientUuid);
+  const { cashPaymentModeUuid, shaVariantPaymentModeUuids, consultationBillableServiceNames } =
+    useConfig<ConfigObject>();
+  const paymentMode = activeVisit ? getPaymentMode(activeVisit) : null;
+  const isCash = paymentMode === cashPaymentModeUuid;
+  const { bills, error, isLoading, isValidating } = useActiveVisitBills(
+    isCash ? activeVisit?.uuid ?? null : null,
+  );
+
+  const message = useMemo(() => {
+    if (!isLoadingVisit && activeVisit) {
+      if (isCash) {
+        const hasPaidConsultation = bills?.some((bill) =>
+          bill?.lineItems?.some(
+            (lineItem) =>
+              consultationBillableServiceNames?.some(
+                (serviceName) => serviceName?.toUpperCase() === lineItem?.billableService?.toUpperCase(),
+              ) && lineItem?.status?.toUpperCase() === 'PAID',
+          ),
+        );
+
+        return hasPaidConsultation ? null : 'Awaiting Cash Payment';
+      }
+
+      const isSha = shaVariantPaymentModeUuids?.includes(paymentMode);
+      if (isSha && !getConsentToken(activeVisit)) {
+        return 'Awaiting Start of SHA Visit';
+      }
+    }
+
+    return null;
+  }, [
+    activeVisit,
+    bills,
+    consultationBillableServiceNames,
+    isCash,
+    isLoadingVisit,
+    paymentMode,
+    shaVariantPaymentModeUuids,
+  ]);
+
+  return {
+    message,
+    showQueueActions: !isLoading && !isLoadingVisit && !message && !error,
+    error,
+    isLoading: isLoading || isLoadingVisit,
+    isValidating: isValidating || isValidatingVisit,
+  };
+};

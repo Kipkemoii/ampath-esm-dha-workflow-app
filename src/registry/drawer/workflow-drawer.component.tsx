@@ -756,7 +756,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   // Insurance dropdown items. SHA carries its eligibility in the name and is not
   // selectable unless the patient is eligible (has an active eligible scheme).
   const insuranceItems = insuranceSchemes.map((name) => {
-    const isSha = /sha|shif/i.test(name);
+    const isSha = /sha|shif|phc/i.test(name);
     if (!isSha) {
       return { id: name, label: name, isSha: false, eligible: true, disabled: false };
     }
