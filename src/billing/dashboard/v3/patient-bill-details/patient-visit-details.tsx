@@ -37,7 +37,6 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   const [selectedVisitUuid, setSelectedVisitUuid] = useState<string>('');
   const [patientBillDetails, setPatientBillDetails] = useState<PatientFacilityBillDetails[]>([]);
   const [claimDetails, setClaimDetails] = useState([]);
-  const [selectedVisit, setSelectedVisit] = useState<PatientBillVisit>();
   const [claimsVisit, setClaimsVisit] = useState<ClaimsVisit>();
   const [patientBillPayments, setPatientBillPayments] = useState<PatientPayment[]>([]);
   const [visitDiagnosis, setVisitDiagnosis] = useState<AmrsVisitDiagnosis[]>([]);
@@ -51,30 +50,37 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
   const [encounterDiagnosisLoading, setEncounterDiagnosisLoading] = useState<boolean>(true);
   const diagnosisLoading = visitDiagnosisLoading || maternityDiagnosisLoading || encounterDiagnosisLoading;
+  const [consentToken,setConsentToken] = useState< string>('');
 
   const getPatientVisits = async () => {
     const res = await fetchPatientVisits(patientUuid, billingDate, locationUuid);
     setPatientVisits(res);
-    setSelectedVisit(res[0]);
+    if(res && res.length > 0){
+     const visit = res[0];
+     setSelectedVisitUuid(visit?.visit_uuid ?? '');
+     setConsentToken(visit.consent_token ?? '');
+    }
+    
   };
 
-  const getPatientBillDetails = async () => {
-    if (selectedVisit) {
-      const res = await fetchPatientBillDetails(selectedVisit.visit_uuid ?? '');
+  const getPatientBillDetails = async (visitUuid: string) => {
+    if (selectedVisitUuid) {
+      const res = await fetchPatientBillDetails(visitUuid ?? '');
       setPatientBillDetails(res);
     }
   };
 
   const handVisitTypeChange = (value: any) => {
     const selectedVisit = patientVisits.find((v) => {
-      return (v.visit_uuid = value.target.value);
+      return (v.visit_uuid === value);
     });
-    setSelectedVisit(selectedVisit);
+    setSelectedVisitUuid(selectedVisit?.visit_uuid ?? '');
+    setConsentToken(selectedVisit?.consent_token ?? '');
   };
 
   useEffect(() => {
     if (locationUuid && patientUuid && billingDate) {
-      getPatientBillDetails();
+      getPatientBillDetails(selectedVisitUuid);
       getPatientPayments();
       getPatientAmrsVisitDiagnosis();
       getPatientAmrsMaternityDiagnosis();
@@ -83,8 +89,8 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   }, [locationUuid, patientUuid, billingDate]);
 
   useEffect(() => {
-    selectedVisit && getPatientBillDetails();
-  }, [selectedVisit]);
+    getPatientBillDetails(selectedVisitUuid);
+  }, [selectedVisitUuid]);
 
   useEffect(() => {
     if (patientUuid && locationUuid && billingDate) {
@@ -190,21 +196,24 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
 
   return (
     <>
-      <RadioButtonGroup name="care setting" valueSelected={selectedVisitUuid} onChange={handVisitTypeChange}>
+    <div className={styles.visitDetailsLayout}>
+      <RadioButtonGroup 
+        name="patient-visits" 
+        onChange={handVisitTypeChange} 
+        defaultSelected={selectedVisitUuid}
+        >
         {patientVisits &&
           patientVisits?.map((v) => {
             return (
-              <div className={styles.radioButton}>
                 <RadioButton
                   id={v.visit_uuid}
-                  labelText={`${v.visit_type}: ${formatDate(parseDate(v.date_started))}`}
+                  labelText={`${v.visit_type}: ${v.date_started}`}
                   value={v.visit_uuid}
                 />
-              </div>
             );
           })}
       </RadioButtonGroup>
-      {selectedVisit?.visit_uuid && (
+      {selectedVisitUuid && (
         <Tabs>
           <TabList scrollDebounceWait={200}>
             <Tab>Bill Details</Tab>
@@ -218,18 +227,18 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
                   patientPayments={patientBillPayments}
                   amrsVisitDiagnosis={patientAmrsVisitDiagnosis}
                   locationUuid={locationUuid}
-                  consentToken={selectedVisit?.consent_token ?? ''}
+                  consentToken={consentToken}
                   claimsVisit={claimsVisit}
                 />
               )}
             </TabPanel>
             <TabPanel>
-              {locationUuid && selectedVisit?.consent_token ? (
+              {locationUuid && consentToken ? (
                 <PatientClaimDetails
                   locationUuid={locationUuid}
                   patientBillDetails={patientBillDetails}
-                  consentToken={selectedVisit?.consent_token ?? ''}
-                  onBillDetailsChange={getPatientBillDetails}
+                  consentToken={consentToken ?? ''}
+                  onBillDetailsChange={()=>getPatientBillDetails(selectedVisitUuid)}
                   billingDate={billingDate}
                   onLoadingClaimVisit={onLoadingClaimVisit}
                 />
@@ -240,6 +249,7 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
           </TabPanels>
         </Tabs>
       )}
+      </div>
     </>
   );
 };
