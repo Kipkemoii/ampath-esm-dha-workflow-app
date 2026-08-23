@@ -25,6 +25,7 @@ import {
   getConsultationClearances,
   type ConsultationClearance,
 } from '../../shared/services/consultation-clearance.resource';
+import { usePatientBill } from '../service-queues.resource';
 
 interface QueueListProps {
   queueRoom: string;
@@ -37,6 +38,62 @@ interface QueueListProps {
   showComingFromCol: boolean;
   handleClearQueue: (queueEntryResults: QueueEntryResult[]) => void;
 }
+
+interface QueueActionCellProps {
+  queueEntry: QueueEntryResult;
+  checkIn: boolean;
+  handleMovePatient: (queueEntryResult: QueueEntryResult) => void;
+  handleTransitionPatient: (queueEntryResult: QueueEntryResult) => void;
+  handleServePatient: (queueEntryResult: QueueEntryResult) => void;
+  handleSignOff: (queueEntryResult: QueueEntryResult) => void;
+  handleRemovePatient: (queueEntryResult: QueueEntryResult) => void;
+}
+
+const QueueActionCell: React.FC<QueueActionCellProps> = ({
+  queueEntry,
+  checkIn,
+  handleMovePatient,
+  handleTransitionPatient,
+  handleServePatient,
+  handleSignOff,
+  handleRemovePatient,
+}) => {
+  const { message, showQueueActions, isLoading } = usePatientBill(queueEntry.patient_uuid);
+  const actionMessage = isLoading ? 'Checking payment status...' : message;
+
+  if (actionMessage) {
+    return (
+      <TableCell>
+        <Tag size="md" type={isLoading ? 'gray' : 'red'}>
+          {actionMessage}
+        </Tag>
+      </TableCell>
+    );
+  }
+
+  if (queueEntry.status === QueueEntryStatus.Waiting) {
+    return (
+      <TableCell>
+        <Button kind="ghost" disabled={!checkIn || !showQueueActions} onClick={() => handleServePatient(queueEntry)}>
+          Call
+        </Button>
+      </TableCell>
+    );
+  }
+
+  return (
+    <TableCell>
+      {checkIn && showQueueActions ? (
+        <OverflowMenu aria-label="overflow-menu">
+          <OverflowMenuItem itemText="Assign To" onClick={() => handleMovePatient(queueEntry)} />
+          <OverflowMenuItem itemText="Transition" onClick={() => handleTransitionPatient(queueEntry)} />
+          <OverflowMenuItem itemText="Sign Off" onClick={() => handleSignOff(queueEntry)} />
+          <OverflowMenuItem itemText="Remove Patient" onClick={() => handleRemovePatient(queueEntry)} />
+        </OverflowMenu>
+      ) : null}
+    </TableCell>
+  );
+};
 
 const QueueList: React.FC<QueueListProps> = ({
   queueRoom,
@@ -315,46 +372,17 @@ const QueueList: React.FC<QueueListProps> = ({
                   </TableCell>
                   <TableCell>{`${val.wait_time_in_min} minute(s)`}</TableCell>
                   {val.hide_in_queue === 0 ? (
-                    <>
-                      <TableCell>
-                        {val.status === QueueEntryStatus.Waiting && val.hide_in_queue === 0 ? (
-                          <>
-                            <Button
-                              kind="ghost"
-                              disabled={!checkIn}
-                              onClick={() => handleServePatient(val)}
-                            >
-                              Call
-                            </Button>
-                          </>
-                        ) : (
-                          <>
-                            {checkIn ? (
-                              <>
-                                <OverflowMenu aria-label="overflow-menu">
-                                  <OverflowMenuItem itemText="Assign To" onClick={() => handleMovePatient(val)} />
-                                  <OverflowMenuItem
-                                    itemText="Transition"
-                                    onClick={() => handleTransitionPatient(val)}
-                                  />
-                                  <OverflowMenuItem itemText="Sign Off" onClick={() => handleSignOff(val)} />
-                                  <OverflowMenuItem
-                                    itemText="Remove Patient"
-                                    onClick={() => handleRemovePatient(val)}
-                                  />
-                                </OverflowMenu>
-                              </>
-                            ) : (
-                              <></>
-                            )}
-                          </>
-                        )}
-                      </TableCell>
-                    </>
+                    <QueueActionCell
+                      queueEntry={val}
+                      checkIn={checkIn}
+                      handleMovePatient={handleMovePatient}
+                      handleTransitionPatient={handleTransitionPatient}
+                      handleServePatient={handleServePatient}
+                      handleSignOff={handleSignOff}
+                      handleRemovePatient={handleRemovePatient}
+                    />
                   ) : (
-                    <>
-                      <TableCell></TableCell>
-                    </>
+                    <TableCell></TableCell>
                   )}
                 </TableRow>
               ))}
