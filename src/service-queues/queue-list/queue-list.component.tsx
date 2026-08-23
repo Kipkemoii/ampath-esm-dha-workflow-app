@@ -1,6 +1,7 @@
 import {
   Button,
   ComboBox,
+  InlineLoading,
   Link,
   OverflowMenu,
   OverflowMenuItem,
@@ -58,13 +59,20 @@ const QueueActionCell: React.FC<QueueActionCellProps> = ({
   handleSignOff,
   handleRemovePatient,
 }) => {
-  const { message, showQueueActions, isLoading } = usePatientBill(queueEntry.patient_uuid);
-  const actionMessage = isLoading ? 'Checking payment status...' : message;
+  const { message: actionMessage, showQueueActions, isLoading } = usePatientBill(queueEntry.patient_uuid);
+
+  if (isLoading && !actionMessage) {
+    return (
+      <TableCell>
+        <InlineLoading description="Checking payment status..." />
+      </TableCell>
+    );
+  }
 
   if (actionMessage) {
     return (
       <TableCell>
-        <Tag size="md" type={isLoading ? 'gray' : 'red'}>
+        <Tag size="md" type='red'>
           {actionMessage}
         </Tag>
       </TableCell>
@@ -161,7 +169,7 @@ const QueueList: React.FC<QueueListProps> = ({
     [queueEntries],
   );
   const nullEntries = useMemo(
-    () => sortQueueByPriorityAndWaitTime(queueEntries,null),
+    () => sortQueueByPriorityAndWaitTime(queueEntries, null),
     [queueEntries],
   );
   const sortedQueueEntries = useMemo(() => generatePatientWaitingList(), [queueEntries, selectedStatus]);
@@ -185,7 +193,7 @@ const QueueList: React.FC<QueueListProps> = ({
     },
   ];
   function generatePatientWaitingList() {
-    return [...veryUrgentEntries,...urgentEntries,...urgent2Entries, ...priorityEntries, ...nonUrgentEntries,...routineEntries,...nullEntries].filter((qe) => {
+    return [...veryUrgentEntries, ...urgentEntries, ...urgent2Entries, ...priorityEntries, ...nonUrgentEntries, ...routineEntries, ...nullEntries].filter((qe) => {
       if (!selectedStatus) {
         return true;
       }
@@ -342,7 +350,7 @@ const QueueList: React.FC<QueueListProps> = ({
             </TableHead>
             <TableBody>
               {filteredQueueEntries.map((val, index) => (
-                <TableRow id={val.queue_entry_uuid}>
+                <TableRow id={val.queue_entry_uuid} key={val.queue_entry_uuid}>
                   <TableCell>{index + 1}</TableCell>
                   <TableCell>
                     <div className={val.hide_in_queue === 1 ? styles.flaggedPatient : styles.unflaggedPatient}>

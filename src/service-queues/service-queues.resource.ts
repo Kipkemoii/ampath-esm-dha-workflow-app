@@ -416,15 +416,16 @@ export const useActiveVisitBills = (visitUuid: string | null) => {
 
 export const usePatientBill = (patientUuid: string) => {
   const { activeVisit, isLoading: isLoadingVisit, isValidating: isValidatingVisit } = useVisit(patientUuid);
-  const { bills, error, isLoading, isValidating } = useActiveVisitBills(activeVisit?.uuid ?? null);
   const { cashPaymentModeUuid, shaVariantPaymentModeUuids, consultationBillableServiceNames } =
     useConfig<ConfigObject>();
+  const paymentMode = activeVisit ? getPaymentMode(activeVisit) : null;
+  const isCash = paymentMode === cashPaymentModeUuid;
+  const { bills, error, isLoading, isValidating } = useActiveVisitBills(
+    isCash ? activeVisit?.uuid ?? null : null,
+  );
 
   const message = useMemo(() => {
     if (!isLoadingVisit && activeVisit) {
-      const paymentMode = getPaymentMode(activeVisit);
-      const isCash = paymentMode === cashPaymentModeUuid;
-
       if (isCash) {
         const hasPaidConsultation = bills?.some((bill) =>
           bill?.lineItems?.some(
@@ -448,9 +449,10 @@ export const usePatientBill = (patientUuid: string) => {
   }, [
     activeVisit,
     bills,
-    cashPaymentModeUuid,
     consultationBillableServiceNames,
+    isCash,
     isLoadingVisit,
+    paymentMode,
     shaVariantPaymentModeUuids,
   ]);
 
