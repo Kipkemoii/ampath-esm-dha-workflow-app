@@ -1,31 +1,52 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Button, InlineLoading, InlineNotification } from '@carbon/react';
-import { CheckmarkFilled, DocumentBlank, ErrorFilled, Security } from '@carbon/react/icons';
+import { Button, FormLabel, InlineLoading, InlineNotification } from '@carbon/react';
+import { CheckmarkFilled, DocumentBlank, ErrorFilled, Security, WarningAltFilled } from '@carbon/react/icons';
 import { launchWorkspace2, showSnackbar, useConfig, usePatient, useSession } from '@openmrs/esm-framework';
 import { useTranslation } from 'react-i18next';
 import type { ConfigObject } from '../config-schema';
-import { closeShrVisit, extractShrErrorDetail, fetchPatientRecords, getPatientCrIdentifier } from './shr.resource';
-import type { ShrConsentGrant, ShrRecordSet } from './shr.types';
+import OTPInput from '../shared/ui/otp-input/otp-input.component';
+import {
+  closeShrVisit,
+  extractShrErrorDetail,
+  fetchPatientRecords,
+  getActiveConsent,
+  getPatientCrIdentifier,
+  isMinorPatient,
+  verifyConsentOtp,
+} from './shr.resource';
+import type { ShrConsentDeclined, ShrConsentGrant, ShrRecordSet } from './shr.types';
+import ShrCloseVisitForm from './shr-close-visit-form.component';
 import ShrViewer from './shr-viewer/shr-viewer.component';
 import { formatMoment } from './shr-viewer/shr-presentation';
 import { SHR_CONSENT_WORKSPACE } from './workspaces/shr-consent-workspace/shr-consent.workspace';
 import styles from './shr.scss';
 
+/** The closure OTP is the same five digits as the consent OTP. */
+const OTP_LENGTH = 5;
+
 /**
  * Shared Health Record tab for the patient chart.
  *
  * Owns the session state machine around the consent workspace: the workspace's
- * only job is producing a `{ consentToken, visitId }`; everything after that —
- * fetching the records, rendering them, and closing the SHR visit — happens
- * here. Nothing is fetched before consent is granted, because the records
- * endpoint requires the consent token.
+ * only job is settling a consent request; everything after that — fetching the
+ * records, rendering them, and closing the SHR visit — happens here. Nothing is
+ * fetched before consent is granted, because the records endpoint requires the
+ * consent token.
  *
- *   idle → (consent workspace) → fetching → records | empty | error
+ *   idle → (open-visit check) ──────────────┐  reuses an existing consent
+ *        → (consent workspace) → declined   │
+ *                              → fetching ←─┘ → records | empty | error
  *                                              ↓ close visit
- *                                            closed → idle
+ *                            closing-otp (OTP-gated) → closed → idle
+ *                                              ↑
+ *                            immediate closure ┘
+ *
+ * Two branches exist because the SHR has two of them: a consent request settles
+ * as granted *or refused*, and a closure completes immediately *or* waits on an
+ * OTP. Both are decided by which fields the response actually carries.
  */
 
-type Phase = 'idle' | 'fetching' | 'records' | 'empty' | 'error' | 'closed';
+type Phase = 'idle' | 'checking' | 'fetching' | 'records' | 'empty' | 'error' | 'closing-otp' | 'closed' | 'declined';
 type CrStatus = 'loading' | 'ready' | 'missing' | 'error';
 
 interface SharedHealthRecordProps {
@@ -62,6 +83,23 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
   const [isClosing, setIsClosing] = useState(false);
   const [closeError, setCloseError] = useState('');
   const [closedOn, setClosedOn] = useState('');
+
+  // The closure confirmation in front of "Close visit" — see ShrCloseVisitForm
+  // for the patient_incapable / patient_capable polarity warning.
+  const [isCloseFormOpen, setIsCloseFormOpen] = useState(false);
+  const [closePatientIncapable, setClosePatientIncapable] = useState(false);
+  const [closeIncapacityReason, setCloseIncapacityReason] = useState('');
+
+  // An OTP-gated closure: the visit is still open until this is verified.
+  const [pendingClose, setPendingClose] = useState<{ consentId: string; otpRecord: string } | null>(null);
+  const [closeOtp, setCloseOtp] = useState('');
+
+  const [declined, setDeclined] = useState<ShrConsentDeclined | null>(null);
+
+  // Under-18 patients cannot consent for themselves, so the consent request
+  // needs a representative. `usePatient()` is FHIR-shaped here, so `birthDate`
+  // is what's on hand — `isMinorPatient` takes either shape.
+  const isMinor = useMemo(() => isMinorPatient(patient), [patient]);
 
   // The consent request is keyed on the patient's Client Registry number, so
   // resolve it up front rather than asking the clinician to type it.
@@ -133,10 +171,19 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
       setCloseError('');
       setClosedOn('');
       setSyncError('');
+      setDeclined(null);
       void loadRecords(granted, { isSync: false });
     },
     [loadRecords],
   );
+
+  /** A refusal settles the request without opening a visit — its own end state. */
+  const handleConsentDeclined = useCallback((refusal: ShrConsentDeclined) => {
+    setGrant(null);
+    setRecordSet(null);
+    setDeclined(refusal);
+    setPhase('declined');
+  }, []);
 
   const launchConsentWorkspace = useCallback(async () => {
     if (!crId) {
@@ -154,7 +201,9 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
       await launchWorkspace2(SHR_CONSENT_WORKSPACE, {
         crId,
         locationUuid,
+        isMinor,
         onConsentGranted: handleConsentGranted,
+        onConsentDeclined: handleConsentDeclined,
       });
     } catch (err: any) {
       console.error(err);
@@ -164,32 +213,167 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
         subtitle: err?.message ?? '',
       });
     }
-  }, [crId, locationUuid, handleConsentGranted, t]);
+  }, [crId, locationUuid, isMinor, handleConsentGranted, handleConsentDeclined, t]);
 
-  const handleCloseVisit = useCallback(async () => {
+  /**
+   * Start an SHR session. A patient who already has an open visit at this
+   * facility cannot start another, and reusing it costs one refresh instead of
+   * putting them through a second OTP — so ask the server first.
+   *
+   * This has to be a server call rather than anything cached locally: a visit
+   * opened from a different device or browser is invisible to this one.
+   * `hasActiveConsent: false` is the normal "go ahead and request" answer, and a
+   * failed check is non-fatal — fall through to the consent request, which is
+   * what would have happened anyway.
+   */
+  const startShrSession = useCallback(async () => {
+    if (!crId || !locationUuid) {
+      void launchConsentWorkspace();
+      return;
+    }
+    setPhase('checking');
+    try {
+      const active = await getActiveConsent(crId, locationUuid);
+      if (active?.hasActiveConsent && active.consentToken && active.visitId) {
+        showSnackbar({
+          kind: 'info',
+          title: t('shrExistingVisitReused', 'Reusing this patient’s open SHR visit'),
+          subtitle: t(
+            'shrExistingVisitReusedDetail',
+            'They already consented at this facility, so no new OTP is needed.',
+          ),
+        });
+        handleConsentGranted({ consentToken: active.consentToken, visitId: active.visitId });
+        return;
+      }
+    } catch (err: any) {
+      // Not fatal: the consent request below is the fallback either way.
+      console.error(err);
+    }
+    setPhase('idle');
+    void launchConsentWorkspace();
+  }, [crId, locationUuid, handleConsentGranted, launchConsentWorkspace, t]);
+
+  const openCloseForm = useCallback(() => {
+    setCloseError('');
+    setClosePatientIncapable(false);
+    setCloseIncapacityReason('');
+    setIsCloseFormOpen(true);
+  }, []);
+
+  const cancelCloseForm = useCallback(() => {
+    setIsCloseFormOpen(false);
+    setCloseError('');
+  }, []);
+
+  /** Everything that stops being true once the visit is really closed. */
+  const settleAsClosed = useCallback((endDate: string) => {
+    setClosedOn(endDate);
+    setGrant(null);
+    setRecordSet(null);
+    setSyncError('');
+    setPendingClose(null);
+    setCloseOtp('');
+    setIsCloseFormOpen(false);
+    setPhase('closed');
+  }, []);
+
+  /**
+   * Request the closure. Two documented outcomes, and the response says which:
+   * `end_date` means the visit is already closed, `otp_record` means a password
+   * went out and the visit is **still open** until it is verified. Treating the
+   * second as done would leave a live visit behind, showing "closed".
+   */
+  const handleConfirmClose = useCallback(async () => {
     if (!grant?.visitId) {
+      return;
+    }
+    // `patientIncapable: 1` — the patient cannot consent to the closure. The
+    // consent request spells the same idea `patientCapable: 0`; the polarity is
+    // inverted between the two endpoints.
+    if (closePatientIncapable && !closeIncapacityReason.trim()) {
       return;
     }
     setIsClosing(true);
     setCloseError('');
     try {
-      const response = await closeShrVisit(grant.visitId, locationUuid);
-      showSnackbar({
-        kind: 'success',
-        title: t('shrVisitClosed', 'SHR visit closed'),
-        subtitle: response?.message || t('shrVisitClosureAccepted', 'The closure request was accepted.'),
-      });
-      setClosedOn(response?.end_date ?? '');
-      setGrant(null);
-      setRecordSet(null);
-      setSyncError('');
-      setPhase('closed');
+      const response = await closeShrVisit(
+        grant.visitId,
+        locationUuid,
+        closePatientIncapable ? { patientIncapable: 1, incapacityReason: closeIncapacityReason.trim() } : {},
+      );
+
+      if (response?.end_date) {
+        showSnackbar({
+          kind: 'success',
+          title: t('shrVisitClosed', 'SHR visit closed'),
+          subtitle: response?.message || t('shrVisitClosureAccepted', 'The closure request was accepted.'),
+        });
+        settleAsClosed(response.end_date);
+        return;
+      }
+
+      if (response?.otp_record && response?.consent_id) {
+        showSnackbar({
+          kind: 'info',
+          title: t('shrClosureOtpSent', 'Closure OTP sent'),
+          subtitle: t('shrClosureOtpSentDetail', 'The visit stays open until that code is entered.'),
+        });
+        setPendingClose({ consentId: response.consent_id, otpRecord: response.otp_record });
+        setCloseOtp('');
+        setIsCloseFormOpen(false);
+        setPhase('closing-otp');
+        return;
+      }
+
+      // Neither field: nothing can be concluded about the visit, so don't
+      // pretend either way.
+      setCloseError(
+        response?.message ||
+          t('shrCloseVisitIndeterminate', 'The SHR service did not say whether the visit closed. Try again.'),
+      );
     } catch (err: any) {
       setCloseError(extractShrErrorDetail(err?.message ?? ''));
     } finally {
       setIsClosing(false);
     }
-  }, [grant, locationUuid, t]);
+  }, [grant, locationUuid, closePatientIncapable, closeIncapacityReason, settleAsClosed, t]);
+
+  /**
+   * Complete an OTP-gated closure. Same verify endpoint as a consent, told apart
+   * server-side by the `otp_record` having come from the close call — the
+   * response carries `end_date` instead of a token.
+   */
+  const handleVerifyClose = useCallback(async () => {
+    if (!pendingClose || closeOtp.trim().length < OTP_LENGTH) {
+      return;
+    }
+    setIsClosing(true);
+    setCloseError('');
+    try {
+      const response = await verifyConsentOtp(pendingClose.consentId, {
+        otp: closeOtp,
+        otpRecord: pendingClose.otpRecord,
+        locationUuid,
+        crId,
+      });
+      if (!response?.end_date) {
+        throw new Error(
+          t('shrClosureNotConfirmed', 'That code did not close the visit. Check it with the patient and try again.'),
+        );
+      }
+      showSnackbar({
+        kind: 'success',
+        title: t('shrVisitClosed', 'SHR visit closed'),
+        subtitle: response?.message || t('shrVisitClosureAccepted', 'The closure request was accepted.'),
+      });
+      settleAsClosed(response.end_date);
+    } catch (err: any) {
+      setCloseError(extractShrErrorDetail(err?.message ?? ''));
+    } finally {
+      setIsClosing(false);
+    }
+  }, [pendingClose, closeOtp, locationUuid, crId, settleAsClosed, t]);
 
   const handleStartNewRequest = useCallback(() => {
     setPhase('idle');
@@ -199,8 +383,25 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
     setSyncError('');
     setCloseError('');
     setClosedOn('');
-    void launchConsentWorkspace();
-  }, [launchConsentWorkspace]);
+    setDeclined(null);
+    setPendingClose(null);
+    setCloseOtp('');
+    setIsCloseFormOpen(false);
+    void startShrSession();
+  }, [startShrSession]);
+
+  const closeVisitForm = isCloseFormOpen ? (
+    <ShrCloseVisitForm
+      patientIncapable={closePatientIncapable}
+      incapacityReason={closeIncapacityReason}
+      isClosing={isClosing}
+      error={closeError}
+      onPatientIncapableChange={setClosePatientIncapable}
+      onIncapacityReasonChange={setCloseIncapacityReason}
+      onConfirm={() => void handleConfirmClose()}
+      onCancel={cancelCloseForm}
+    />
+  ) : null;
 
   if (isPatientLoading && !patientUuid) {
     return (
@@ -289,11 +490,17 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
             "Start a shared health record request to fetch this patient's national records for the current visit.",
           )}
           actions={
-            <Button kind="primary" size="md" renderIcon={Security} onClick={() => void launchConsentWorkspace()}>
+            <Button kind="primary" size="md" renderIcon={Security} onClick={() => void startShrSession()}>
               {t('initiateShrRequest', 'Initiate SHR request')}
             </Button>
           }
         />
+      )}
+
+      {phase === 'checking' && (
+        <div className={styles.statusView}>
+          <InlineLoading description={t('shrCheckingOpenVisit', 'Checking for an open SHR visit…')} />
+        </div>
       )}
 
       {phase === 'fetching' && (
@@ -313,7 +520,8 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
           closeError={closeError}
           syncError={syncError}
           onSync={() => void loadRecords(grant, { isSync: true })}
-          onCloseVisit={() => void handleCloseVisit()}
+          onCloseVisit={openCloseForm}
+          closePanel={closeVisitForm}
         />
       )}
 
@@ -326,24 +534,26 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
             'The SHR returned no records for this client for the requested categories. You can retry or close the visit.',
           )}
           notice={
-            closeError
+            closeError && !isCloseFormOpen
               ? { title: t('shrCloseVisitFailed', "Couldn't close the visit."), detail: closeError }
               : undefined
           }
           actions={
-            <>
-              <Button
-                kind="primary"
-                size="md"
-                onClick={() => void loadRecords(grant, { isSync: false })}
-                disabled={isClosing}
-              >
-                {t('retry', 'Retry')}
-              </Button>
-              <Button kind="tertiary" size="md" onClick={() => void handleCloseVisit()} disabled={isClosing}>
-                {isClosing ? t('closing', 'Closing…') : t('closeVisit', 'Close visit')}
-              </Button>
-            </>
+            closeVisitForm ?? (
+              <>
+                <Button
+                  kind="primary"
+                  size="md"
+                  onClick={() => void loadRecords(grant, { isSync: false })}
+                  disabled={isClosing}
+                >
+                  {t('retry', 'Retry')}
+                </Button>
+                <Button kind="tertiary" size="md" onClick={openCloseForm} disabled={isClosing}>
+                  {isClosing ? t('closing', 'Closing…') : t('closeVisit', 'Close visit')}
+                </Button>
+              </>
+            )
           }
         />
       )}
@@ -370,6 +580,61 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
                 {t('startNewRequest', 'Start new request')}
               </Button>
             </>
+          }
+        />
+      )}
+
+      {phase === 'closing-otp' && (
+        <StatusView
+          icon={<Security size={32} className={styles.iconAccent} />}
+          title={t('shrClosureAwaitingOtp', 'Closure awaiting confirmation')}
+          text={t(
+            'shrClosureAwaitingOtpDetail',
+            'A code was sent to whoever gave consent. The visit stays open until it is entered.',
+          )}
+          notice={
+            closeError
+              ? { title: t('shrClosureVerifyFailed', "Couldn't confirm the closure."), detail: closeError }
+              : undefined
+          }
+          actions={
+            <div className={styles.closeOtp}>
+              <div className={styles.otpField}>
+                <FormLabel>{t('otpCode', 'OTP code')}</FormLabel>
+                <OTPInput otpLength={OTP_LENGTH} onChange={setCloseOtp} disabled={isClosing} />
+              </div>
+              <Button
+                kind="primary"
+                size="md"
+                onClick={() => void handleVerifyClose()}
+                disabled={isClosing || closeOtp.trim().length < OTP_LENGTH}
+              >
+                {isClosing ? (
+                  <InlineLoading description={t('verifying', 'Verifying…')} />
+                ) : (
+                  t('shrConfirmClosure', 'Confirm closure')
+                )}
+              </Button>
+            </div>
+          }
+        />
+      )}
+
+      {phase === 'declined' && (
+        <StatusView
+          icon={<WarningAltFilled size={32} className={styles.iconWarning} />}
+          title={t('shrConsentDeclined', 'Consent declined')}
+          text={
+            declined?.rejectionReason
+              ? t('shrConsentDeclinedWithReason', 'This visit was not opened. Reason given: {{reason}}', {
+                  reason: declined.rejectionReason,
+                })
+              : t('shrConsentDeclinedDetail', 'This visit was not opened and no records were fetched.')
+          }
+          actions={
+            <Button kind="primary" size="md" renderIcon={Security} onClick={handleStartNewRequest}>
+              {t('startNewShrRequest', 'Start new SHR request')}
+            </Button>
           }
         />
       )}

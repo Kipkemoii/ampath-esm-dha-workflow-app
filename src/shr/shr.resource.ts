@@ -1,11 +1,16 @@
+import dayjs from 'dayjs';
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
 import { IdentifierTypesUuids } from '../resources/identifier-types';
 import {
   ShrApiError,
+  type ActiveConsentResponse,
+  type CloseVisitRequest,
   type CloseVisitResponse,
   type CreateConsentRequest,
   type CreateConsentResponse,
+  type OpenVisitsResponse,
+  type RefreshConsentResponse,
   type ShrAnyResource,
   type ShrRecordSet,
   type VerifyConsentRequest,
@@ -15,7 +20,7 @@ import {
 /**
  * Shared Health Record (SHR) data source.
  *
- * All four endpoints are relative to the configured HIE base URL —
+ * All endpoints are relative to the configured HIE base URL —
  * `getHieBaseUrl()`, the same helper the CR search, EMT and claims calls use —
  * and go through `openmrsFetch`, so session auth rides the live OpenMRS cookie.
  * The raw curl examples set a `Cookie` header by hand; we deliberately don't.
@@ -27,9 +32,13 @@ const SHR_BASE = '/shr';
 const RESOURCE_LIST_KEYS = ['entry', 'entries', 'resources', 'records', 'results', 'data', 'bundle', 'bundles'];
 
 /**
- * Create a consent request. The backend dispatches an OTP to the patient's
- * registered contact and returns the `consent_id` + `otp_record` pair that the
- * verify call needs.
+ * Create a consent request.
+ *
+ * Normally the backend dispatches an OTP and returns the `consent_id` +
+ * `otp_record` pair the verify call needs. An **emergency** request is approved
+ * on the spot instead and comes back with `consent_token` + `visit_id` and no
+ * `otp_record` — callers must branch on the response, not on what they asked
+ * for.
  */
 export async function createConsentRequest(payload: CreateConsentRequest): Promise<CreateConsentResponse> {
   try {
@@ -46,9 +55,10 @@ export async function createConsentRequest(payload: CreateConsentRequest): Promi
 }
 
 /**
- * Verify the OTP the patient received. On success the response carries the
- * consent token used to fetch records and the `visit_id` needed to close the
- * visit afterwards — `visit_id` has no other source.
+ * Record a consent decision. One endpoint, three outcomes — an approval
+ * (`consent_token` + `visit_id`), a refusal (`consent_status`, no token), or the
+ * completion of an OTP-gated closure (`end_date`) — so callers branch on which
+ * fields actually came back. `visit_id` has no other source than an approval.
  */
 export async function verifyConsentOtp(
   consentId: string,
@@ -109,22 +119,108 @@ export async function fetchPatientRecords({
  * Close the SHR visit opened by a granted consent. `visitId` is the `visit_id`
  * captured from the verify response.
  *
- * The backend answers "Consent closure initiated." — a `status: "success"` here
- * means the close request was accepted, not that closure has finished
- * server-side, so callers should present `end_date` rather than "just now".
+ * "Consent closure initiated." with `status: "success"` does **not** mean the
+ * visit is closed: the default path is OTP-gated, so the response carries an
+ * `otp_record` and the visit stays open until that password is verified. Only
+ * `end_date` means closed. Callers must branch on which arrived.
+ *
+ * Pass `patientIncapable: 1` (with `incapacityReason`) for a patient who cannot
+ * consent to their own closure — unconscious or deceased — which closes the
+ * visit immediately with no OTP. See `CloseVisitRequest` for the polarity trap
+ * against the consent request's `patientCapable`.
  */
-export async function closeShrVisit(visitId: string, locationUuid: string): Promise<CloseVisitResponse> {
+export async function closeShrVisit(
+  visitId: string,
+  locationUuid: string,
+  options: Omit<CloseVisitRequest, 'locationUuid'> = {},
+): Promise<CloseVisitResponse> {
   try {
     const hieBaseUrl = await getHieBaseUrl();
+    const body: CloseVisitRequest = {
+      locationUuid,
+      ...(options.patientIncapable !== undefined ? { patientIncapable: options.patientIncapable } : {}),
+      ...(options.incapacityReason ? { incapacityReason: options.incapacityReason } : {}),
+    };
     const response = await openmrsFetch<CloseVisitResponse>(
       `${hieBaseUrl}${SHR_BASE}/visits/${encodeURIComponent(visitId)}/close`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        body,
+      },
+    );
+    return response?.data;
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/**
+ * The visits at this facility that still hold an open consent for the patient.
+ *
+ * Worth calling before starting a new consent request: an open visit can be
+ * reused via `refreshVisitConsent` instead of putting the patient through
+ * another OTP, and a patient with one open here cannot start a second.
+ */
+export async function listOpenVisits(crId: string, locationUuid: string): Promise<OpenVisitsResponse> {
+  try {
+    const hieBaseUrl = await getHieBaseUrl();
+    const params = new URLSearchParams({ crId, locationUuid });
+    const response = await openmrsFetch<OpenVisitsResponse>(
+      `${hieBaseUrl}${SHR_BASE}/open-visits?${params.toString()}`,
+      { method: 'GET' },
+    );
+    return response?.data ?? { visits: [] };
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/**
+ * A fresh consent token for an open visit, for when the token issued at
+ * verification has expired but the visit is still open.
+ */
+export async function refreshVisitConsent(
+  visitId: string,
+  locationUuid: string,
+  consentToken?: string,
+): Promise<RefreshConsentResponse> {
+  try {
+    const hieBaseUrl = await getHieBaseUrl();
+    const response = await openmrsFetch<RefreshConsentResponse>(
+      `${hieBaseUrl}${SHR_BASE}/visits/${encodeURIComponent(visitId)}/refresh`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(consentToken ? { 'X-Consent-Token': consentToken } : {}),
+        },
         body: { locationUuid },
       },
     );
     return response?.data;
+  } catch (err) {
+    throw normalizeError(err);
+  }
+}
+
+/**
+ * "Do we already have a usable consent for this patient here?" — the backend's
+ * own convenience route, which checks its recorded session, falls back to DHA's
+ * open visits, and refreshes whichever it finds.
+ *
+ * Preferred over any local-only cache because it sees visits opened from
+ * another device or browser. `hasActiveConsent: false` is a normal answer.
+ */
+export async function getActiveConsent(crId: string, locationUuid: string): Promise<ActiveConsentResponse> {
+  try {
+    const hieBaseUrl = await getHieBaseUrl();
+    const params = new URLSearchParams({ crId, locationUuid });
+    const response = await openmrsFetch<ActiveConsentResponse>(
+      `${hieBaseUrl}${SHR_BASE}/consents/active?${params.toString()}`,
+      { method: 'GET' },
+    );
+    return response?.data ?? { hasActiveConsent: false };
   } catch (err) {
     throw normalizeError(err);
   }
@@ -161,6 +257,46 @@ export async function getPatientCrIdentifier(
   } catch (err) {
     throw normalizeError(err);
   }
+}
+
+/**
+ * Whether the patient is under 18, which decides whether the consent request
+ * needs a representative (see `CreateConsentRequest`'s decision table).
+ *
+ * Mirrors the `isMinor` checks already in this repo — `send-to-queue.modal.tsx`
+ * and `submit-claim.modal.tsx` — which compute the same thing off two different
+ * patient shapes. The SHR tab reads a FHIR-shaped `usePatient()`, so `birthDate`
+ * is the field on hand, but the OpenMRS REST shape (`person.age` /
+ * `person.birthdate`) is accepted too so this survives being handed either.
+ *
+ * A missing or unparseable birth date is treated as **not** a minor: the adult
+ * flow puts the "patient unable to consent" decision in the clinician's hands,
+ * whereas wrongly forcing the minor flow would demand a representative for an
+ * adult who can consent perfectly well.
+ */
+export function isMinorPatient(patient: unknown): boolean {
+  const record = (patient ?? {}) as Record<string, any>;
+  const person = (record.person ?? {}) as Record<string, any>;
+
+  const age = person.age ?? record.age;
+  if (typeof age === 'number' && Number.isFinite(age)) {
+    return age < 18;
+  }
+
+  const birthDate = record.birthDate ?? person.birthdate ?? person.birthDate;
+  if (!birthDate) {
+    return false;
+  }
+  // `isValid()` rather than a finiteness check on the difference: dayjs's
+  // year-diff against an invalid date returns 0, not NaN, so an unparseable
+  // birth date would otherwise read as a newborn — a minor — which is the exact
+  // wrong direction to fail in.
+  const parsed = dayjs(birthDate as string);
+  if (!parsed.isValid()) {
+    return false;
+  }
+  const computedAge = dayjs().diff(parsed, 'year');
+  return Number.isFinite(computedAge) && computedAge < 18;
 }
 
 /**
