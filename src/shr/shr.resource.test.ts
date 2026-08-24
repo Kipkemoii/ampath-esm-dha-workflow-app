@@ -1,7 +1,7 @@
 /**
- * Tests for the SHR resource layer: the four endpoint calls, the CR identifier
- * lookup, error normalization, the doubly-encoded error parser, and the
- * defensive records flattener.
+ * Tests for the SHR resource layer: the endpoint calls, the CR identifier
+ * lookup, the minor check, error normalization, the doubly-encoded error
+ * parser, and the defensive records flattener.
  *
  * `../shared/utils/get-base-url` (`getHieBaseUrl`) and `@openmrs/esm-framework`
  * (`openmrsFetch`, `restBaseUrl`) are mocked directly, following
@@ -24,8 +24,12 @@ import {
   extractShrErrorDetail,
   fetchPatientRecords,
   flattenShrResources,
+  getActiveConsent,
   getPatientCrIdentifier,
+  isMinorPatient,
+  listOpenVisits,
   normalizeError,
+  refreshVisitConsent,
   summariseRecords,
   verifyConsentOtp,
 } from './shr.resource';
@@ -51,7 +55,7 @@ beforeEach(() => {
 // ── createConsentRequest ──────────────────────────────────────────────────────
 
 describe('createConsentRequest', () => {
-  it('POSTs the consent request, keeping the upstream field names verbatim', async () => {
+  it('POSTs the consent request, keeping the backend field names verbatim', async () => {
     const responseFixture = {
       consent_id: 'VCR-20260820-077A7492',
       consent_status: 'Pending',
@@ -68,7 +72,7 @@ describe('createConsentRequest', () => {
       requestedBy: 'Registration Clerk',
       visitType: 'IP',
       emergency: 1,
-      incapavity_reason: 'Patient unconscious on arrival',
+      incapacityReason: 'Patient unconscious on arrival',
     });
 
     expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/shr/consents`, {
@@ -80,8 +84,7 @@ describe('createConsentRequest', () => {
         requestedBy: 'Registration Clerk',
         visitType: 'IP',
         emergency: 1,
-        // Misspelled upstream; the payload must not "fix" it.
-        incapavity_reason: 'Patient unconscious on arrival',
+        incapacityReason: 'Patient unconscious on arrival',
       },
     });
     expect(res.consent_id).toBe('VCR-20260820-077A7492');
@@ -100,6 +103,85 @@ describe('createConsentRequest', () => {
         emergency: 0,
       }),
     ).rejects.toMatchObject({ name: 'ShrApiError', status: 502 });
+  });
+  it('sends the authorising relationship on an emergency, which DHA requires', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', consent_token: 'tok-1', visit_id: 'v-1', emergency: true },
+    } as any);
+
+    await createConsentRequest({
+      crId: CR_ID,
+      locationUuid: LOCATION_UUID,
+      requestedBy: 'Registration Clerk',
+      visitType: 'IP',
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Healthcare Proxy',
+    });
+
+    // The published contract says an emergency needs no representative; UAT
+    // answers 400 "Representative relationship is required for emergency
+    // consent." The relationship goes up, the CR number stays optional, and
+    // patientCapable is not applicable on this route.
+    const body = (mockOpenmrsFetch.mock.calls[0][1] as any).body;
+    expect(body).toMatchObject({
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Healthcare Proxy',
+    });
+    expect(body.representativeCrId).toBeUndefined();
+    expect(body.patientCapable).toBeUndefined();
+  });
+
+  it('forwards an emergency representative CR number when one is known', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', consent_token: 'tok-1', visit_id: 'v-1' },
+    } as any);
+
+    await createConsentRequest({
+      crId: CR_ID,
+      locationUuid: LOCATION_UUID,
+      requestedBy: 'Registration Clerk',
+      visitType: 'IP',
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Sibling',
+      representativeCrId: 'CR08244412193-5',
+    });
+
+    expect((mockOpenmrsFetch.mock.calls[0][1] as any).body).toMatchObject({
+      emergency: 1,
+      representativeRelationship: 'Sibling',
+      representativeCrId: 'CR08244412193-5',
+    });
+  });
+
+  it('sends the dependant fields when a representative consents', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { consent_id: 'VCR-1', otp_record: 'otp-1' } } as any);
+
+    await createConsentRequest({
+      crId: CR_ID,
+      locationUuid: LOCATION_UUID,
+      requestedBy: 'Registration Clerk',
+      visitType: 'OP',
+      emergency: 0,
+      // 0 = cannot consent for themselves. Inverted against close-visit's
+      // `patientIncapable: 1`, which says the same thing.
+      patientCapable: 0,
+      incapacityReason: 'Incapacitated adult',
+      representativeCrId: 'CR08244412193-5',
+      representativeRelationship: 'Healthcare Proxy',
+    });
+
+    expect(mockOpenmrsFetch.mock.calls[0][1]).toMatchObject({
+      body: {
+        emergency: 0,
+        patientCapable: 0,
+        incapacityReason: 'Incapacitated adult',
+        representativeCrId: 'CR08244412193-5',
+        representativeRelationship: 'Healthcare Proxy',
+      },
+    });
   });
 });
 
@@ -149,6 +231,47 @@ describe('verifyConsentOtp', () => {
       expect((err as ShrApiError).message).toContain('failed to verify patient consent:');
       expect(extractShrErrorDetail((err as ShrApiError).message)).toBe('OTP already used.');
     }
+  });
+  it('records a refusal with no otp — a patient who declines never gives one', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', consent_status: 'Rejected', message: 'Consent has been rejected' },
+    } as any);
+
+    const res = await verifyConsentOtp('VCR-1', {
+      locationUuid: LOCATION_UUID,
+      otpRecord: 'jda8b9p4pq',
+      consentDecision: 'Reject',
+      rejectionReason: 'Patient denied consent',
+    });
+
+    expect(mockOpenmrsFetch.mock.calls[0][1]).toMatchObject({
+      body: {
+        locationUuid: LOCATION_UUID,
+        otpRecord: 'jda8b9p4pq',
+        consentDecision: 'Reject',
+        rejectionReason: 'Patient denied consent',
+      },
+    });
+    expect((mockOpenmrsFetch.mock.calls[0][1] as any).body.otp).toBeUndefined();
+    // A settled refusal: no token, no visit.
+    expect(res.consent_status).toBe('Rejected');
+    expect(res.consent_token).toBeUndefined();
+    expect(res.visit_id).toBeUndefined();
+  });
+
+  it('returns end_date when the verification completed an OTP-gated closure', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', end_date: '2026-08-02', status: 'success' },
+    } as any);
+
+    const res = await verifyConsentOtp('VCR-1', {
+      otp: '45356',
+      locationUuid: LOCATION_UUID,
+      otpRecord: '9fh38gd21k',
+    });
+
+    expect(res.end_date).toBe('2026-08-02');
+    expect(res.consent_token).toBeUndefined();
   });
 });
 
@@ -212,6 +335,137 @@ describe('closeShrVisit', () => {
       body: { locationUuid: LOCATION_UUID },
     });
     expect(res.end_date).toBe('2026-08-02');
+  });
+  it('sends patientIncapable and the reason for an immediate closure', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { end_date: '2026-08-02' } } as any);
+
+    await closeShrVisit('v-1', LOCATION_UUID, { patientIncapable: 1, incapacityReason: 'Unconscious' });
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/shr/visits/v-1/close`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      // `patientIncapable`, not `patientCapable` — opposite polarity to the
+      // consent request, where 0 carries this same meaning.
+      body: { locationUuid: LOCATION_UUID, patientIncapable: 1, incapacityReason: 'Unconscious' },
+    });
+  });
+
+  it('surfaces an OTP-gated closure, which has not closed the visit', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', otp_record: '9fh38gd21k', visit_id: 'v-1', message: 'Consent closure initiated.' },
+    } as any);
+
+    const res = await closeShrVisit('v-1', LOCATION_UUID);
+
+    // "closure initiated" with an otp_record means the visit is still open.
+    expect(res.otp_record).toBe('9fh38gd21k');
+    expect(res.end_date).toBeUndefined();
+  });
+});
+
+// ── listOpenVisits / refreshVisitConsent / getActiveConsent ──────────────────
+
+describe('listOpenVisits', () => {
+  it('queries the patient and location and returns the visit ids', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { visits: [{ visit_id: 'v-1' }] } } as any);
+
+    const res = await listOpenVisits(CR_ID, LOCATION_UUID);
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(
+      `${BASE_URL}/shr/open-visits?crId=${CR_ID}&locationUuid=${LOCATION_UUID}`,
+      { method: 'GET' },
+    );
+    expect(res.visits).toEqual([{ visit_id: 'v-1' }]);
+  });
+
+  it('falls back to an empty list rather than undefined', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: undefined } as any);
+
+    expect(await listOpenVisits(CR_ID, LOCATION_UUID)).toEqual({ visits: [] });
+  });
+});
+
+describe('refreshVisitConsent', () => {
+  it('forwards the current token when the caller still holds one', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { consent_token: 'tok-2' } } as any);
+
+    const res = await refreshVisitConsent('v-1', LOCATION_UUID, 'tok-1');
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(`${BASE_URL}/shr/visits/v-1/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-Consent-Token': 'tok-1' },
+      body: { locationUuid: LOCATION_UUID },
+    });
+    expect(res.consent_token).toBe('tok-2');
+  });
+
+  it('omits the token header when there is none to send', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { consent_token: 'tok-2' } } as any);
+
+    await refreshVisitConsent('v-1', LOCATION_UUID);
+
+    expect(mockOpenmrsFetch.mock.calls[0][1]).toMatchObject({
+      headers: { 'Content-Type': 'application/json' },
+    });
+    expect((mockOpenmrsFetch.mock.calls[0][1] as any).headers['X-Consent-Token']).toBeUndefined();
+  });
+});
+
+describe('getActiveConsent', () => {
+  it('returns a ready-to-use token when the patient already has an open visit', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { hasActiveConsent: true, source: 'refreshed', visitId: 'v-1', consentToken: 'tok-1' },
+    } as any);
+
+    const res = await getActiveConsent(CR_ID, LOCATION_UUID);
+
+    expect(mockOpenmrsFetch).toHaveBeenCalledWith(
+      `${BASE_URL}/shr/consents/active?crId=${CR_ID}&locationUuid=${LOCATION_UUID}`,
+      { method: 'GET' },
+    );
+    expect(res).toMatchObject({ hasActiveConsent: true, visitId: 'v-1', consentToken: 'tok-1' });
+  });
+
+  it('treats no open visit as a normal answer, not an error', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({ data: { hasActiveConsent: false } } as any);
+
+    expect((await getActiveConsent(CR_ID, LOCATION_UUID)).hasActiveConsent).toBe(false);
+  });
+});
+
+// ── isMinorPatient ───────────────────────────────────────────────────────────
+
+describe('isMinorPatient', () => {
+  it('reads a numeric age off the OpenMRS REST person shape', () => {
+    expect(isMinorPatient({ person: { age: 9 } })).toBe(true);
+    expect(isMinorPatient({ person: { age: 18 } })).toBe(false);
+    expect(isMinorPatient({ person: { age: 44 } })).toBe(false);
+  });
+
+  it('computes the age from a FHIR birthDate when there is no age field', () => {
+    const fiveYearsAgo = new Date();
+    fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+    const fortyYearsAgo = new Date();
+    fortyYearsAgo.setFullYear(fortyYearsAgo.getFullYear() - 40);
+
+    expect(isMinorPatient({ birthDate: fiveYearsAgo.toISOString().slice(0, 10) })).toBe(true);
+    expect(isMinorPatient({ birthDate: fortyYearsAgo.toISOString().slice(0, 10) })).toBe(false);
+  });
+
+  it('accepts the REST person.birthdate spelling too', () => {
+    const tenYearsAgo = new Date();
+    tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+
+    expect(isMinorPatient({ person: { birthdate: tenYearsAgo.toISOString() } })).toBe(true);
+  });
+
+  it('treats an unknown or unparseable birth date as not a minor', () => {
+    // Forcing the minor flow would demand a representative for an adult who can
+    // consent perfectly well; the adult flow leaves that to the clinician.
+    expect(isMinorPatient(undefined)).toBe(false);
+    expect(isMinorPatient(null)).toBe(false);
+    expect(isMinorPatient({})).toBe(false);
+    expect(isMinorPatient({ birthDate: 'not-a-date' })).toBe(false);
   });
 });
 

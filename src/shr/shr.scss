@@ -60,3 +60,55 @@
 .iconSuccess {
   color: colors.$green-50;
 }
+
+.iconWarning {
+  color: colors.$orange-40;
+}
+
+// The closure confirmation that stands in front of "Close visit". Rendered
+// inside the viewer (under its header) and inside the empty state, so it sizes
+// to its container rather than assuming either one's width.
+.closePanel {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-04;
+  padding: layout.$spacing-05;
+  background-color: colors.$white;
+  border: 1px solid colors.$gray-20;
+  border-left: 3px solid colors.$red-60;
+  text-align: left;
+  min-width: 0;
+}
+
+.closePanelTitle {
+  @include type.type-style('heading-compact-01');
+  margin: 0;
+}
+
+.closePanelText {
+  @include type.type-style('body-compact-01');
+  color: colors.$gray-70;
+  margin: 0;
+}
+
+.closePanelActions {
+  display: flex;
+  gap: layout.$spacing-03;
+  flex-wrap: wrap;
+}
+
+// The closure OTP sits in the centred status layout, so it stacks and centres
+// rather than inheriting the form-style left alignment.
+.closeOtp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: layout.$spacing-04;
+}
+
+.otpField {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+  align-items: center;
+}

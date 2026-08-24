@@ -74,7 +74,14 @@ interface ShrViewerProps {
   /** Set when a refresh failed — likewise shown here, leaving the records already loaded intact. */
   syncError: string;
   onSync: () => void;
+  /** Opens the closure confirmation — closing is never immediate on click. */
   onCloseVisit: () => void;
+  /**
+   * The closure confirmation panel, when one is open. Owned by the parent (it
+   * owns the close request), rendered here so it sits with the button that
+   * opened it and the records stay on screen behind it.
+   */
+  closePanel?: React.ReactNode;
 }
 
 const ShrViewer: React.FC<ShrViewerProps> = ({
@@ -85,6 +92,7 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
   isSyncing,
   isClosing,
   closeError,
+  closePanel,
   syncError,
   onSync,
   onCloseVisit,
@@ -146,7 +154,13 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
           <Button kind="tertiary" size="sm" renderIcon={Renew} onClick={onSync} disabled={isSyncing || isClosing}>
             {isSyncing ? t('syncing', 'Syncing…') : t('syncNow', 'Sync now')}
           </Button>
-          <Button kind="tertiary" size="sm" renderIcon={Logout} onClick={onCloseVisit} disabled={isClosing}>
+          <Button
+            kind="tertiary"
+            size="sm"
+            renderIcon={Logout}
+            onClick={onCloseVisit}
+            disabled={isClosing || Boolean(closePanel)}
+          >
             {isClosing ? t('closing', 'Closing…') : t('closeVisit', 'Close visit')}
           </Button>
         </div>
@@ -162,7 +176,9 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
         />
       )}
 
-      {closeError && (
+      {closePanel}
+
+      {closeError && !closePanel && (
         <InlineNotification
           kind="error"
           lowContrast
