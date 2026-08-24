@@ -401,6 +401,27 @@
       },
       "online": true,
       "offline": true
+    },
+    {
+      "name": "critical-care-unit-dashboard-link",
+      "component": "criticalCareUnitDashboardLink",
+      "slot": "homepage-dashboard-slot",
+      "privileges": [
+      ],
+      "meta": {
+        "name": "critical-care-unit",
+        "slot": "critical-care-unit-dashboard-slot",
+        "title": "Critical Care Unit"
+      },
+      "online": true,
+      "offline": true
+    },
+    {
+      "component": "CriticalCareUnitRoot",
+      "name": "critical-care-unit",
+      "slot": "critical-care-unit-dashboard-slot",
+      "privileges": [
+      ]
     }
   ],
   "workspaces": [

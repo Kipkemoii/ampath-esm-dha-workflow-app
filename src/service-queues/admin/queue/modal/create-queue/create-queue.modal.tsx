@@ -130,15 +130,55 @@ const CreateQueueModal: React.FC<CreateQueueModalProps> = ({ open, onModalClose 
                     />
                     <SelectItem value={QUEUE_SERVICE_UUIDS.MATERNITY_TRIAGE_SERVICE_UUID} text="Maternity Triage" />
                     <SelectItem value={QUEUE_SERVICE_UUIDS.DIALYSIS_TRIAGE_SERVICE_UUID} text="Renal Triage" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.DIALYSIS_CONSULTATION_SERVICE_UUID} text="Renal Consultation" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.DIALYSIS_CONSULTATION_SERVICE_UUID}
+                      text="Renal Consultation"
+                    />
                     <SelectItem value={QUEUE_SERVICE_UUIDS.ONCOLOGY_TRIAGE_SERVICE_UUID} text="Oncology Triage" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.ONCOLOGY_CONSULTATION_SERVICE_UUID} text="Oncology Consultation" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.ONCOLOGY_CONSULTATION_SERVICE_UUID}
+                      text="Oncology Consultation"
+                    />
                     <SelectItem value={QUEUE_SERVICE_UUIDS.DENTAL_TRIAGE_SERVICE_UUID} text="Dental Triage" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.DENTAL_CONSULTATION_SERVICE_UUID} text="Dental Consultation" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.DIAGNOSTIC_AND_IMAGING_TRIAGE_SERVICE_UUID} text="Diagnosis and Imaging Triage" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.DIAGNOSTIC_AND_IMAGING_CONSULTATION_SERVICE_UUID} text="Diagnosis and Imaging Consultation" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.OPTHALMOLOGY_TRIAGE_SERVICE_UUID} text="Opthalmology Triage" />
-                    <SelectItem value={QUEUE_SERVICE_UUIDS.OPTHALMOLOGY_CONSULTATION_SERVICE_UUID} text="Opthalmology Consultation" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.DENTAL_CONSULTATION_SERVICE_UUID}
+                      text="Dental Consultation"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.DIAGNOSTIC_AND_IMAGING_TRIAGE_SERVICE_UUID}
+                      text="Diagnosis and Imaging Triage"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.DIAGNOSTIC_AND_IMAGING_CONSULTATION_SERVICE_UUID}
+                      text="Diagnosis and Imaging Consultation"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.OPTHALMOLOGY_TRIAGE_SERVICE_UUID}
+                      text="Opthalmology Triage"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.OPTHALMOLOGY_CONSULTATION_SERVICE_UUID}
+                      text="Opthalmology Consultation"
+                    />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.ICU_TRIAGE_SERVICE_UUID} text="ICU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.ICU_CONSULTATION_SERVICE_UUID} text="ICU Consultation" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.HDU_TRIAGE_SERVICE_UUID} text="HDU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.HDU_CONSULTATION_SERVICE_UUID} text="HDU Consultation" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.NICU_NBU_TRIAGE_SERVICE_UUID} text="NICU/NBU Triage" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.NICU_NBU_CONSULTATION_SERVICE_UUID}
+                      text="NICU/NBU Consultation"
+                    />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.PICU_TRIAGE_SERVICE_UUID} text="PICU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.PICU_CONSULTATION_SERVICE_UUID} text="PICU Consultation" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.ICU_BURNS_UNIT_TRIAGE_SERVICE_UUID}
+                      text="ICU Burns Triage"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.ICU_BURNS_UNIT_CONSULTATION_SERVICE_UUID}
+                      text="ICU Burns Consultation"
+                    />
                   </Select>
                 </div>
               </div>
