@@ -384,7 +384,9 @@ export async function getRegistrationQueueList(
 }
 
 export const useActiveVisitBills = (visitUuid: string | null) => {
-  const url = visitUuid ? `${restBaseUrl}/billing/bill?visitUuid=${visitUuid}` : null;
+  const representation =
+    'custom:(uuid,status,patient:(uuid),lineItems:(uuid,billableService,priceName,status))';
+  const url = visitUuid ? `${restBaseUrl}/billing/bill?visitUuid=${visitUuid}&v=${representation}` : null;
 
   const { data, error, isLoading, isValidating } = useSWR<{
     data: {
