@@ -1,6 +1,6 @@
 {
   "@ampath/esm-dha-workflow-app": {
-    "hieBaseUrl": "http://localhost:3000",
+    "hieBaseUrl": "/hie",
     "electivePreauth": {
       "encounterTypeUuid": "4cf6488a-a09a-4c41-8a31-efe35f0ecd64",
       "clientRegistryIdentifierTypeUuid": "e88dc246-3614-4ee3-8141-1f2a83054e72"

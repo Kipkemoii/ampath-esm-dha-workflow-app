@@ -140,12 +140,8 @@ const ShrConsentWorkspace: React.FC<
 
   const isEmergency = watch('emergency');
   const patientUnableToConsent = watch('patientUnableToConsent');
-
-  // The three situations that shape this form are independent — see schema.ts.
-  // An emergency needs a reason and no representative (no OTP is sent at all);
-  // a minor needs a representative and no reason; an incapacitated adult needs
-  // both. One toggle must never imply the other.
-  const needsRepresentative = !isEmergency && (isMinor || patientUnableToConsent);
+  const needsRelationship = isEmergency || isMinor || patientUnableToConsent;
+  const needsRepresentativeCrId = !isEmergency && (isMinor || patientUnableToConsent);
   const needsIncapacityReason = isEmergency || (!isMinor && patientUnableToConsent);
 
   /** POST /shr/consents. Shared by the initial submit and "Resend OTP". */
@@ -156,7 +152,8 @@ const ShrConsentWorkspace: React.FC<
       setOtpError('');
       try {
         const emergency = values.emergency;
-        const representativeNeeded = !emergency && (isMinor || values.patientUnableToConsent);
+        const relationshipNeeded = emergency || isMinor || values.patientUnableToConsent;
+        const representativeCrIdNeeded = !emergency && (isMinor || values.patientUnableToConsent);
         const reasonNeeded = emergency || (!isMinor && values.patientUnableToConsent);
 
         const payload: CreateConsentRequest = {
@@ -165,17 +162,16 @@ const ShrConsentWorkspace: React.FC<
           requestedBy,
           visitType: values.visitType as ShrVisitType,
           emergency: emergency ? 1 : 0,
-          // `patientCapable: 0` — the patient cannot consent for themselves, so
-          // the OTP routes to the representative. Note the *opposite* polarity
-          // of close-visit's `patientIncapable`, where 1 means the same thing.
-          ...(representativeNeeded ? { patientCapable: 0 as const } : {}),
+          ...(representativeCrIdNeeded ? { patientCapable: 0 as const } : {}),
           ...(reasonNeeded && values.incapacityReason?.trim()
             ? { incapacityReason: values.incapacityReason.trim() }
             : {}),
-          ...(representativeNeeded && values.representativeCrId?.trim()
+          // Gated on the field being *shown*, not on it being required: the CR
+          // number is optional in an emergency but still forwarded when given.
+          ...(relationshipNeeded && values.representativeCrId?.trim()
             ? { representativeCrId: values.representativeCrId.trim() }
             : {}),
-          ...(representativeNeeded && values.representativeRelationship
+          ...(relationshipNeeded && values.representativeRelationship
             ? {
                 representativeRelationship: values.representativeRelationship as ShrRepresentativeRelationship,
               }
@@ -212,7 +208,7 @@ const ShrConsentWorkspace: React.FC<
         showSnackbar({
           kind: 'success',
           title: isResend ? t('shrOtpResent', 'OTP resent') : t('shrOtpSent', 'OTP sent'),
-          subtitle: representativeNeeded
+          subtitle: representativeCrIdNeeded
             ? t('shrOtpSentRepresentativeDetail', "A code was sent to the representative's registered contact.")
             : t('shrOtpSentDetail', "A code was sent to the patient's registered contact."),
         });
@@ -401,7 +397,7 @@ const ShrConsentWorkspace: React.FC<
                         labelText={t('emergencyVisit', 'Emergency visit')}
                         helperText={t(
                           'shrEmergencyHelper',
-                          'Approved immediately — no OTP is sent to anyone. Use only when consent cannot be collected at the point of care.',
+                          'Approved immediately — no OTP is sent to anyone. Still records who authorised the access. Use only when consent cannot be collected at the point of care.',
                         )}
                         checked={!!value}
                         onChange={(_event, { checked }) => onChange(checked)}
@@ -462,26 +458,8 @@ const ShrConsentWorkspace: React.FC<
                     />
                   )}
 
-                  {needsRepresentative && (
+                  {needsRelationship && (
                     <>
-                      <Controller
-                        name="representativeCrId"
-                        control={control}
-                        render={({ field }) => (
-                          <TextInput
-                            {...field}
-                            id="shr-representative-cr-id"
-                            labelText={t('shrRepresentativeCrId', 'Representative CR number')}
-                            placeholder={t(
-                              'shrRepresentativeCrIdPlaceholder',
-                              'Client Registry number of the parent, guardian or proxy',
-                            )}
-                            invalid={!!errors.representativeCrId}
-                            invalidText={errors.representativeCrId?.message}
-                          />
-                        )}
-                      />
-
                       <Controller
                         name="representativeRelationship"
                         control={control}
@@ -490,7 +468,11 @@ const ShrConsentWorkspace: React.FC<
                             {...rest}
                             value={value ?? ''}
                             id="shr-representative-relationship"
-                            labelText={t('shrRepresentativeRelationship', 'Relationship to patient')}
+                            labelText={
+                              isEmergency
+                                ? t('shrAuthorisingRelationship', 'Relationship of the authorising person')
+                                : t('shrRepresentativeRelationship', 'Relationship to patient')
+                            }
                             invalid={!!errors.representativeRelationship}
                             invalidText={errors.representativeRelationship?.message}
                           >
@@ -501,6 +483,36 @@ const ShrConsentWorkspace: React.FC<
                               <SelectItem key={relationship} value={relationship} text={relationship} />
                             ))}
                           </Select>
+                        )}
+                      />
+
+                      <Controller
+                        name="representativeCrId"
+                        control={control}
+                        render={({ field }) => (
+                          <TextInput
+                            {...field}
+                            id="shr-representative-cr-id"
+                            labelText={
+                              needsRepresentativeCrId
+                                ? t('shrRepresentativeCrId', 'Representative CR number')
+                                : t('shrRepresentativeCrIdOptional', 'Representative CR number (optional)')
+                            }
+                            placeholder={t(
+                              'shrRepresentativeCrIdPlaceholder',
+                              'Client Registry number of the parent, guardian or proxy',
+                            )}
+                            helperText={
+                              needsRepresentativeCrId
+                                ? undefined
+                                : t(
+                                    'shrRepresentativeCrIdEmergencyHelper',
+                                    'Leave blank if the patient arrived unaccompanied or unidentified.',
+                                  )
+                            }
+                            invalid={!!errors.representativeCrId}
+                            invalidText={errors.representativeCrId?.message}
+                          />
                         )}
                       />
                     </>

@@ -104,6 +104,58 @@ describe('createConsentRequest', () => {
       }),
     ).rejects.toMatchObject({ name: 'ShrApiError', status: 502 });
   });
+  it('sends the authorising relationship on an emergency, which DHA requires', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', consent_token: 'tok-1', visit_id: 'v-1', emergency: true },
+    } as any);
+
+    await createConsentRequest({
+      crId: CR_ID,
+      locationUuid: LOCATION_UUID,
+      requestedBy: 'Registration Clerk',
+      visitType: 'IP',
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Healthcare Proxy',
+    });
+
+    // The published contract says an emergency needs no representative; UAT
+    // answers 400 "Representative relationship is required for emergency
+    // consent." The relationship goes up, the CR number stays optional, and
+    // patientCapable is not applicable on this route.
+    const body = (mockOpenmrsFetch.mock.calls[0][1] as any).body;
+    expect(body).toMatchObject({
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Healthcare Proxy',
+    });
+    expect(body.representativeCrId).toBeUndefined();
+    expect(body.patientCapable).toBeUndefined();
+  });
+
+  it('forwards an emergency representative CR number when one is known', async () => {
+    mockOpenmrsFetch.mockResolvedValueOnce({
+      data: { consent_id: 'VCR-1', consent_token: 'tok-1', visit_id: 'v-1' },
+    } as any);
+
+    await createConsentRequest({
+      crId: CR_ID,
+      locationUuid: LOCATION_UUID,
+      requestedBy: 'Registration Clerk',
+      visitType: 'IP',
+      emergency: 1,
+      incapacityReason: 'Unconscious on arrival',
+      representativeRelationship: 'Sibling',
+      representativeCrId: 'CR08244412193-5',
+    });
+
+    expect((mockOpenmrsFetch.mock.calls[0][1] as any).body).toMatchObject({
+      emergency: 1,
+      representativeRelationship: 'Sibling',
+      representativeCrId: 'CR08244412193-5',
+    });
+  });
+
   it('sends the dependant fields when a representative consents', async () => {
     mockOpenmrsFetch.mockResolvedValueOnce({ data: { consent_id: 'VCR-1', otp_record: 'otp-1' } } as any);
 

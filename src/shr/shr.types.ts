@@ -34,25 +34,6 @@ export const SHR_REPRESENTATIVE_RELATIONSHIPS: ShrRepresentativeRelationship[] =
 
 /** The patient's decision, as recorded on the verify call. */
 export type ShrConsentDecision = 'Approve' | 'Reject';
-
-/**
- * Body for `POST {hieBaseUrl}/shr/consents`.
- *
- * Three independent situations decide which optional fields belong here, and
- * conflating them is the easy mistake — an emergency and an incapacitated adult
- * are different mechanisms that merely share `incapacityReason`:
- *
- * | Situation                       | emergency | patientCapable | reason | representative | OTP |
- * |---------------------------------|-----------|----------------|--------|----------------|-----|
- * | Adult, present, capable         | 0         | 1 (default)    | no     | no             | to patient |
- * | Emergency, cannot wait          | 1         | n/a            | **yes**| no             | **none — approved at once** |
- * | Incapacitated adult, no emergency | 0       | 0              | **yes**| **yes**        | to representative |
- * | Minor                           | 0         | 0 (implied)    | no     | **yes**        | to representative |
- *
- * `emergency` and `patientCapable` are the backend's 0/1 flags rather than
- * booleans. Watch the polarity against close-visit's `patientIncapable`, which
- * is the *inverse* of `patientCapable`.
- */
 export interface CreateConsentRequest {
   crId: string;
   locationUuid: string;
@@ -428,13 +409,7 @@ export interface ShrMedicationRequest extends ShrResourceBase {
  * backend confirms one) from being a type error rather than a config change.
  */
 export type ShrKnownResource =
-  | ShrPatient
-  | ShrEncounter
-  | ShrCondition
-  | ShrServiceRequest
-  | ShrObservation
-  | ShrSpecimen
-  | ShrMedicationRequest;
+  ShrPatient | ShrEncounter | ShrCondition | ShrServiceRequest | ShrObservation | ShrSpecimen | ShrMedicationRequest;
 
 export type ShrAnyResource = ShrKnownResource | (ShrResourceBase & Record<string, any>);
 
