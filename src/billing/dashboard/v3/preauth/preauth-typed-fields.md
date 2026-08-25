@@ -8,14 +8,14 @@ Independent checklist per scenario. Excludes data already extracted or inferred 
 
 | Currently typed / uploaded | HIE field(s) |
 | --- | --- |
+| Clinical indications | `clinical_indications` |
 | ICD-11 *(if not picking a visit diagnosis)* | `diagnoses[].icd_code` |
 | Unit price *(if bill price missing/wrong)* | `items[].unit_price` |
 | Service start / end *(if defaults need change)* | `service_start`, `service_end` |
 | Provider notification email *(if not from session/HWR)* | `provider_notification_email` |
 | Attachments (generate or upload) | `attachments[]` + files |
 
-No specialty clinical narrative for Normal.
-
+Prefills from Pre-authorization form clinical-notes obs when present; otherwise clerk-entered.
 ---
 
 ## 2. Surgical preauth

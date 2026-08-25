@@ -278,6 +278,14 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     [intervention, specialty],
   );
 
+  /** Non-specialty “normal” preauth — needs clinical_indications in UI + HIE payload. */
+  const isPlainNormalPreauth =
+    !specialty.requiresSurgicalPreauth &&
+    !specialty.requiresRenalPreauth &&
+    !specialty.requiresOpticalPreauth &&
+    !specialty.requiresRadiologyPreauth &&
+    !specialty.requiresOncologyPreauth;
+
   const [serviceStart, setServiceStart] = useState(toIsoLocal());
   const [serviceEnd, setServiceEnd] = useState(toIsoLocal(dayjs().add(30, 'minute').toDate()));
   const [providerEmail, setProviderEmail] = useState(session?.user?.username?.includes('@') ? session.user.username : '');
@@ -700,7 +708,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       specialty.requiresSurgicalPreauth ||
       specialty.requiresRenalPreauth ||
       specialty.requiresRadiologyPreauth ||
-      specialty.requiresOpticalPreauth;
+      specialty.requiresOpticalPreauth ||
+      isPlainNormalPreauth;
     const uuid = patientUuid || billItem.patient_uuid;
     if (!needsForm || !uuid) {
       setFormLoadState('idle');
@@ -752,8 +761,10 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
         specialty.requiresOpticalPreauth ||
         specialty.requiresRenalPreauth
       ) {
+        // Specialty: clinical indications must come from the Pre-authorization form (locked).
         relevant.add('clinicalIndications');
       }
+      // Plain normal: prefill when present but keep the field editable (not formRelevant).
       if (specialty.requiresRenalPreauth) {
         RENAL_FORM_KEYS.forEach((k) => relevant.add(k));
       }
@@ -776,6 +787,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
   }, [
     patientUuid,
     billItem.patient_uuid,
+    isPlainNormalPreauth,
     specialty.requiresSurgicalPreauth,
     specialty.requiresRenalPreauth,
     specialty.requiresRadiologyPreauth,
@@ -1120,7 +1132,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       payload.number_of_sessions_required = Number.isFinite(sessionsNum) ? sessionsNum : sessionsRequired;
       payload.cost_per_session = String(costPerSession || billUnitPrice || '').trim();
       payload.frequency_of_sessions = frequency;
-      payload.clinical_indications = clinicalIndications.trim();
       payload.start_date = startDate;
       payload.is_co_insured = isCoInsured;
       if (isCoInsured && coInsuranceDetails.trim()) {
@@ -1135,7 +1146,6 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       payload.eye_examination_amount = eyeExamAmount;
       payload.frame_amount = frameAmount;
       payload.new_or_replacement = newOrReplacement;
-      payload.clinical_indications = clinicalIndications.trim();
     }
 
     if (specialty.requiresOncologyPreauth) {
@@ -1156,7 +1166,8 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       }
     }
 
-    if (specialty.requiresRadiologyPreauth) {
+    // Renal / optical / imaging / plain normal — always send when captured.
+    if (clinicalIndications.trim()) {
       payload.clinical_indications = clinicalIndications.trim();
     }
 
@@ -1238,6 +1249,7 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
     const billUnitPrice = String(billItem.item_price ?? billItem.item_total_price ?? unitPrice ?? '').trim();
     const resolvedUnitPrice = billUnitPrice;
     const needsClinicalIndications =
+      isPlainNormalPreauth ||
       specialty.requiresRadiologyPreauth ||
       specialty.requiresRenalPreauth ||
       specialty.requiresOpticalPreauth;
@@ -1251,7 +1263,9 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
       isElective && !expectedServiceStartDate && 'Expected service start date',
       needsClinicalIndications &&
         !clinicalIndications.trim() &&
-        'Clinical indications (complete Pre-authorization form on the patient chart)',
+        (isPlainNormalPreauth
+          ? 'Clinical indications'
+          : 'Clinical indications (complete Pre-authorization form on the patient chart)'),
       missingFormFields.length > 0 &&
         `Pre-authorization form fields (${missingFormFields.join(', ')})`,
     ].filter(Boolean);
@@ -1783,6 +1797,13 @@ const PreauthForm: React.FC<PreauthWorkspaceProps> = ({
             <p className={styles.fieldHint}>COC = Clinical Officers Council · NCK = Nursing Council of Kenya</p>
           </div>
         </section>
+
+        {isPlainNormalPreauth ? (
+          <section className={styles.section}>
+            <h5>Clinical indications</h5>
+            <TextArea id="normal-clinical-indications" {...clinicalIndicationsFieldProps} />
+          </section>
+        ) : null}
 
         {specialty.requiresSurgicalPreauth ? (
           <section className={styles.section}>

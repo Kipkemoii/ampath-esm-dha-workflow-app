@@ -575,10 +575,6 @@ export const generatePreauthFormData = (
     }
   });
 
-  if (intervention.requiresRadiologyPreauth && payload.clinical_indications) {
-    formData.append('clinical_indications', payload.clinical_indications);
-  }
-
   /** HIE expects JSON lists for metastases / treatment_setting (e.g. `["LUNG"]`). */
   const asJsonListField = (value: string | string[] | undefined | null): string | null => {
     if (value == null) return null;
@@ -618,7 +614,6 @@ export const generatePreauthFormData = (
     }
     if (payload.frame_amount != null) formData.append('frame_amount', String(payload.frame_amount));
     if (payload.new_or_replacement) formData.append('new_or_replacement', payload.new_or_replacement);
-    if (payload.clinical_indications) formData.append('clinical_indications', payload.clinical_indications);
   }
 
   if (intervention.requiresRenalPreauth) {
@@ -629,9 +624,13 @@ export const generatePreauthFormData = (
       formData.append('cost_per_session', String(payload.cost_per_session));
     }
     if (payload.frequency_of_sessions) formData.append('frequency_of_sessions', payload.frequency_of_sessions);
-    if (payload.clinical_indications) formData.append('clinical_indications', payload.clinical_indications);
     if (payload.start_date) formData.append('start_date', payload.start_date);
     if (payload.is_co_insured != null) formData.append('is_co_insured', String(payload.is_co_insured));
+  }
+
+  // Normal + specialty (imaging / renal / optical) — send whenever present.
+  if (payload.clinical_indications) {
+    formData.append('clinical_indications', payload.clinical_indications);
   }
 
   // Surgical clinical fields — send snake_case (HIE / gateway expects these keys)
