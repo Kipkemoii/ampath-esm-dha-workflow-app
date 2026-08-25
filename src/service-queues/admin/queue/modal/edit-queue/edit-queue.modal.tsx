@@ -168,6 +168,25 @@ const EditQueueModal: React.FC<EditQueueModalProps> = ({ open, queue, onModalClo
                       value={QUEUE_SERVICE_UUIDS.OPTHALMOLOGY_CONSULTATION_SERVICE_UUID}
                       text="Opthalmology Consultation"
                     />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.ICU_TRIAGE_SERVICE_UUID} text="ICU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.ICU_CONSULTATION_SERVICE_UUID} text="ICU Consultation" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.HDU_TRIAGE_SERVICE_UUID} text="HDU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.HDU_CONSULTATION_SERVICE_UUID} text="HDU Consultation" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.NICU_NBU_TRIAGE_SERVICE_UUID} text="NICU/NBU Triage" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.NICU_NBU_CONSULTATION_SERVICE_UUID}
+                      text="NICU/NBU Consultation"
+                    />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.PICU_TRIAGE_SERVICE_UUID} text="PICU Triage" />
+                    <SelectItem value={QUEUE_SERVICE_UUIDS.PICU_CONSULTATION_SERVICE_UUID} text="PICU Consultation" />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.ICU_BURNS_UNIT_TRIAGE_SERVICE_UUID}
+                      text="ICU Burns Triage"
+                    />
+                    <SelectItem
+                      value={QUEUE_SERVICE_UUIDS.ICU_BURNS_UNIT_CONSULTATION_SERVICE_UUID}
+                      text="ICU Burns Consultation"
+                    />
                   </Select>
                 </div>
               </div>

@@ -276,3 +276,10 @@ export const shrConsentWorkspace = getAsyncLifecycle(
 );
 
 export const claimsAdminLink = getSyncLifecycle(createDashboardLink(claimsAdminDashboardMeta), options);
+
+export const CriticalCareUnitRoot = getAsyncLifecycle(() => import('./critical-care-unit/critical-care-root'), options);
+
+export const criticalCareUnitDashboardLink = getAsyncLifecycle(
+  () => import('./side-nav-menu/critical-care-nav-links'),
+  options,
+);
