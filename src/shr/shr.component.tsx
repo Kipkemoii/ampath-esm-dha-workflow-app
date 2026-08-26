@@ -142,7 +142,7 @@ const SharedHealthRecord: React.FC<SharedHealthRecordProps> = ({ patientUuid: pa
       try {
         const records = await fetchPatientRecords({
           crId,
-          resourceTypes: resourceTypes.map((entry) => entry.resourceType),
+          resourceTypes: Array.from(new Set(resourceTypes.map((entry) => entry.resourceType))),
           locationUuid,
           consentToken: activeGrant.consentToken,
         });

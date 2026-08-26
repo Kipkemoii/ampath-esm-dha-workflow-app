@@ -354,9 +354,14 @@ export interface ShrServiceRequest extends ShrResourceBase {
 export interface ShrObservation extends ShrResourceBase {
   resourceType: 'Observation';
   status?: string;
+  /** e.g. a "vital-signs" or "exam" coding — what splits Observations across tabs. See `ShrResourceTypeConfig.categoryCode`. */
+  category?: ShrCodeableConcept[];
   code?: ShrCodeableConcept;
   subject?: ShrReference;
   encounter?: ShrReference;
+  /** The body region a physical-exam finding was recorded against. */
+  bodySite?: ShrCodeableConcept;
+  extension?: Array<{ url?: string; valueBoolean?: boolean }>;
   valueCodeableConcept?: ShrCodeableConcept;
   /**
    * Only `valueCodeableConcept` is confirmed on the payloads seen so far. The

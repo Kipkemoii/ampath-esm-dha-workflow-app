@@ -189,24 +189,21 @@ export const configSchema = {
     _type: Type.Array,
     _default: ["POMSF", "USALAMA", "TSC"]
   },
-  /**
-   * Which FHIR resource types the SHR record viewer requests and how it labels them.
-   *
-   * Only the types with shapes confirmed against this HIE/SHR backend are defaulted on.
-   * `AllergyIntolerance`, `Immunization` and `DocumentReference` are deliberately absent —
-   * there is no evidence the SHR returns them yet. Adding a category later should be a
-   * config change only, once the SHR backend owner confirms it is supported.
-   */
   shrResourceTypes: {
     _type: Type.Array,
     _description:
       'FHIR resource types to request from the SHR patient-records endpoint, and how ' +
-      'to label them as tabs in the viewer. Order controls tab order.',
+      'to label them as tabs in the viewer. Order controls tab order. Observation ' +
+      'categories not listed here still appear, labelled from the payload — see ' +
+      'categoryCode.',
     _default: [
       { resourceType: 'Condition', label: 'Conditions' },
       { resourceType: 'MedicationRequest', label: 'Medications' },
       { resourceType: 'Encounter', label: 'Encounters' },
-      { resourceType: 'Observation', label: 'Lab results' },
+      { resourceType: 'Observation', label: 'Vitals', categoryCode: 'vital-signs' },
+      { resourceType: 'Observation', label: 'Exam findings', categoryCode: 'exam' },
+      { resourceType: 'Observation', label: 'Lab results', categoryCode: 'laboratory' },
+      { resourceType: 'Observation', label: 'Other observations' },
       { resourceType: 'ServiceRequest', label: 'Requests' },
       { resourceType: 'Specimen', label: 'Specimens' },
     ],
@@ -218,6 +215,13 @@ export const configSchema = {
       label: {
         _type: Type.String,
         _description: 'Clinician-facing tab label for this resource type, e.g. "Medications".',
+      },
+      categoryCode: {
+        _type: Type.String,
+        _description:
+          'Optional FHIR category code (e.g. "vital-signs", "exam") to split one resourceType across ' +
+          'several tabs. Leave unset on one entry per resourceType to catch whatever no other entry claims.',
+        _default: '',
       },
     },
   },
@@ -251,6 +255,25 @@ export const configSchema = {
 export interface ShrResourceTypeConfig {
   resourceType: string;
   label: string;
+  /**
+   * Optional: restrict this category to resources whose `category[].coding[].code`
+   * includes this value (e.g. `"vital-signs"`, `"exam"`, `"laboratory"`). Lets one
+   * FHIR `resourceType` be split across several tabs — `Observation` is every
+   * kind of observation in FHIR, told apart only by this code.
+   *
+   * This list does **not** have to be exhaustive. Any category present in the
+   * payload that no entry here claims still gets its own tab, labelled from the
+   * data (see `buildCategories` in `shr-viewer/shr-categories.ts`) — so listing a
+   * code here is about choosing its wording and position, not about making it
+   * visible. `Observation.category` has a *preferred*, not required, binding in
+   * FHIR R4, so an SHR can and does send codes outside the standard value set.
+   *
+   * An entry with no `categoryCode`, for a `resourceType` that some other entry
+   * splits by category, holds only the resources carrying no category at all —
+   * not "everything else". For a `resourceType` nothing splits, it holds every
+   * resource of that type as usual.
+   */
+  categoryCode?: string;
 }
 
 export type Config = {

@@ -12,6 +12,7 @@ import type {
   ShrServiceRequest,
   ShrSpecimen,
 } from '../shr.types';
+import { lookupCodeDisplay } from '../shr-terminology.resource';
 
 /**
  * Plain-language presentation of SHR resources.
@@ -57,7 +58,11 @@ interface ResourcePresenter {
 
 // ── small formatting helpers ─────────────────────────────────────────────────
 
-/** Human text for a codeable concept: its text, else a coding's display, else its code. */
+/**
+ * Human text for a codeable concept: its text, else a coding's display, else a
+ * display resolved from the coding's own `system` (see `shr-terminology.resource`),
+ * else its bare code.
+ */
 export function conceptText(concept?: ShrCodeableConcept): string {
   if (!concept) {
     return '';
@@ -66,7 +71,8 @@ export function conceptText(concept?: ShrCodeableConcept): string {
     return concept.text.trim();
   }
   const coding = concept.coding?.find((c) => c?.display?.trim()) ?? concept.coding?.find((c) => c?.code?.trim());
-  return (coding?.display || coding?.code || '').trim();
+  const resolved = lookupCodeDisplay(coding?.system, coding?.code);
+  return (coding?.display || resolved || coding?.code || '').trim();
 }
 
 function conceptList(concepts?: ShrCodeableConcept[]): string {
@@ -111,6 +117,13 @@ function referenceName(ref?: ShrReference): string {
 
 function referenceNames(refs?: ShrReference[]): string {
   return (refs ?? []).map(referenceName).filter(Boolean).join(', ');
+}
+
+/** True when `resource.extension[]` carries the given url suffix with `valueBoolean: true`. */
+function hasBooleanExtension(resource: any, urlSuffix: string): boolean {
+  return (resource?.extension ?? []).some(
+    (ext: any) => typeof ext?.url === 'string' && ext.url.endsWith(urlSuffix) && ext.valueBoolean === true,
+  );
 }
 
 function noteText(notes?: ShrAnnotation[]): string {
@@ -324,6 +337,74 @@ const observationPresenter: ResourcePresenter = {
   }),
 };
 
+const vitalSignPresenter: ResourcePresenter = {
+  columns: [
+    { key: 'vitalSign', header: 'Vital sign' },
+    { key: 'result', header: 'Reading' },
+    { key: 'status', header: 'Status' },
+    { key: 'date', header: 'Recorded' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrObservation) => firstDate(r.effectiveDateTime, r.effectivePeriod?.start, r.issued),
+  present: (r: ShrObservation) => ({
+    cells: {
+      vitalSign: conceptText(r.code),
+      result: observationResult(r),
+      status: humanise(r.status),
+      date: formatDay(firstDate(r.effectiveDateTime, r.effectivePeriod?.start, r.issued)),
+    },
+    details: fields([
+      ['Vital sign', conceptText(r.code)],
+      ['Reading', observationResult(r)],
+      ['Status', humanise(r.status)],
+      ['What it means', conceptList(r.interpretation)],
+      ['Recorded at', formatMoment(firstDate(r.effectiveDateTime, r.effectivePeriod?.start))],
+      ['Reported', formatMoment(r.issued)],
+      ['Recorded during', referenceName(r.encounter)],
+      ['Notes', noteText(r.note)],
+    ]),
+  }),
+};
+
+const examFindingPresenter: ResourcePresenter = {
+  columns: [
+    { key: 'bodyRegion', header: 'Body region' },
+    { key: 'finding', header: 'Finding' },
+    { key: 'status', header: 'Status' },
+    { key: 'date', header: 'Recorded' },
+  ],
+  statusColumn: 'status',
+  sortDate: (r: ShrObservation) => firstDate(r.effectiveDateTime, r.effectivePeriod?.start, r.issued),
+  present: (r: ShrObservation) => {
+    const noFindings = hasBooleanExtension(r, 'em-no-findings-on-exam');
+    // Not humanised: `conceptText` already resolves this to the SHA code
+    // system's own display (e.g. "Lower extremities") when reachable, which
+    // reads correctly as-is; if the lookup couldn't run, it falls back to the
+    // bare code (e.g. "XA45A6"), and title-casing that would read worse
+    // ("Xa45a6"), not better.
+    const bodyRegion = conceptText(r.bodySite) || conceptText(r.code);
+    const finding = noFindings ? 'No findings' : humanise(observationResult(r));
+    return {
+      cells: {
+        bodyRegion,
+        finding,
+        status: humanise(r.status),
+        date: formatDay(firstDate(r.effectiveDateTime, r.effectivePeriod?.start, r.issued)),
+      },
+      details: fields([
+        ['Body region', bodyRegion],
+        ['Finding', finding],
+        ['Status', humanise(r.status)],
+        ['What it means', conceptList(r.interpretation)],
+        ['Recorded at', formatMoment(firstDate(r.effectiveDateTime, r.effectivePeriod?.start))],
+        ['Reported', formatMoment(r.issued)],
+        ['Recorded during', referenceName(r.encounter)],
+        ['Notes', noteText(r.note)],
+      ]),
+    };
+  },
+};
+
 const serviceRequestPresenter: ResourcePresenter = {
   columns: [
     { key: 'request', header: 'Request' },
@@ -476,17 +557,34 @@ const PRESENTERS: Record<string, ResourcePresenter> = {
   Patient: patientPresenter,
 };
 
-export function columnsFor(resourceType: string): ShrColumn[] {
-  return (PRESENTERS[resourceType] ?? fallbackPresenter).columns;
+/**
+ * Presenter overrides keyed by `ShrResourceTypeConfig.categoryCode` — lets a
+ * category-split tab (Vitals, Exam findings) render differently from the plain
+ * `resourceType` presenter its siblings use.
+ */
+const CATEGORY_PRESENTERS: Record<string, ResourcePresenter> = {
+  'vital-signs': vitalSignPresenter,
+  exam: examFindingPresenter,
+};
+
+function presenterFor(resourceType: string, categoryCode?: string): ResourcePresenter {
+  if (categoryCode && CATEGORY_PRESENTERS[categoryCode]) {
+    return CATEGORY_PRESENTERS[categoryCode];
+  }
+  return PRESENTERS[resourceType] ?? fallbackPresenter;
 }
 
-export function statusColumnFor(resourceType: string): string | undefined {
-  return (PRESENTERS[resourceType] ?? fallbackPresenter).statusColumn;
+export function columnsFor(resourceType: string, categoryCode?: string): ShrColumn[] {
+  return presenterFor(resourceType, categoryCode).columns;
+}
+
+export function statusColumnFor(resourceType: string, categoryCode?: string): string | undefined {
+  return presenterFor(resourceType, categoryCode).statusColumn;
 }
 
 /** Turn the resources of one category into sorted, display-ready table rows. */
-export function buildRows(resourceType: string, resources: ShrAnyResource[]): ShrRow[] {
-  const presenter = PRESENTERS[resourceType] ?? fallbackPresenter;
+export function buildRows(resourceType: string, resources: ShrAnyResource[], categoryCode?: string): ShrRow[] {
+  const presenter = presenterFor(resourceType, categoryCode);
   return resources
     .map((resource, index) => {
       const { cells, details } = presenter.present(resource);
@@ -497,7 +595,7 @@ export function buildRows(resourceType: string, resources: ShrAnyResource[]): Sh
       return {
         // Never rendered — Carbon just needs a unique, stable row key. The index
         // keeps it unique even when two resources share a FHIR id.
-        id: `${resourceType}-${index}-${(resource as any)?.id ?? ''}`,
+        id: `${resourceType}-${categoryCode ?? ''}-${index}-${(resource as any)?.id ?? ''}`,
         cells: filled,
         details,
         statusKey: presenter.statusColumn,

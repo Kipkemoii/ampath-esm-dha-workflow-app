@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { openmrsFetch, restBaseUrl } from '@openmrs/esm-framework';
 import { getHieBaseUrl } from '../shared/utils/get-base-url';
 import { IdentifierTypesUuids } from '../resources/identifier-types';
+import { primeCodeSystems } from './shr-terminology.resource';
 import {
   ShrApiError,
   type ActiveConsentResponse,
@@ -109,7 +110,13 @@ export async function fetchPatientRecords({
       method: 'GET',
       headers: { 'X-Consent-Token': consentToken },
     });
-    return summariseRecords(response?.data);
+    const records = summariseRecords(response?.data);
+    // Best-effort: resolves display text (e.g. "Lower extremities") for codings
+    // the SHR sent bare (e.g. body-region code "XA45A6"), by fetching the FHIR
+    // CodeSystem each such coding's own `system` points to. Never throws — a
+    // slow or unreachable terminology server just leaves those codes unresolved.
+    await primeCodeSystems(records.resources);
+    return records;
   } catch (err) {
     throw normalizeError(err);
   }

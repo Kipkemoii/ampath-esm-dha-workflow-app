@@ -14,14 +14,15 @@ import {
   TableHeader,
   TableRow,
   Tab,
-  TabList,
+  TabListVertical,
   TabPanel,
   TabPanels,
-  Tabs,
+  TabsVertical,
   Tag,
   Tile,
 } from '@carbon/react';
 import {
+  Activity,
   Calendar,
   Chemistry,
   Dashboard,
@@ -32,11 +33,13 @@ import {
   Microscope,
   Renew,
   Report,
+  Stethoscope,
   User,
 } from '@carbon/react/icons';
 import { useTranslation } from 'react-i18next';
 import type { ShrResourceTypeConfig } from '../../config-schema';
 import type { ShrAnyResource, ShrRecordSet } from '../shr.types';
+import { buildCategories, type ShrCategory } from './shr-categories';
 import { buildRows, columnsFor, formatMoment, statusColumnFor, statusTagType, NOT_RECORDED } from './shr-presentation';
 import styles from './shr-viewer.scss';
 
@@ -59,6 +62,31 @@ const CATEGORY_ICONS: Record<string, React.ElementType> = {
   Specimen: Microscope,
   Patient: User,
 };
+
+/** `categoryCode` → tab icon, checked before `CATEGORY_ICONS` so a category split off of a
+ *  resourceType (e.g. Vitals off of Observation) gets its own icon instead of its sibling's. */
+const CATEGORY_CODE_ICONS: Record<string, React.ElementType> = {
+  'vital-signs': Activity,
+  exam: Stethoscope,
+};
+
+function iconFor(category: ShrCategory): React.ElementType {
+  return (
+    (category.categoryCode && CATEGORY_CODE_ICONS[category.categoryCode]) ||
+    CATEGORY_ICONS[category.resourceType] ||
+    DocumentBlank
+  );
+}
+
+/**
+ * Unique key for a category tab — `resourceType` alone collides once one
+ * resourceType is split by `categoryCode` (Vitals and Exam findings are both
+ * `Observation`). A configured catch-all and the uncategorised safety net would
+ * both key as `Observation:`, but `buildCategories` only ever emits one of them.
+ */
+function categoryKey(category: ShrCategory): string {
+  return `${category.resourceType}:${category.categoryCode ?? ''}`;
+}
 
 interface ShrViewerProps {
   recordSet: ShrRecordSet;
@@ -100,28 +128,15 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(0);
 
-  /** Resources bucketed by the configured categories, in config order. */
-  const categories = useMemo(() => {
-    const byType = new Map<string, ShrAnyResource[]>();
-    recordSet.resources.forEach((resource) => {
-      const type = resource?.resourceType;
-      if (!type) {
-        return;
-      }
-      const bucket = byType.get(type);
-      if (bucket) {
-        bucket.push(resource);
-      } else {
-        byType.set(type, [resource]);
-      }
-    });
-
-    return resourceTypes.map(({ resourceType, label }) => ({
-      resourceType,
-      label,
-      resources: byType.get(resourceType) ?? [],
-    }));
-  }, [recordSet.resources, resourceTypes]);
+  /**
+   * Resources bucketed into tabs: the configured categories in config order,
+   * then any further category found in the payload. See `buildCategories`.
+   */
+  const uncategorisedLabel = t('shrUncategorisedRecords', 'Uncategorised');
+  const categories = useMemo(
+    () => buildCategories(recordSet.resources, resourceTypes, { uncategorisedLabel }),
+    [recordSet.resources, resourceTypes, uncategorisedLabel],
+  );
 
   const totalRecords = recordSet.resources.length;
   const populatedCategories = categories.filter((category) => category.resources.length > 0).length;
@@ -216,65 +231,89 @@ const ShrViewer: React.FC<ShrViewerProps> = ({
       </div>
 
       <div className={styles.tabs}>
-        <Tabs selectedIndex={selectedTab} onChange={({ selectedIndex }) => setSelectedTab(selectedIndex ?? 0)}>
-          <TabList
-            aria-label={t('shrCategories', 'Shared health record categories')}
-            contained
-            scrollDebounceWait={200}
-          >
+        <TabsVertical
+          selectedIndex={selectedTab}
+          onChange={({ selectedIndex }) => setSelectedTab(selectedIndex ?? 0)}
+        >
+          {/* `sm` — Carbon defaults vertical tabs to `xl` (64px rows), which is far
+              taller than this app's own navigation and makes a rail of this many
+              categories dominate the pane. `sm` also clamps labels to one line. */}
+          <TabListVertical aria-label={t('shrCategories', 'Shared health record categories')} size="sm">
             <Tab renderIcon={Dashboard}>{t('summary', 'Summary')}</Tab>
             {categories.map((category) => {
-              const Icon = CATEGORY_ICONS[category.resourceType] ?? DocumentBlank;
+              const Icon = iconFor(category);
               return (
-                <Tab key={category.resourceType} renderIcon={Icon}>
-                  {`${category.label} ${category.resources.length}`}
+                <Tab key={categoryKey(category)} renderIcon={Icon}>
+                  {/* Two spans so the count can sit hard right against the label's
+                      left. The whitespace between them is dropped by the flex
+                      container but keeps the accessible name reading "Vitals 5". */}
+                  <span className={styles.railLabel}>{category.label}</span>{' '}
+                  <span className={category.resources.length ? styles.railCount : styles.railCountEmpty}>
+                    {category.resources.length}
+                  </span>
                 </Tab>
               );
             })}
-          </TabList>
+          </TabListVertical>
           <TabPanels>
             <TabPanel>
-              <div className={styles.summaryPanel}>
-                {categories.map((category) => {
-                  const Icon = CATEGORY_ICONS[category.resourceType] ?? DocumentBlank;
+              {/* Cards rather than full-width rows: stretched rows put each count
+                  an entire pane-width away from its own label. Each one selects
+                  its category, so the overview doubles as a way in rather than
+                  repeating the rail for nothing. */}
+              <div className={styles.summaryGrid}>
+                {categories.map((category, index) => {
+                  const Icon = iconFor(category);
+                  const count = category.resources.length;
                   return (
-                    <div className={styles.summaryRow} key={category.resourceType}>
-                      <span className={styles.summaryLabel}>
+                    <button
+                      type="button"
+                      key={categoryKey(category)}
+                      className={count ? styles.summaryCard : styles.summaryCardEmpty}
+                      // +1 — the Summary tab itself is index 0.
+                      onClick={() => setSelectedTab(index + 1)}
+                    >
+                      <span className={styles.summaryCardLabel}>
                         <Icon size={16} />
                         {category.label}
-                      </span>
-                      <span className={styles.summaryCount}>{category.resources.length}</span>
-                    </div>
+                      </span>{' '}
+                      <span className={styles.summaryCardCount}>{count}</span>
+                    </button>
                   );
                 })}
               </div>
             </TabPanel>
             {categories.map((category) => (
-              <TabPanel key={category.resourceType}>
+              <TabPanel key={categoryKey(category)}>
                 <CategoryTable
                   resourceType={category.resourceType}
+                  categoryCode={category.categoryCode}
                   label={category.label}
                   resources={category.resources}
                 />
               </TabPanel>
             ))}
           </TabPanels>
-        </Tabs>
+        </TabsVertical>
       </div>
     </div>
   );
 };
 
 /** One category's expandable table. Expanding a row reveals a plain-language detail panel. */
-const CategoryTable: React.FC<{ resourceType: string; label: string; resources: ShrAnyResource[] }> = ({
-  resourceType,
-  label,
-  resources,
-}) => {
+const CategoryTable: React.FC<{
+  resourceType: string;
+  categoryCode?: string;
+  label: string;
+  resources: ShrAnyResource[];
+}> = ({ resourceType, categoryCode, label, resources }) => {
   const { t } = useTranslation();
-  const headers = useMemo(() => columnsFor(resourceType), [resourceType]);
-  const statusColumn = useMemo(() => statusColumnFor(resourceType), [resourceType]);
-  const rows = useMemo(() => buildRows(resourceType, resources), [resourceType, resources]);
+  const headers = useMemo(() => columnsFor(resourceType, categoryCode), [resourceType, categoryCode]);
+  const statusColumn = useMemo(() => statusColumnFor(resourceType, categoryCode), [resourceType, categoryCode]);
+  const rows = useMemo(
+    () => buildRows(resourceType, resources, categoryCode),
+    [resourceType, resources, categoryCode],
+  );
   const detailsById = useMemo(() => new Map(rows.map((row) => [row.id, row.details])), [rows]);
   const tableRows = useMemo(() => rows.map((row) => ({ id: row.id, ...row.cells })), [rows]);
 
