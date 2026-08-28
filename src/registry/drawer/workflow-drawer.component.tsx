@@ -52,6 +52,9 @@ import { getReadableErrorMessage } from '../utils/error-handler';
 import { fetchPomsfBalance } from '../../claims/claims.resource';
 import { type PomsfBalance } from '../../claims';
 import { formatKes, getAllPomsfBenefitBalances, getPomsfDisplayBalance, isPomsfActive } from './pomsf-balance.util';
+import EmergencySlotComponent from '../emergency/emergency-extension.component';
+import { generateReferenceNumber, type EmergencyFormData } from '../emergency/type';
+import { sendEmergencyClaimIdentified } from '../emergency/emergency.resource';
 
 type Phase =
   | 'biometric'
@@ -90,7 +93,7 @@ const WALK_IN_ROOMS = [];
 const NON_INSURANCE_PAYMENT_MODES = /cash|mpesa|m-pesa|waiver/i;
 
 // OpenMRS visit types (searchable).
-const VISIT_TYPE_OPTIONS = ['Outpatient', 'Inpatient'];
+const VISIT_TYPE_OPTIONS = ['Outpatient', 'Inpatient', 'Emergency'];
 
 // Keys that still have to work while an option is selected: menu navigation, commit
 // and dismiss. Everything else that would mutate the text is blocked below.
@@ -261,6 +264,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     room: false,
     insurance: false,
   });
+  const [emergencyForm, setEmergencyForm] = useState<EmergencyFormData>();
+  const [emergencyFormValid, setEmergencyFormValid] = useState(false);
   const markTouched = (field: RequiredField) => () =>
     setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
 
@@ -700,11 +705,35 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     }
   };
 
-  const handleStartVisit = () => {
+  const handleStartVisit = async () => {
     const usingInsurance = method === 'insurance';
 
     // CCC patients do not require a payment method selection.
     if (!room || !visitType || (!isCccPatient && usingInsurance && !insurance)) {
+      return;
+    }
+    if (visitType === 'Emergency') {
+      const res = await sendEmergencyClaimIdentified(
+        emergencyForm?.modeOfArrival,
+        emergencyForm?.broughtBy,
+        locationUuid,
+        emergencyForm?.interventionCode,
+        generateReferenceNumber(),
+        client?.id,
+        emergencyForm?.providerNationalId,
+        emergencyForm?.identificationType,
+        emergencyForm?.licensingBody,
+        emergencyForm?.notes,
+      );
+
+      if (!res.ok) {
+        showSnackbar({
+          kind: 'error',
+          title: 'An error occured while starting the visit',
+          subtitle: res.message,
+        });
+      }
+
       return;
     }
 
@@ -1419,6 +1448,15 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             ) : (
               <></>
             )}
+            <div className={styles.formSection}>
+              {visitType === 'Emergency' && (
+                <EmergencySlotComponent
+                  client={client}
+                  onFormChange={setEmergencyForm}
+                  onValidationChange={setEmergencyFormValid}
+                />
+              )}
+            </div>
           </div>
         </div>
 
@@ -1459,7 +1497,8 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                   !visitType ||
                   (!isCccPatient && hasCashPoint === false) ||
                   (!isCccPatient && method === 'cash' && hasCashMode === false) ||
-                  (!isCccPatient && method === 'insurance' && !insurance)
+                  (!isCccPatient && method === 'insurance' && !insurance) ||
+                  (visitType === 'Emergency' && !emergencyFormValid)
                 }
                 onClick={handleStartVisit}
               >

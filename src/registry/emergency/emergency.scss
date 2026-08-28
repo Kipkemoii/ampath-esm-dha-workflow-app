@@ -1,0 +1,110 @@
+@use '@carbon/layout';
+@use '@carbon/type';
+@use '@carbon/colors';
+@use '@openmrs/esm-styleguide/src/vars' as *;
+
+.otpBlock {
+  display: flex;
+  flex-direction: column;
+  gap: layout.$spacing-03;
+}
+
+.otpTitle {
+  @include type.type-style('heading-compact-01');
+  font-weight: 600;
+  color: $ui-05;
+  margin: 0;
+}
+
+.otpHint {
+  @include type.type-style('body-01');
+  color: $text-02;
+  margin: 0;
+}
+
+.otpInputs {
+  display: flex;
+  gap: layout.$spacing-03;
+  margin: layout.$spacing-04 0 layout.$spacing-03;
+}
+
+.otpDigit {
+  width: 2.75rem;
+
+  input {
+    text-align: center;
+    padding-inline: 0;
+    font-weight: 600;
+    font-size: 1.05rem;
+  }
+}
+
+.otpActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: flex-end;
+  gap: layout.$spacing-03;
+  margin-top: layout.$spacing-06;
+}
+
+// A clean, centred card for the "Send OTP" state.
+.otpCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  padding: 1rem 1.25rem 1.125rem;
+  border: 1px solid $ui-03;
+  border-radius: 8px;
+  background: $ui-01;
+
+  .otpTitle {
+    margin: 0.125rem 0 0;
+  }
+  .otpHint {
+    line-height: 1.35;
+  }
+  // Only the single-action (Send OTP) button; the Enter-OTP action row spaces itself.
+  > :global(.cds--btn) {
+    margin-top: layout.$spacing-06;
+  }
+}
+
+.otpIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  background: #edf5ff;
+  color: #0f62fe;
+  flex-shrink: 0;
+}
+
+// Send OTP action, floated to the right of the card with clear spacing above.
+.otpSend {
+  align-self: flex-end;
+  margin-top: layout.$spacing-05;
+}
+
+
+.dropDownContainer {
+    width: 400;
+    margin-bottom: 1rem
+}
+
+.dropDown {
+    height: auto;
+}
+
+.identifier {
+    display: flex;
+    gap: 1rem;
+}
+
+.identifierValue {
+    min-width: 18rem;
+}
