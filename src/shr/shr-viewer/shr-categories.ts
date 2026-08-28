@@ -48,14 +48,14 @@ export function hasCategoryCode(resource: ShrAnyResource, code: string): boolean
 
 /**
  * Clinician-facing name for a category nobody configured a label for: what the
- * payload itself said, else the display from the coding's own code system, else
- * the code made readable ("social-history" → "Social history").
+ * payload itself said, else the display from the bundled copy of the coding's
+ * own code system (see `shr-terminology.resource`), else the code made readable
+ * ("social-history" → "Social history").
  *
- * The middle step is what turns this SHR's `caller-reported` into "Caller
- * reported", since its category system is one of the resolvable
- * `/fhir/CodeSystem/` URLs (see `shr-terminology.resource`). The standard HL7
- * system is deliberately not fetched — its codes already read correctly once
- * humanised, and that is not worth making a clinical view wait on hl7.org.
+ * The middle step is what turns this SHR's `emt-assessed` into "Emergency
+ * practitioner assessed" — a display the humanised code could not have reached.
+ * Codes from systems we don't carry, HL7's own among them, fall through to
+ * humanising, which reads correctly for them anyway.
  */
 function discoveredLabel(coding: ShrCoding): string {
   return coding.display?.trim() || lookupCodeDisplay(coding.system, coding.code) || humanise(coding.code);

@@ -92,12 +92,14 @@ describe('buildCategories', () => {
 
   it('labels a discovered category from the payload’s own display when it has one', () => {
     const categories = buildCategories(
-      [observation('c', { system: SHA_CATEGORY, code: 'caller-reported', display: 'Caller reported' })],
+      [observation('c', { system: SHA_CATEGORY, code: 'caller-reported', display: 'Reported by caller' })],
       configured,
       UNCATEGORISED,
     );
 
-    expect(counts(categories)).toContainEqual(['Caller reported', 1]);
+    // Distinct from the bundled display ("Caller reported"), so this really does
+    // prove the payload's own display wins.
+    expect(counts(categories)).toContainEqual(['Reported by caller', 1]);
   });
 
   it('falls back to a readable form of a code it cannot resolve a display for', () => {
@@ -121,9 +123,12 @@ describe('buildCategories', () => {
       UNCATEGORISED,
     );
 
-    const discovered = counts(categories).filter(([label]) => ['Emt assessed', 'Survey'].includes(label));
+    // `emt-assessed` resolves to its bundled display rather than a humanised code.
+    const discovered = counts(categories).filter(([label]) =>
+      ['Emergency practitioner assessed', 'Survey'].includes(label),
+    );
     expect(discovered).toEqual([
-      ['Emt assessed', 2],
+      ['Emergency practitioner assessed', 2],
       ['Survey', 1],
     ]);
   });

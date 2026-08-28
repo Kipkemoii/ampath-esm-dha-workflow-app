@@ -59,9 +59,9 @@ interface ResourcePresenter {
 // ── small formatting helpers ─────────────────────────────────────────────────
 
 /**
- * Human text for a codeable concept: its text, else a coding's display, else a
- * display resolved from the coding's own `system` (see `shr-terminology.resource`),
- * else its bare code.
+ * Human text for a codeable concept: its text, else a coding's display, else the
+ * display for its code in the bundled copy of its code system (see
+ * `shr-terminology.resource`), else its bare code.
  */
 export function conceptText(concept?: ShrCodeableConcept): string {
   if (!concept) {

@@ -1,111 +1,66 @@
-import { lookupCodeDisplay, primeCodeSystems } from './shr-terminology.resource';
+import { lookupCodeDisplay } from './shr-terminology.resource';
 import { conceptText } from './shr-viewer/shr-presentation';
-import type { ShrAnyResource } from './shr.types';
 
-/** Minimal fake FHIR CodeSystem response, shaped like the real `em-*` ones. */
-function fakeCodeSystemResponse(concepts: Array<{ code: string; display: string }>) {
-  return { resourceType: 'CodeSystem', content: 'complete', concept: concepts };
-}
+const UAT = 'https://nshr-uat.sha.go.ke/fhir/CodeSystem';
 
-function mockFetch(impl: jest.Mock) {
-  (global as any).fetch = impl;
-  return impl;
-}
-
-afterEach(() => {
-  jest.restoreAllMocks();
-  delete (global as any).fetch;
-});
-
-describe('primeCodeSystems / lookupCodeDisplay', () => {
-  it('fetches an unresolved coding’s own "/fhir/CodeSystem/" system and caches its concepts', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/one';
-    const fetchMock = mockFetch(
-      jest.fn().mockResolvedValue({ ok: true, json: async () => fakeCodeSystemResponse([{ code: 'X1', display: 'Example One' }]) }),
-    );
-
-    const resources: ShrAnyResource[] = [
-      { resourceType: 'Observation', code: { coding: [{ system, code: 'X1' }] } } as any,
-    ];
-    await primeCodeSystems(resources);
-
-    expect(fetchMock).toHaveBeenCalledTimes(1);
-    expect(fetchMock).toHaveBeenCalledWith(system, expect.objectContaining({ method: 'GET', credentials: 'omit' }));
-    expect(lookupCodeDisplay(system, 'X1')).toBe('Example One');
+describe('lookupCodeDisplay', () => {
+  it('resolves a bare vital-sign LOINC code from the bundled code systems', () => {
+    expect(lookupCodeDisplay(`${UAT}/em-vital-signs-loinc-cs`, '8480-6')).toBe('Systolic blood pressure');
+    expect(lookupCodeDisplay(`${UAT}/em-vital-signs-loinc-cs`, '8310-5')).toBe('Body temperature');
   });
 
-  it('flows through conceptText once resolved, matching how the presenters read it', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/two';
-    mockFetch(
-      jest.fn().mockResolvedValue({ ok: true, json: async () => fakeCodeSystemResponse([{ code: 'X2', display: 'Lower extremities' }]) }),
-    );
-
-    await primeCodeSystems([{ resourceType: 'Observation', bodySite: { coding: [{ system, code: 'X2' }] } } as any]);
-
-    expect(conceptText({ coding: [{ system, code: 'X2' }] })).toBe('Lower extremities');
+  it('resolves body-region and assessment-finding codes', () => {
+    expect(lookupCodeDisplay(`${UAT}/em-body-region`, 'XA45A6')).toBe('Lower extremities');
+    expect(lookupCodeDisplay(`${UAT}/em-body-assessment-finding`, 'rigidity')).toBe('Rigidity');
   });
 
-  it('does not fetch when the coding already carries its own display', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/three';
-    const fetchMock = mockFetch(jest.fn());
-
-    await primeCodeSystems([
-      { resourceType: 'Observation', code: { coding: [{ system, code: 'X3', display: 'Already here' }] } } as any,
-    ]);
-
-    expect(fetchMock).not.toHaveBeenCalled();
+  it('resolves the same system published under a different host, since lookup is keyed by CodeSystem id', () => {
+    // `em-crew-role` is published under `hie.go.ke` in UAT, and every system moves
+    // host again in production. Only the trailing id is stable.
+    expect(lookupCodeDisplay('http://hie.go.ke/fhir/CodeSystem/em-crew-role', 'paramedic')).toBe('Paramedic');
+    expect(lookupCodeDisplay('https://nshr.sha.go.ke/fhir/CodeSystem/em-body-region', 'XA20Q1')).toBe('Head');
   });
 
-  it('does not fetch a system whose canonical URL is not shaped like "/fhir/CodeSystem/"', async () => {
-    const fetchMock = mockFetch(jest.fn());
-
-    await primeCodeSystems([
-      {
-        resourceType: 'Encounter',
-        class: { system: 'http://terminology.hl7.org/CodeSystem/v3-ActEncounterCode', code: 'FLD' },
-      } as any,
-    ]);
-
-    expect(fetchMock).not.toHaveBeenCalled();
+  it('flows through conceptText, matching how the presenters read it', () => {
+    expect(conceptText({ coding: [{ system: `${UAT}/em-body-region`, code: 'XA45A6' }] })).toBe('Lower extremities');
   });
 
-  it('leaves the code unresolved, without throwing, when the fetch rejects', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/four';
-    mockFetch(jest.fn().mockRejectedValue(new Error('network down')));
-
-    await expect(
-      primeCodeSystems([{ resourceType: 'Observation', code: { coding: [{ system, code: 'X4' }] } } as any]),
-    ).resolves.toBeUndefined();
-
-    expect(lookupCodeDisplay(system, 'X4')).toBeUndefined();
+  it('prefers a display the coding already carries over the bundled one', () => {
+    expect(
+      conceptText({ coding: [{ system: `${UAT}/em-body-region`, code: 'XA45A6', display: 'Already here' }] }),
+    ).toBe('Already here');
   });
 
-  it('leaves the code unresolved, without throwing, on a non-ok response', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/five';
-    mockFetch(jest.fn().mockResolvedValue({ ok: false, json: async () => ({}) }));
-
-    await primeCodeSystems([{ resourceType: 'Observation', code: { coding: [{ system, code: 'X5' }] } } as any]);
-
-    expect(lookupCodeDisplay(system, 'X5')).toBeUndefined();
+  it('returns undefined for a system we do not carry, so callers fall back to the raw code', () => {
+    expect(lookupCodeDisplay(`${UAT}/not-a-bundled-system`, 'anything')).toBeUndefined();
   });
 
-  it('returns undefined for a system that was never primed', () => {
-    expect(lookupCodeDisplay('https://example.test/fhir/CodeSystem/never-primed', 'anything')).toBeUndefined();
+  it('returns undefined for a code missing from a system we do carry', () => {
+    expect(lookupCodeDisplay(`${UAT}/em-dispatch-priority`, 'P99')).toBeUndefined();
   });
 
-  it('finds an unresolved coding no matter where it sits in the resource tree', async () => {
-    const system = 'https://example.test/fhir/CodeSystem/six';
-    mockFetch(
-      jest.fn().mockResolvedValue({ ok: true, json: async () => fakeCodeSystemResponse([{ code: 'X6', display: 'Deeply Nested' }]) }),
-    );
+  it('returns undefined when either argument is missing', () => {
+    expect(lookupCodeDisplay(undefined, 'P1')).toBeUndefined();
+    expect(lookupCodeDisplay(`${UAT}/em-dispatch-priority`, undefined)).toBeUndefined();
+    expect(lookupCodeDisplay('', '')).toBeUndefined();
+  });
 
-    await primeCodeSystems([
-      {
-        resourceType: 'ServiceRequest',
-        reasonCode: [{ coding: [{ system, code: 'X6' }] }],
-      } as any,
-    ]);
+  it('does not resolve a generic terminology system that happens to share a code', () => {
+    expect(lookupCodeDisplay('http://loinc.org', '8480-6')).toBeUndefined();
+  });
 
-    expect(lookupCodeDisplay(system, 'X6')).toBe('Deeply Nested');
+  it('only trusts the trailing id when the URL actually names a CodeSystem', () => {
+    // The host and resource type are both discarded, so without this guard a bare
+    // word — or the ValueSet an IG publishes under the same id — would resolve.
+    expect(lookupCodeDisplay('em-body-region', 'XA20Q1')).toBeUndefined();
+    expect(lookupCodeDisplay(`${UAT.replace('/CodeSystem', '/ValueSet')}/em-body-region`, 'XA20Q1')).toBeUndefined();
+    expect(lookupCodeDisplay(`${UAT}/`, 'XA20Q1')).toBeUndefined();
+  });
+
+  it('does not mistake an inherited Object property for a display', () => {
+    // `code` is payload data and can name anything.
+    for (const code of ['constructor', 'toString', 'hasOwnProperty', '__proto__']) {
+      expect(lookupCodeDisplay(`${UAT}/em-body-region`, code)).toBeUndefined();
+    }
   });
 });

@@ -36,6 +36,34 @@ Keep `HIE_CLIAMS_BASE_URL` in `amrs-integrations/packages/hie-saf/.env` pointed 
 
 Do not commit localhost as the schema `_default` for `hieBaseUrl`.
 
+## SHR terminology (`shr-code-systems.json`)
+
+The SHR sends many codings bare — a `code` with no `display` (vital-sign LOINC
+codes, body regions, exam findings). Their `coding.system` is a resolvable FHIR
+`CodeSystem` URL, but the browser cannot fetch it: the O3 app shell's
+Content-Security-Policy `connect-src` does not list the SHA FHIR host, so the
+request is blocked before it is sent, and there is no `hie-saf` passthrough
+route for arbitrary terminology.
+
+So the concepts ship with the bundle, in
+[`src/shr/shr-code-systems.json`](./src/shr/shr-code-systems.json), keyed by
+CodeSystem **id** (the last path segment) so one copy is correct across UAT and
+production hosts. To refresh it after SHA publishes new codes:
+
+```sh
+yarn update-shr-code-systems                          # defaults to the UAT server
+yarn update-shr-code-systems --server https://host/fhir
+```
+
+Only the `em-*` systems are taken — the ones the SHR sends bare, and the ones
+whose displays are written for clinicians. The server's other ~110 systems are
+deliberately left out: the big catalogues (diagnoses, interventions, drugs)
+never arrive as bare codings, and several small ones carry displays that are
+worse than humanising the code (`knhts-contact-relationship-cs` maps `parent`
+to lowercase "parent"; `knhts-code-systems-cs` maps `loinc` to the URL
+"http://loinc.org"). A code we don't carry falls back to the raw code, which is
+better than confidently wrong text in a clinical view.
+
 ## Adapting the code
 
 1. Replace all instances of "template" with your frontend module's name

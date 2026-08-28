@@ -1,0 +1,363 @@
+{
+  "em-age-group": {
+    "adult": "Adult",
+    "paediatric": "Paediatric"
+  },
+  "em-agency-type": {
+    "ems": "Emergency medical services",
+    "fire": "Fire and rescue service",
+    "police": "Police service",
+    "security": "Security service",
+    "disaster-management": "Disaster management service",
+    "military": "Military service",
+    "community-response": "Community emergency response",
+    "other": "Other supporting agency"
+  },
+  "em-body-assessment-finding": {
+    "abrasion": "Abrasion",
+    "burn": "Burn",
+    "contusion": "Contusion",
+    "deformity": "Deformity",
+    "fracture": "Fracture",
+    "hemorrhage": "Hemorrhage",
+    "laceration": "Laceration",
+    "pain": "Pain",
+    "rigidity": "Rigidity",
+    "swelling": "Swelling",
+    "tenderness": "Tenderness",
+    "normal-finding": "Normal finding"
+  },
+  "em-body-region": {
+    "XA20Q1": "Head",
+    "XA7AA6": "Neck",
+    "XA55T2": "Chest",
+    "XA2P90": "Back and spine",
+    "XA6GV0": "Abdomen",
+    "XA8Y23": "Pelvis",
+    "XA4BA8": "Upper extremities",
+    "XA45A6": "Lower extremities"
+  },
+  "em-breathing-status": {
+    "normal": "Normal",
+    "labored": "Labored",
+    "gasping": "Gasping",
+    "absent": "Absent",
+    "unknown": "Unknown"
+  },
+  "em-caller-relationship": {
+    "self": "Self",
+    "parent": "Parent",
+    "spouse": "Spouse",
+    "sibling": "Sibling",
+    "relative": "Other relative",
+    "caregiver": "Caregiver",
+    "bystander": "Bystander",
+    "other": "Other",
+    "unknown": "Unknown"
+  },
+  "em-clinical-acuity": {
+    "red": "Red - Immediate",
+    "orange": "Orange - Very urgent",
+    "yellow": "Yellow - Urgent",
+    "green": "Green - Routine",
+    "blue": "Blue - Non-urgent",
+    "black": "Black - Deceased or expectant",
+    "unknown": "Unknown"
+  },
+  "em-crew-role": {
+    "crew-lead": "Crew lead",
+    "emergency-physician": "Emergency physician",
+    "paramedic": "Paramedic",
+    "emt": "Emergency medical technician",
+    "nurse": "Emergency nurse",
+    "driver": "Emergency vehicle driver",
+    "dispatcher": "Dispatcher",
+    "observer": "Observer",
+    "other": "Other crew role"
+  },
+  "em-destination-facility-type": {
+    "dispensary": "Dispensary",
+    "health-centre": "Health centre",
+    "hospital": "Hospital",
+    "emergency-centre": "Emergency centre",
+    "trauma-centre": "Trauma centre",
+    "maternity": "Maternity facility",
+    "mental-health-facility": "Mental health facility",
+    "specialist-facility": "Specialist facility",
+    "temporary-treatment-centre": "Temporary treatment centre",
+    "other": "Other destination facility"
+  },
+  "em-diagnosis-category": {
+    "chief-complaint": "Chief complaint",
+    "working-diagnosis": "Working diagnosis",
+    "differential-diagnosis": "Differential diagnosis",
+    "discharge-diagnosis": "Discharge diagnosis"
+  },
+  "em-dispatch-priority": {
+    "P1": "Priority 1 – Immediate",
+    "P2": "Priority 2 – Urgent",
+    "P3": "Priority 3 – Non-urgent",
+    "P4": "Priority 4 – Advice or scheduled response",
+    "unknown": "Unknown"
+  },
+  "em-emergency-centre-capability": {
+    "none": "No dedicated emergency centre",
+    "basic": "Basic emergency capability",
+    "intermediate": "Intermediate emergency capability",
+    "advanced": "Advanced emergency capability",
+    "trauma-centre": "Designated trauma centre",
+    "specialized": "Specialized emergency service",
+    "unknown": "Unknown emergency capability"
+  },
+  "em-encounter-class": {
+    "FLD": "Emergency medical services field response"
+  },
+  "em-facility-level": {
+    "level-1": "Level 1",
+    "level-2": "Level 2",
+    "level-3": "Level 3",
+    "level-4": "Level 4",
+    "level-5": "Level 5",
+    "level-6": "Level 6",
+    "unknown": "Unknown"
+  },
+  "em-gcs-eye-opening": {
+    "spontaneous": "Spontaneous",
+    "to-voice": "To voice",
+    "to-pain": "To pain",
+    "no-response": "No response"
+  },
+  "em-gcs-motor-response": {
+    "obeys-commands": "Obeys commands",
+    "localizes-pain": "Localizes pain",
+    "withdraws-from-pain": "Withdraws from pain",
+    "flexion-to-pain": "Flexion to pain (decorticate)",
+    "extension-to-pain": "Extension to pain (decerebrate)",
+    "no-response": "No response"
+  },
+  "em-gcs-verbal-response": {
+    "oriented": "Oriented",
+    "confused": "Confused",
+    "inappropriate-words": "Inappropriate words",
+    "incomprehensible-sounds": "Incomprehensible sounds",
+    "no-response": "No response"
+  },
+  "em-id-type": {
+    "national-id": "National ID",
+    "passport": "Passport",
+    "alien-id": "Alien ID",
+    "huduma-namba": "Huduma Namba"
+  },
+  "em-incident-type": {
+    "medical": "Medical emergency",
+    "trauma": "Trauma",
+    "obstetric": "Obstetric emergency",
+    "paediatric": "Paediatric emergency",
+    "mental-health": "Mental health emergency",
+    "mass-casualty": "Mass-casualty incident",
+    "fire": "Fire-related incident",
+    "road-traffic": "Road traffic incident",
+    "interfacility-transfer": "Inter-facility transfer",
+    "other": "Other emergency incident"
+  },
+  "em-investigation": {
+    "em-investigation": "EM Investigation"
+  },
+  "em-investigation-codes": {
+    "2339-0": "Glucose [Mass/volume] in Blood",
+    "25061-3": "US Unspecified body region",
+    "11524-6": "EKG study",
+    "19891-1": "Carbon dioxide [Partial pressure] in Exhaled gas --at end expiration",
+    "52484-3": "Arterial Blood Gases (ABGs)"
+  },
+  "em-observation-category": {
+    "caller-reported": "Caller reported",
+    "emt-assessed": "Emergency practitioner assessed"
+  },
+  "em-observation-code": {
+    "caller-consciousness": "Caller-reported level of consciousness",
+    "caller-breathing": "Caller-reported breathing status",
+    "caller-active-bleeding": "Caller-reported active bleeding"
+  },
+  "em-ownership-type": {
+    "government": "Government",
+    "private": "Private",
+    "ngo": "Non-governmental organization",
+    "other": "Other"
+  },
+  "em-participant-role": {
+    "reporter": "Reporter",
+    "dispatcher": "Dispatcher",
+    "supporting-agency": "Supporting agency",
+    "emt": "EMT / attending clinician"
+  },
+  "em-poc-encounter-type": {
+    "scene-care": "Scene care",
+    "transport-care": "Care during transport",
+    "scene-and-transport": "Scene and transport care",
+    "handover": "Facility handover",
+    "remote-clinical-support": "Remote clinical support"
+  },
+  "em-priority-level-cs": {
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "critical": "Critical"
+  },
+  "em-procedure-codes": {
+    "JB": "Drainage",
+    "HTB.MC.AH": "Closed chest cardiac massage",
+    "IDB.DL.AF": "Percutaneous transluminal insertion of device into vein of thorax",
+    "JBA.DL.AC": "Insertion of endotracheal tube",
+    "JZZ.JB.AC": "Suctioning of airways, not elsewhere classified",
+    "JAM.DL.AC": "Insertion of nasopharyngeal airway",
+    "NAI.DL.AD": "Insertion of device into urinary bladder",
+    "PZX.LC.AH": "Application of cast or splint, not elsewhere classified",
+    "JA": "Irrigation",
+    "HFC.SC.AH": "Conversion of cardiac arrhythmia",
+    "HT2.MC.AH": "Cardiopulmonary resuscitation",
+    "IZD.DL.AF": "Percutaneous transluminal insertion of device into vein, not elsewhere classified",
+    "JCB.JB.AE": "Percutaneous drainage of pleural cavity",
+    "JTB.DE.AC": "Artificial ventilation",
+    "KAR.DL.AC": "Insertion of oropharyngeal airway",
+    "KAR.JB.AC": "Oropharyngeal suctioning"
+  },
+  "em-referral-category": {
+    "patient-transport": "Patient Transport",
+    "emergency-evacuation": "Emergency Evacuation"
+  },
+  "em-referral-reason": {
+    "inter-facility": "Inter-facility Transfer",
+    "scene-response": "Scene response and primary evacuation",
+    "repatriation": "Repatriation",
+    "unknown": "Unknown"
+  },
+  "em-responder-unit-type": {
+    "ambulance": "Ambulance",
+    "advanced-life-support": "Advanced life-support ambulance",
+    "basic-life-support": "Basic life-support ambulance",
+    "patient-transport": "Patient transport vehicle",
+    "rapid-response": "Rapid-response vehicle",
+    "motorcycle": "Emergency-response motorcycle",
+    "air-ambulance": "Air ambulance",
+    "boat-ambulance": "Boat ambulance",
+    "command-unit": "Command unit",
+    "other": "Other responder unit"
+  },
+  "em-scene-location-type": {
+    "residence": "Residence",
+    "road": "Road or highway",
+    "workplace": "Workplace",
+    "school": "School or educational institution",
+    "health-facility": "Health facility",
+    "public-place": "Public place",
+    "industrial-site": "Industrial site",
+    "farm": "Farm or agricultural location",
+    "water-body": "Water body",
+    "remote-area": "Remote or difficult-to-access area",
+    "unknown": "Unknown location type",
+    "other": "Other scene location"
+  },
+  "em-secondary-survey-region": {
+    "XA20Q1": "Head",
+    "XA7AA6": "Neck",
+    "XA55T2": "Chest",
+    "XA2P90": "Back and Spine",
+    "XA6GV0": "Abdomen",
+    "XA8Y23": "Pelvis",
+    "XA4BA8": "Upper Extremities",
+    "XA45A6": "Lower Extremities",
+    "XJ652": "Abrasions",
+    "NE2Z": "Burn",
+    "XJ9NV": "Contusion",
+    "LA18225-5": "Deformity",
+    "LA7437-2": "Fracture",
+    "LA7418-2": "Hemorrhage",
+    "LA7452-1": "Laceration",
+    "MG3Z": "Pain",
+    "LA23815-6": "Rigidity",
+    "LA22440-4": "Swelling",
+    "LA17709-9": "Tenderness",
+    "LA6626-1": "Normal Finding",
+    "35088-4": "Glasgow Coma Scale (GCS)",
+    "9267-6": "Eye Opening",
+    "XC3W": "Spontaneous",
+    "XC5L": "To Voice",
+    "XC3H": "To Pain",
+    "XC87": "No Response",
+    "9268-4": "Motor Response",
+    "XC4L": "Obeys Commands",
+    "XC6J": "Localizes Pain",
+    "XC8Q": "Withdraws From Pain",
+    "XC8W": "Flexion to Pain (Decorticate)",
+    "XC8H": "Extension to Pain (Decerebrate)",
+    "XC34": "No Response",
+    "9270-0": "Verbal Response",
+    "XC2X": "Oriented",
+    "XC4Y": "Confused",
+    "XC4A": "Inappropriate Words",
+    "XC7U": "Incomprehensible Sounds",
+    "XC8U": "No Response"
+  },
+  "em-source-gcs-eye-opening": {
+    "XC3W": "Spontaneous",
+    "XC5L": "To Voice",
+    "XC3H": "To Pain",
+    "XC87": "No Response"
+  },
+  "em-source-gcs-motor-response": {
+    "XC87": "Obeys Commands",
+    "XC6J": "Localizes Pain",
+    "XC8Q": "Withdraws From Pain",
+    "XC8W": "Flexion to Pain (Decorticate)",
+    "XC8H": "Extension to Pain (Decerebrate)",
+    "XC34": "No Response"
+  },
+  "em-source-gcs-verbal-response": {
+    "XC2X": "Oriented",
+    "XC4Y": "Confused",
+    "XC4A": "Inappropriate Words",
+    "XC7U": "Incomprehensible Sounds",
+    "XC8U": "No Response"
+  },
+  "em-transport-modality": {
+    "road": "Patient Transport",
+    "emergency-evacuation": "Emergency Evacuation"
+  },
+  "em-unit-response-status": {
+    "dispatched": "Dispatched",
+    "en-route": "En route",
+    "on-scene": "On scene",
+    "transporting": "Transporting",
+    "at-facility": "At facility",
+    "stood-down": "Stood down"
+  },
+  "em-vital-qualitative-state": {
+    "weak": "Weak",
+    "strong": "Strong",
+    "bounding": "Bounding",
+    "thready": "Thready",
+    "regular": "Regular",
+    "irregular": "Irregular",
+    "labored": "Labored",
+    "shallow": "Shallow",
+    "normal": "Normal"
+  },
+  "em-vital-signs-loinc-cs": {
+    "8867-4": "Heart rate",
+    "9279-1": "Respiratory rate",
+    "8310-5": "Body temperature",
+    "59408-5": "Oxygen saturation by pulse oximetry",
+    "2708-6": "Oxygen saturation in arterial blood",
+    "8480-6": "Systolic blood pressure",
+    "8462-4": "Diastolic blood pressure",
+    "8478-0": "Mean blood pressure",
+    "29463-7": "Body weight",
+    "8302-2": "Body height",
+    "39156-5": "Body mass index",
+    "9843-4": "Head circumference",
+    "85353-1": "Vital signs panel",
+    "85354-9": "Blood pressure panel",
+    "9269-2": "Glasgow coma score"
+  }
+}
