@@ -20,7 +20,7 @@ import BillItemPaymentModal from '../modals/bill-item-payment/bill-item-payment.
 import AddClaimLineModal from '../modals/add-claim-line/add-claim-line.modal';
 import { type AmrsVisitDiagnosis } from '../../../../types';
 import VisitDiagnosisDetails from '../visit-diagnosis-details/visit-diagnosis-details.component';
-import { useInvalidateProviderClaimPreview } from '../../../../billing-claims.resource';
+import { useInvalidatePatientBillDetails, useInvalidateProviderClaimPreview } from '../../../../billing-claims.resource';
 
 interface billDetailsProps {
   patientBillDetails: PatientFacilityBillDetails[];
@@ -44,6 +44,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
   const [selectedBillItem, setSelectedBillItem] = useState<PatientFacilityBillDetails | null>(null);
   const setDiagnosisInterventionCode = useMemo(() => getConsultationBillIntervantionCode(), [patientBillDetails]);
   const invalidateProviderClaimPreview = useInvalidateProviderClaimPreview();
+  const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
 
   const scopedBillDetails = patientBillDetails;
   const scopedPayments = patientPayments;
@@ -60,6 +61,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
     setShowPaymentModal(false);
   }
   function handleSuccessfullPayment() {
+    invalidatePatientBillDetails();
     handleClosePayModal();
   }
   function handleClaimLineAddition(patientBillDetail: PatientFacilityBillDetails) {
@@ -85,6 +87,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
   function onSuccess() {
     handleCloseAddClaimItemModal();
     invalidateProviderClaimPreview();
+    invalidatePatientBillDetails();
   }
 
   function interventionAddedToClaimLine(b: PatientFacilityBillDetails) {
@@ -136,7 +139,7 @@ const BillDetails: React.FC<billDetailsProps> = ({
                     <TableCell>{b.item_quantity}</TableCell>
                     <TableCell>Ksh {b.item_total_price}</TableCell>
                     <TableCell>
-                      {b.paid_status !== 'PAID' && !b.intervention_code && (
+                      {!(b.status == "PAID" || b.paid_status == "PAID") && !b.intervention_code && (
                         <Button size="sm" kind="tertiary" onClick={() => handleBillItemPayment(b)}>
                           Pay
                         </Button>

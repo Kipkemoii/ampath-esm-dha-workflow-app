@@ -37,7 +37,7 @@ const CashPatients: React.FC<CashPatientsProps> = ({ billingDate }) => {
 
   useEffect(() => {
     fetchAll();
-  }, [billingDate, locationUuid]);
+  }, [billingDate, locationUuid, patientUuid, visitUuid]);
 
   const mergedPatients: (ActiveCashVisit | PendingBillLineItems)[] = (() => {
     const pendingByVisitUuid = new Map(pendingBillItems.map((item) => [item.visit_uuid, item]));

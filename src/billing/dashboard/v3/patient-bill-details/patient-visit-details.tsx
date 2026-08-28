@@ -13,8 +13,10 @@ import {
   fetchPatientDiagnosis,
   fetchPatientEncounterDiagnosis,
   fetchPatientVisits,
+  useInvalidatePatientBillDetails,
+  usePatientBillDetails,
 } from '../../../billing-claims.resource';
-import { RadioButton, RadioButtonGroup, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
+import { InlineLoading, RadioButton, RadioButtonGroup, Tab, TabList, TabPanel, TabPanels, Tabs } from '@carbon/react';
 import { formatDate, parseDate, showSnackbar } from '@openmrs/esm-framework';
 
 import styles from './patient-visit.scss';
@@ -35,7 +37,6 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
 }) => {
   const [patientVisits, setPatientVisits] = useState<PatientBillVisit[]>([]);
   const [selectedVisitUuid, setSelectedVisitUuid] = useState<string>('');
-  const [patientBillDetails, setPatientBillDetails] = useState<PatientFacilityBillDetails[]>([]);
   const [claimDetails, setClaimDetails] = useState([]);
   const [claimsVisit, setClaimsVisit] = useState<ClaimsVisit>();
   const [patientBillPayments, setPatientBillPayments] = useState<PatientPayment[]>([]);
@@ -50,24 +51,20 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
   const [maternityDiagnosisLoading, setMaternityDiagnosisLoading] = useState<boolean>(true);
   const [encounterDiagnosisLoading, setEncounterDiagnosisLoading] = useState<boolean>(true);
   const diagnosisLoading = visitDiagnosisLoading || maternityDiagnosisLoading || encounterDiagnosisLoading;
-  const [consentToken,setConsentToken] = useState< string>('');
+  const [consentToken, setConsentToken] = useState<string>('');
+
+  const { results: patientBillDetails, isLoading, isValidating } = usePatientBillDetails(selectedVisitUuid);
+  const invalidatePatientBillDetails = useInvalidatePatientBillDetails();
 
   const getPatientVisits = async () => {
     const res = await fetchPatientVisits(patientUuid, billingDate, locationUuid);
     setPatientVisits(res);
-    if(res && res.length > 0){
-     const visit = res[0];
-     setSelectedVisitUuid(visit?.visit_uuid ?? '');
-     setConsentToken(visit.consent_token ?? '');
+    if (res && res.length > 0) {
+      const visit = res[0];
+      setSelectedVisitUuid(visit?.visit_uuid ?? '');
+      setConsentToken(visit.consent_token ?? '');
     }
-    
-  };
 
-  const getPatientBillDetails = async (visitUuid: string) => {
-    if (selectedVisitUuid) {
-      const res = await fetchPatientBillDetails(visitUuid ?? '');
-      setPatientBillDetails(res);
-    }
   };
 
   const handVisitTypeChange = (value: any) => {
@@ -80,17 +77,12 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
 
   useEffect(() => {
     if (locationUuid && patientUuid && billingDate) {
-      getPatientBillDetails(selectedVisitUuid);
       getPatientPayments();
       getPatientAmrsVisitDiagnosis();
       getPatientAmrsMaternityDiagnosis();
       getPatientAmrsEncounterDiagnosis();
     }
   }, [locationUuid, patientUuid, billingDate]);
-
-  useEffect(() => {
-    getPatientBillDetails(selectedVisitUuid);
-  }, [selectedVisitUuid]);
 
   useEffect(() => {
     if (patientUuid && locationUuid && billingDate) {
@@ -194,61 +186,69 @@ const PatientVisitDetailsComponent: React.FC<PatientVisitDetailsComponentProps> 
     };
   }
 
+  if (isLoading && !patientBillDetails) {
+    return <InlineLoading description='Loading bill details ...' />
+  }
+
+  if (isValidating && !patientBillDetails) {
+    return <InlineLoading description='Refreshing bill details ...' />
+  }
+
   return (
     <>
-    <div className={styles.visitDetailsLayout}>
-      <RadioButtonGroup 
-        name="patient-visits" 
-        onChange={handVisitTypeChange} 
-        defaultSelected={selectedVisitUuid}
+      <div className={styles.visitDetailsLayout}>
+        <RadioButtonGroup
+          name="patient-visits"
+          onChange={handVisitTypeChange}
+          defaultSelected={selectedVisitUuid}
         >
-        {patientVisits &&
-          patientVisits?.map((v) => {
-            return (
+          {patientVisits &&
+            patientVisits?.map((v) => {
+              return (
                 <RadioButton
                   id={v.visit_uuid}
                   labelText={`${v.visit_type}: ${v.date_started}`}
                   value={v.visit_uuid}
                 />
-            );
-          })}
-      </RadioButtonGroup>
-      {selectedVisitUuid && (
-        <Tabs>
-          <TabList scrollDebounceWait={200}>
-            <Tab>Bill Details</Tab>
-            <Tab>Claim</Tab>
-          </TabList>
-          <TabPanels>
-            <TabPanel>
-              {patientBillDetails && (
-                <BillDetails
-                  patientBillDetails={patientBillDetails}
-                  patientPayments={patientBillPayments}
-                  amrsVisitDiagnosis={patientAmrsVisitDiagnosis}
-                  locationUuid={locationUuid}
-                  consentToken={consentToken}
-                  claimsVisit={claimsVisit}
-                />
-              )}
-            </TabPanel>
-            <TabPanel>
-              {locationUuid && consentToken ? (
-                <PatientClaimDetails
-                  locationUuid={locationUuid}
-                  patientBillDetails={patientBillDetails}
-                  consentToken={consentToken ?? ''}
-                  onBillDetailsChange={()=>getPatientBillDetails(selectedVisitUuid)}
-                  billingDate={billingDate}
-                  onLoadingClaimVisit={onLoadingClaimVisit}
-                />
-              ) : (
-                <></>
-              )}
-            </TabPanel>
-          </TabPanels>
-        </Tabs>
-      )}
+              );
+            })}
+        </RadioButtonGroup>
+        {selectedVisitUuid && (
+          <Tabs>
+            <TabList scrollDebounceWait={200}>
+              <Tab>Bill Details</Tab>
+              <Tab>Claim</Tab>
+            </TabList>
+            <TabPanels>
+              <TabPanel>
+                {patientBillDetails && (
+                  <BillDetails
+                    patientBillDetails={patientBillDetails}
+                    patientPayments={patientBillPayments}
+                    amrsVisitDiagnosis={patientAmrsVisitDiagnosis}
+                    locationUuid={locationUuid}
+                    consentToken={consentToken}
+                    claimsVisit={claimsVisit}
+                  />
+                )}
+              </TabPanel>
+              <TabPanel>
+                {locationUuid && consentToken ? (
+                  <PatientClaimDetails
+                    locationUuid={locationUuid}
+                    patientBillDetails={patientBillDetails}
+                    consentToken={consentToken ?? ''}
+                    onBillDetailsChange={() => invalidatePatientBillDetails()}
+                    billingDate={billingDate}
+                    onLoadingClaimVisit={onLoadingClaimVisit}
+                  />
+                ) : (
+                  <></>
+                )}
+              </TabPanel>
+            </TabPanels>
+          </Tabs>
+        )}
       </div>
     </>
   );
