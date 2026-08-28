@@ -22,6 +22,7 @@
     "prepare": "husky install",
     "postinstall": "node ./tools/strip-openmrs-declaration-maps.mjs",
     "extract-translations": "i18next 'src/**/*.component.tsx' --config ./tools/i18next-parser.config.js",
+    "update-shr-code-systems": "node ./tools/fetch-shr-code-systems.mjs",
     "test-e2e": "playwright test"
   },
   "browserslist": [
