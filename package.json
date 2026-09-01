@@ -68,7 +68,7 @@
   },
   "devDependencies": {
     "@openmrs/esm-framework": "next",
-    "@openmrs/esm-patient-common-lib": "^12.3.5-pre.12060",
+    "@openmrs/esm-patient-common-lib": "next",
     "@openmrs/esm-styleguide": "next",
     "@playwright/test": "^1.52.0",
     "@swc/cli": "^0.3.12",

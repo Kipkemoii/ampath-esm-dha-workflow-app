@@ -1,3 +1,4 @@
+const path = require('path');
 const extendConfig = require('openmrs/default-webpack-config');
 
 // Some OpenMRS packages (notably `@openmrs/esm-patient-common-lib`) are
@@ -39,6 +40,24 @@ function excludeNodeModulesFromTypeCheck(config) {
   }
 }
 
+/**
+ * `openmrs develop` serves the production app-shell React, while this remote
+ * builds in development mode. @carbon/react then pulls
+ * react/jsx-*-runtime.development.js, which expects ReactDebugCurrentFrame
+ * (setExtraStackFrame) — missing on production React → runtime crash.
+ * Pin both jsx runtimes to the production builds used by the shell.
+ */
+function aliasProductionJsxRuntimes(config) {
+  const reactDir = path.dirname(require.resolve('react/package.json'));
+  const jsxRuntimeProd = path.join(reactDir, 'cjs/react-jsx-runtime.production.min.js');
+  config.resolve = config.resolve || {};
+  config.resolve.alias = {
+    ...(config.resolve.alias || {}),
+    'react/jsx-runtime': jsxRuntimeProd,
+    'react/jsx-dev-runtime': jsxRuntimeProd,
+  };
+}
+
 module.exports = (env, argv = {}) => {
   const config = extendConfig(env, argv);
 
@@ -49,6 +68,7 @@ module.exports = (env, argv = {}) => {
   }
 
   excludeNodeModulesFromTypeCheck(config);
+  aliasProductionJsxRuntimes(config);
 
   return config;
 };

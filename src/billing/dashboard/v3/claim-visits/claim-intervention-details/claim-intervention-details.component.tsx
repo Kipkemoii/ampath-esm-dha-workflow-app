@@ -14,6 +14,7 @@ import {
 import { launchWorkspace, showSnackbar, useSession } from '@openmrs/esm-framework';
 
 import { invalidatePreauthPreview, parseDocTypes, readSpecialtyFlags } from '../../../v2/preauth/preauth.resource';
+import { resolvePatientUuidFromCr } from '../../preauth/preauth.resource';
 import {
   interventionHasBlockingPreauth,
   interventionHasFailedPreauth,
@@ -22,7 +23,8 @@ import {
 
 interface claimInterventionDetailsProps {
   claimInterventions: VisitIntervention[];
-  patientBillDetails: PatientFacilityBillDetails;
+  patientBillDetails?: PatientFacilityBillDetails;
+  memberNumber?: string;
   consentToken: string;
   visitUuid: string;
   canSwitchIntervention?: boolean;
@@ -35,6 +37,7 @@ const isActiveIntervention = (iv: VisitIntervention) => (iv.workflow_state ?? ''
 const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
   claimInterventions,
   patientBillDetails,
+  memberNumber,
   consentToken,
   visitUuid,
   canSwitchIntervention = false,
@@ -105,7 +108,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       },
     });
   };
-  const handleRaisePreauth = (intervention: VisitIntervention) => {
+  const handleRaisePreauth = async (intervention: VisitIntervention) => {
     if (!canSwitchIntervention) {
       return;
     }
@@ -121,6 +124,12 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
       return;
     }
 
+    const crNo = (memberNumber || patientBillDetails?.cr_no || '').trim();
+    let patientUuid = (patientBillDetails?.patient_uuid || '').trim();
+    if (!patientUuid && crNo) {
+      patientUuid = await resolvePatientUuidFromCr(crNo);
+    }
+
     const requiredDocs = parseDocTypes(
       Array.isArray(intervention.required_preauth_document_types)
         ? (intervention.required_preauth_document_types as string[]).join(',')
@@ -133,13 +142,13 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
     // Fresh raise and failure-state resubmit both reopen the same preauth form.
     launchWorkspace('preauth-form-workspace', {
       consentToken,
-      patientUuid: patientBillDetails?.patient_uuid,
+      patientUuid,
       locationUuid,
       billItem: {
         intervention_code: intervention.intervention_code,
-        patient_uuid: patientBillDetails?.patient_uuid,
+        patient_uuid: patientUuid,
         patient_name: patientBillDetails?.patient_name,
-        cr_no: patientBillDetails?.patient_name,
+        cr_no: crNo,
         billable_service: intervention.intervention_name,
         item_price: Number(intervention.keph_level_tarrif) || patientBillDetails?.item_price || 0,
         item_quantity: patientBillDetails?.item_quantity ?? 1,
@@ -204,7 +213,7 @@ const ClaimInterventionDetails: React.FC<claimInterventionDetailsProps> = ({
                   </TableCell>
                   <TableCell>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem', padding: '0.15rem' }}>
-                      <Tag type='outline' disabled={!canRaise} onClick={() => handleRaisePreauth(ci)}>{raisePreauthLabel(ci)}</Tag>
+                      <Tag type='outline' disabled={!canRaise} onClick={() => void handleRaisePreauth(ci)}>{raisePreauthLabel(ci)}</Tag>
                       <Tag type='outline' disabled={!canSwitch} onClick={() => handleSwitchIntervention(ci)}>Switch intervention</Tag>
                     </div>
                   </TableCell>

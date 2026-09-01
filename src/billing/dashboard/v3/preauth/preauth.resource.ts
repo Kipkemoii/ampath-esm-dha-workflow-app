@@ -184,6 +184,22 @@ export async function fetchActiveVisitForPatient(patientUuid: string, locationUu
   return results?.[0] ?? null;
 }
 
+export async function resolvePatientUuidFromCr(crNumber: string | null | undefined): Promise<string> {
+  const identifier = String(crNumber ?? '').trim();
+  if (!identifier) return '';
+  try {
+    const qs = new URLSearchParams({
+      identifier,
+      v: 'custom:(uuid,identifiers:(identifier))',
+    });
+    const res = await openmrsFetch(`${restBaseUrl}/patient?${qs.toString()}`);
+    const results = (res?.data?.results ?? []) as Array<{ uuid?: string }>;
+    return String(results[0]?.uuid ?? '').trim();
+  } catch {
+    return '';
+  }
+}
+
 export async function fetchNormalPreauthBillItems(
   locationUuid: string,
   billingDate: string,
@@ -561,9 +577,23 @@ export function dateToServiceIso(date: Date | undefined, timeOrEndOfDay: string 
 /** POC Pre-authorization Form encounter type. */
 export const PREAUTH_FORM_UUID = 'cce578f6-b3e2-3077-91ab-9016cf0f4fa5';
 export const PREAUTH_ENCOUNTER_TYPE_UUID = '18b10189-a89f-430d-83e9-14663fef258c';
+/** Clinical encounter type — alternate source for Raise prefill (dx / notes / provider). */
+export const CLINICAL_ENCOUNTER_TYPE_UUID = '81166f83-1ee6-486e-8f56-aca528fc0fc0';
+/** OPD Triage — source for surgical vital_signs concat from today's visit. */
+export const OPD_TRIAGE_ENCOUNTER_TYPE_UUID = '8a43b09b-2d9f-487c-a1c3-d6bf220671a7';
 
 /** Clinical notes / indications concept — same UUID as admissions clinical notes. */
 export const CLINICAL_INDICATIONS_CONCEPT_UUID = '5e4dc798-2cce-4a1a-97e9-bcf22d64b07c';
+
+/** POC OPD Triage Vital Signs section concepts. */
+export const TRIAGE_VITALS_CONCEPTS = {
+  temperature: 'a8a65fee-1350-11df-a1f1-0026b9348838',
+  pulse: 'a8a65f12-1350-11df-a1f1-0026b9348838',
+  systolicBp: 'a8a65d5a-1350-11df-a1f1-0026b9348838',
+  diastolicBp: 'a8a65e36-1350-11df-a1f1-0026b9348838',
+  respiratoryRate: 'a8a6f71a-1350-11df-a1f1-0026b9348838',
+  oxygenSaturation: 'a8a66354-1350-11df-a1f1-0026b9348838',
+} as const;
 
 export const PREAUTH_FORM_CONCEPTS = {
   typeOfIntervention: 'aea44bfb-c8b1-4cce-b891-af74181d0f57',
@@ -594,14 +624,9 @@ export const PREAUTH_FORM_CONCEPTS = {
   yes: 'a899b35c-1350-11df-a1f1-0026b9348838',
   no: 'a899b42e-1350-11df-a1f1-0026b9348838',
   other: 'a8aaf3e2-1350-11df-a1f1-0026b9348838',
-  /**
-   * Text obs that stores the planned orderable concept UUID (elective capture / edit).
-   * Override via electivePreauth.plannedServiceObsConceptUuid if this UUID is not in your dictionary.
-   */
   plannedServiceConcept: 'c0ffee00-e1e2-4a3b-9c0d-e1e2e3e4e5e6',
 } as const;
 
-/** Coded answers for `typeOfIntervention`. */
 export const PREAUTH_INTERVENTION_TYPE = {
   surgical: '63c079d9-87fb-4bea-b860-863bff0e29c5',
   renal: '597896cd-2841-42e9-8fb0-4292f82ac7b6',
@@ -650,85 +675,67 @@ const ANAESTHESIA_CONCEPT_TO_HIE: Record<string, string> = {
   'f45ac884-e73e-4b02-9d8b-49c4e3ce5a15': 'SPINAL',
 };
 
-/** Complaint coded answers from POC Pre-authorization Form → display labels. */
-const COMPLAINT_CONCEPT_TO_LABEL: Record<string, string> = {
-  'a8932f00-1350-11df-a1f1-0026b9348838': 'Abdominal pain',
-  'a0bda074-8e57-4ba7-ab9c-c008776f8d48': 'Abnormal uterine bleeding',
-  'a89cec02-1350-11df-a1f1-0026b9348838': 'Anxiety',
-  'a8953d90-1350-11df-a1f1-0026b9348838': 'Back pain',
-  'a8981696-1350-11df-a1f1-0026b9348838': 'Bloody urine',
-  'bb1637fd-dd30-4938-a7a7-30dcef155f38': 'Blood in stool',
-  'c7356bfe-e9a8-422b-9a6a-6e42490d308e': 'Breast pain',
-  'a892e4b4-1350-11df-a1f1-0026b9348838': 'Chest pain',
-  'a898314e-1350-11df-a1f1-0026b9348838': 'Cold and chills',
-  'a8ad3b02-1350-11df-a1f1-0026b9348838': 'Confusion',
-  'a890d73c-1350-11df-a1f1-0026b9348838': 'Cough',
-  'b9655bbd-a94f-41a6-a5c6-4ea9ed83e840': 'Convulsions',
-  '894e909e-881c-4ac3-b669-4c77003831ad': 'Coma',
-  'a890d660-1350-11df-a1f1-0026b9348838': 'Coryza',
-  '96dafdc7-720e-4eac-85d3-ae2a0f5c1d94': 'Crying infant',
-  'a58cfd5c-a237-46fd-b0fc-bb7f2192bb69': 'Delirium',
-  'a8935fde-1350-11df-a1f1-0026b9348838': 'Depression',
-  'a890861a-1350-11df-a1f1-0026b9348838': 'Diarrhoea',
-  'a8a454d8-1350-11df-a1f1-0026b9348838': 'Difficult in breathing',
-  'a8983cc0-1350-11df-a1f1-0026b9348838': 'Difficulty in swallowing',
-  'abb19bab-e77d-47db-b9b6-18386868e1b3': 'Discharge from penis',
-  'e5c11905-baf7-4747-a01d-0525153e143a': 'Dizziness',
-  'eb12bfd6-dd52-4c41-a35e-a8048c975e7f': 'Ear Pain',
-  '9a9cb2d4-696c-4f2b-9a7b-206333597e3c': 'Epigastric pain',
-  '05354fc6-fd53-4c40-9379-ba2b4457635e': 'Eye pain',
-  'd301ff85-d21c-4a61-a195-ce7948db423c': 'Excessive sweating',
-  '4a3fa87f-0f09-4b70-bfaf-ed9cba1f9aa7': 'Facial pain',
-  '4b92fa43-a876-4fee-886b-ce4fc2e18512': 'Fatigue/weakness',
-  'cebb22fc-5ef8-409e-b606-51fdb7039593': 'Flank pain',
-  'a8ad0038-1350-11df-a1f1-0026b9348838': 'Fever',
-  '8065a17b-fbe4-4558-9ddd-0af641866c21': 'General body malaise',
-  '4eef684c-feff-48bb-9e8e-fe5742bee979': 'Genital ulcer',
-  'a8966d1e-1350-11df-a1f1-0026b9348838': 'Headache',
-  '13a3c07c-e870-4cc9-b7d3-d2e5b5e60a3e': 'Hearing loss',
-  'a89d1222-1350-11df-a1f1-0026b9348838': 'Hypotension',
-  'a8983ae0-1350-11df-a1f1-0026b9348838': 'Itchiness/Pruritus',
-  'a890ba5e-1350-11df-a1f1-0026b9348838': 'Joint pain',
-  'be9da369-ba93-4a0c-afdd-616ed4b434e8': 'Leg pain',
-  'a8ad042a-1350-11df-a1f1-0026b9348838': 'Lethargy',
-  'a8982eba-1350-11df-a1f1-0026b9348838': 'Loss of appetite',
-  'a893378e-1350-11df-a1f1-0026b9348838': 'Lymphadenopathy',
-  '5d91ee3c-9ace-462f-97c1-bd0c8fcf8a5e': 'Memory loss',
-  '6fac98a0-6d8a-4441-aeed-c447a3a12494': 'Mouth ulceration',
-  '02dc5deb-44d1-43db-b65e-9eb0d6cedaaf': 'Mouth pain',
-  '1fbf7fd4-ea3e-4ab1-acd9-bf215651e066': 'Muscle cramps',
-  'a8ad5330-1350-11df-a1f1-0026b9348838': 'Muscle pain',
-  'a890e2f4-1350-11df-a1f1-0026b9348838': 'Mylagia',
-  'a8ad21e4-1350-11df-a1f1-0026b9348838': 'Nausea',
-  'a8a6b476-1350-11df-a1f1-0026b9348838': 'Neck stiffness',
-  'bb7fc04f-13d8-4630-b9d8-e364b34b7f2f': 'Neck pain',
-  'a8ad4ed0-1350-11df-a1f1-0026b9348838': 'Night sweats',
-  '4ef1a2d0-132d-4a02-b0e0-00890b916343': 'Numbness',
-  'a8a498ee-1350-11df-a1f1-0026b9348838': 'Unexplained bleeding',
-  'd4abb20f-fde4-453b-b7e8-ac35debe83c2': 'Pelvic pain',
-  'a8ad09ca-1350-11df-a1f1-0026b9348838': 'Poor vision',
-  'a895776a-1350-11df-a1f1-0026b9348838': 'Rash',
-  '0df011cb-3ff1-465e-ae84-718da974aedd': 'Red Eye/ conjuctivitis',
-  'a8ad4476-1350-11df-a1f1-0026b9348838': 'Refusal to feed',
-  'a8983bda-1350-11df-a1f1-0026b9348838': 'Running/Blocked nose',
-  '773bfb25-09c8-4920-89f5-5bdafe5b5b62': 'Scrotal pain',
-  'a8935f0c-1350-11df-a1f1-0026b9348838': 'Seizure',
-  '4fd5f4cf-67cd-444d-8f18-a01afb4d9af0': 'Shoulder pain',
-  '8ccbbecf-58cd-43c2-ae9a-a36a4e578b25': 'Shock',
-  'a8932d66-1350-11df-a1f1-0026b9348838': 'Sore throat',
-  '34c96419-d4a9-4377-8c80-3a31d0f07d13': 'Sleep disturbance',
-  'e01c7959-551c-4c40-bcbf-52ef3087cbff': 'Swollen legs',
-  'ae5f2fc7-3f76-4fc3-96fa-72b354323821': 'Tremors',
-  '0ca4d1dc-34df-4ec0-bf2f-0280005ce6c9': 'Urinary symptoms',
-  '9abe711c-5e02-4aca-8d70-8b2148a17256': 'Watery diarrhoea',
-  'c982b4fe-8403-4c67-9650-91da17aecf5e': 'Weakness of limbs',
-  'a89807f0-1350-11df-a1f1-0026b9348838': 'Weight loss',
-  'a89d145c-1350-11df-a1f1-0026b9348838': 'Vaginal bleeding',
-  'a8ad2eb4-1350-11df-a1f1-0026b9348838': 'Vaginal discharge',
-  'a8ad239c-1350-11df-a1f1-0026b9348838': 'Vomiting',
-  '6d140ca3-118d-48ca-9d91-7b5612987413': 'Vertigo',
-  'a8aaf3e2-1350-11df-a1f1-0026b9348838': 'Other',
-};
+/** In-memory cache for concept UUID → display (complaint answers, etc.). */
+const conceptDisplayCache = new Map<string, string>();
+
+async function fetchConceptDisplay(conceptUuid: string): Promise<string> {
+  const uuid = (conceptUuid ?? '').trim();
+  if (!uuid) return '';
+  if (conceptDisplayCache.has(uuid)) {
+    return conceptDisplayCache.get(uuid) ?? '';
+  }
+  try {
+    const res = await openmrsFetch(
+      `${restBaseUrl}/concept/${uuid}?v=custom:(uuid,display,name:(display))`,
+    );
+    const data = res?.data as { display?: string; name?: { display?: string } } | undefined;
+    const display = String(data?.display ?? data?.name?.display ?? '').trim();
+    conceptDisplayCache.set(uuid, display);
+    return display;
+  } catch {
+    conceptDisplayCache.set(uuid, '');
+    return '';
+  }
+}
+
+/**
+ * Resolve presenting-complaint labels from coded obs.
+ * Prefer display already on the obs value; otherwise look up the concept in OpenMRS.
+ */
+async function resolveChiefComplaintFromObs(obsList: Record<string, unknown>[]): Promise<string> {
+  const C = PREAUTH_FORM_CONCEPTS;
+  const labels: string[] = [];
+  const missingUuids: string[] = [];
+
+  for (const obs of obsList) {
+    if (conceptUuidOf(obs) !== C.complaint) continue;
+    const uuid = codedUuid(obs.value);
+    const fromObs = codedDisplay(obs.value) || obsTextValue(obs);
+    if (fromObs) {
+      labels.push(fromObs);
+    } else if (uuid) {
+      missingUuids.push(uuid);
+    }
+  }
+
+  if (missingUuids.length) {
+    const unique = [...new Set(missingUuids)];
+    const fetched = await Promise.all(unique.map((u) => fetchConceptDisplay(u)));
+    const byUuid = new Map(unique.map((u, i) => [u, fetched[i]]));
+    for (const uuid of missingUuids) {
+      const label = byUuid.get(uuid) ?? '';
+      if (label) labels.push(label);
+    }
+  }
+
+  for (const obs of obsList) {
+    if (conceptUuidOf(obs) !== C.otherComplaint) continue;
+    const other = obsTextValue(obs);
+    if (other) labels.push(other);
+  }
+
+  return [...new Set(labels)].join('; ');
+}
 
 export type PreauthFormFieldKey =
   | 'clinicalIndications'
@@ -889,11 +896,11 @@ function markFound(values: PreauthFormValues, key: PreauthFormFieldKey, present:
   if (present) values.found.add(key);
 }
 
-function mapObsToPreauthFormValues(
+async function mapObsToPreauthFormValues(
   obsList: Record<string, unknown>[],
   source: PreauthFormValues['source'],
   surgeryDateFromEncounter?: string,
-): PreauthFormValues {
+): Promise<PreauthFormValues> {
   const values = emptyPreauthFormValues(source);
   const byConcept = latestObsByConcept(obsList);
   const C = PREAUTH_FORM_CONCEPTS;
@@ -919,20 +926,7 @@ function mapObsToPreauthFormValues(
   values.frequency = frequency;
   markFound(values, 'frequency', Boolean(frequency));
 
-  const complaints: string[] = [];
-  for (const obs of obsList) {
-    if (conceptUuidOf(obs) !== C.complaint) continue;
-    const uuid = codedUuid(obs.value);
-    const label =
-      COMPLAINT_CONCEPT_TO_LABEL[uuid] || codedDisplay(obs.value) || obsTextValue(obs);
-    if (label) complaints.push(label);
-  }
-  for (const obs of obsList) {
-    if (conceptUuidOf(obs) !== C.otherComplaint) continue;
-    const other = obsTextValue(obs);
-    if (other) complaints.push(other);
-  }
-  values.chiefComplaint = [...new Set(complaints)].join('; ');
+  values.chiefComplaint = await resolveChiefComplaintFromObs(obsList);
   markFound(values, 'chiefComplaint', Boolean(values.chiefComplaint));
 
   const hpi = obsTextValue(byConcept.get(C.hpi));
@@ -995,16 +989,31 @@ async function fetchLatestObsForConcept(
   }
 }
 
-async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<string, unknown> | null> {
+async function fetchLatestEncounterByType(
+  patientUuid: string,
+  encounterTypeUuid: string,
+  opts?: { fromDatetime?: string; locationUuid?: string },
+): Promise<Record<string, unknown> | null> {
   try {
     const qs = new URLSearchParams({
       patient: patientUuid,
-      encounterType: PREAUTH_ENCOUNTER_TYPE_UUID,
+      encounterType: encounterTypeUuid,
       v: 'full',
       limit: '20',
     });
+    if (opts?.fromDatetime) {
+      qs.set('fromdate', opts.fromDatetime);
+    }
     const res = await openmrsFetch(`${restBaseUrl}/encounter?${qs.toString()}`);
-    const results = (res?.data?.results ?? []) as Record<string, unknown>[];
+    let results = (res?.data?.results ?? []) as Record<string, unknown>[];
+    if (opts?.locationUuid) {
+      const loc = opts.locationUuid.trim();
+      const atLoc = results.filter((e) => {
+        const l = e.location as { uuid?: string } | undefined;
+        return String(l?.uuid ?? '') === loc;
+      });
+      if (atLoc.length) results = atLoc;
+    }
     if (!results.length) return null;
     const sorted = [...results].sort((a, b) => {
       const ta = dayjs(String(a.encounterDatetime ?? '')).valueOf() || 0;
@@ -1014,13 +1023,21 @@ async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<
     let encounter = sorted[0] ?? null;
     if (!encounter) return null;
 
-    // List endpoints sometimes omit nested obs even with v=full — reload by uuid.
     const obs = encounter.obs;
-    if (!Array.isArray(obs) || obs.length === 0) {
+    const diagnoses = encounter.diagnoses;
+    const providers = encounter.encounterProviders;
+    const needsReload =
+      !Array.isArray(obs) ||
+      obs.length === 0 ||
+      !Array.isArray(diagnoses) ||
+      !Array.isArray(providers);
+    if (needsReload) {
       const id = String(encounter.uuid ?? '');
       if (id) {
         try {
-          const full = await openmrsFetch(`${restBaseUrl}/encounter/${id}?v=full`);
+          const full = await openmrsFetch(
+            `${restBaseUrl}/encounter/${id}?v=custom:(uuid,encounterDatetime,location:(uuid),encounterProviders:(display,provider:(uuid,display,attributes:(value,voided,attributeType:(uuid)))),diagnoses:(uuid,display,rank,certainty,diagnosis:(coded:(uuid,display))),obs:(uuid,voided,concept:(uuid),value,valueText,valueNumeric,groupMembers:(uuid,concept:(uuid),value,valueText)))`,
+          );
           if (full?.data && typeof full.data === 'object') {
             encounter = full.data as Record<string, unknown>;
           }
@@ -1035,6 +1052,10 @@ async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<
   }
 }
 
+async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<string, unknown> | null> {
+  return fetchLatestEncounterByType(patientUuid, PREAUTH_ENCOUNTER_TYPE_UUID);
+}
+
 /**
  * Prefill values from POC Pre-authorization Form:
  * 1) specific encounter when encounterUuid is provided (elective hold Raise)
@@ -1044,11 +1065,15 @@ async function fetchLatestPreauthEncounter(patientUuid: string): Promise<Record<
 export async function fetchPreauthFormValues(
   patientUuid: string,
   encounterUuid?: string,
+  opts?: { allowConceptFallback?: boolean },
 ): Promise<PreauthFormValues> {
   const uuid = (patientUuid ?? '').trim();
   if (!uuid) return emptyPreauthFormValues('none');
 
   const encounterId = (encounterUuid ?? '').trim();
+  // Elective hold (explicit encounter, no fallback): never pull unrelated latest obs.
+  // Normal Raise / clinical: allow per-concept fallback when the encounter has no form obs.
+  const allowConceptFallback = opts?.allowConceptFallback === true || !encounterId;
   let encounter: Record<string, unknown> | null = null;
   if (encounterId) {
     try {
@@ -1069,11 +1094,8 @@ export async function fetchPreauthFormValues(
     const surgeryDate = dayjs(surgeryRaw).isValid()
       ? dayjs(surgeryRaw).format('YYYY-MM-DDTHH:mm:ssZ')
       : '';
-    const fromEncounter = mapObsToPreauthFormValues(obs, 'encounter', surgeryDate);
-    // When a specific encounter was requested (elective), return that mapping even if empty —
-    // do not fall back to unrelated latest obs. Normal preauth (no encounterId) still falls
-    // through to per-concept latest when the latest encounter has no mappable obs.
-    if (fromEncounter.found.size > 0 || encounterId) {
+    const fromEncounter = await mapObsToPreauthFormValues(obs, 'encounter', surgeryDate);
+    if (fromEncounter.found.size > 0 || !allowConceptFallback) {
       return fromEncounter;
     }
     // Encounter present but no mappable obs — fall through to per-concept latest
@@ -1110,6 +1132,329 @@ export async function fetchPreauthFormValues(
 export async function fetchLatestClinicalIndicationsObs(patientUuid: string): Promise<string> {
   const values = await fetchPreauthFormValues(patientUuid);
   return values.clinicalIndications;
+}
+
+export type EncounterPrefillDiagnosis = {
+  key: string;
+  conceptUuid: string;
+  display: string;
+  icd11Code: string;
+  rank: number;
+};
+
+export type EncounterPrefillModel = {
+  encounterUuid: string;
+  source: 'preauth' | 'clinical' | 'explicit';
+  formValues: PreauthFormValues;
+  diagnoses: EncounterPrefillDiagnosis[];
+  providerNationalId: string;
+  providerDisplay: string;
+  providerUuid: string;
+};
+
+const ENCOUNTER_PREFILL_REP =
+  'custom:(uuid,encounterDatetime,location:(uuid),encounterProviders:(display,provider:(uuid,display,attributes:(value,voided,attributeType:(uuid)))),diagnoses:(uuid,display,rank,certainty,diagnosis:(coded:(uuid,display))),obs:(uuid,voided,concept:(uuid),value,valueText,valueNumeric,groupMembers:(uuid,concept:(uuid),value,valueText)))';
+
+const CONCEPT_ICD_REP =
+  'custom:(uuid,display,mappings:(display,conceptReferenceTerm:(uuid,code,name,conceptSource:(uuid,name,hl7Code))))';
+
+function obsNumericOrText(obs: Record<string, unknown> | undefined): string {
+  if (!obs) return '';
+  const n = obs.valueNumeric;
+  if (typeof n === 'number' && Number.isFinite(n)) return String(n);
+  const value = obs.value;
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+  if (typeof value === 'string' && value.trim()) return value.trim();
+  return obsTextValue(obs);
+}
+
+function providerFromEncounter(enc: Record<string, unknown>): {
+  providerNationalId: string;
+  providerDisplay: string;
+  providerUuid: string;
+} {
+  const providers = (Array.isArray(enc.encounterProviders) ? enc.encounterProviders : []) as Array<{
+    display?: string;
+    provider?: {
+      uuid?: string;
+      display?: string;
+      attributes?: Array<{ value?: string; voided?: boolean; attributeType?: { uuid?: string } }>;
+    };
+  }>;
+  const primary = providers[0];
+  const provider = primary?.provider;
+  const providerDisplay =
+    String(provider?.display ?? '').trim() ||
+    String(primary?.display ?? '')
+      .split(' - ')[0]
+      ?.trim() ||
+    '';
+  const providerUuid = String(provider?.uuid ?? '').trim();
+  const providerNationalId = extractProviderNationalId(provider?.attributes) ?? '';
+  return { providerNationalId, providerDisplay, providerUuid };
+}
+
+async function resolveDoctorObsToProvider(
+  obsList: Record<string, unknown>[],
+): Promise<{ providerNationalId: string; providerDisplay: string; providerUuid: string } | null> {
+  const doctorObs = obsList.find((o) => !o.voided && conceptUuidOf(o) === PREAUTH_FORM_CONCEPTS.doctor);
+  if (!doctorObs) return null;
+
+  const value = doctorObs.value;
+  let personUuid = '';
+  let display = '';
+  if (value && typeof value === 'object') {
+    const v = value as { uuid?: string; display?: string; person?: { uuid?: string; display?: string } };
+    personUuid = String(v.person?.uuid ?? v.uuid ?? '').trim();
+    display = String(v.display ?? v.person?.display ?? '').trim();
+  } else if (typeof value === 'string') {
+    const t = value.trim();
+    if (/^[0-9a-f-]{36}$/i.test(t)) personUuid = t;
+    else display = t;
+  }
+  const textNatId = obsTextValue(doctorObs);
+  if (/^\d{5,}$/.test(textNatId) && !personUuid) {
+    return { providerNationalId: textNatId, providerDisplay: display, providerUuid: '' };
+  }
+
+  try {
+    if (personUuid) {
+      const res = await openmrsFetch(
+        `${restBaseUrl}/provider?person=${encodeURIComponent(personUuid)}&v=custom:(uuid,display,identifier,person:(uuid,display),attributes:(uuid,value,voided,attributeType:(uuid)))`,
+      );
+      const p = ((res?.data?.results ?? []) as Array<OpenMrsProviderHit & { attributes?: any[] }>)[0];
+      if (p?.uuid) {
+        return {
+          providerUuid: p.uuid,
+          providerDisplay: p.display || display,
+          providerNationalId: extractProviderNationalId(p.attributes) ?? '',
+        };
+      }
+    }
+    if (display.length >= 2) {
+      const hits = await searchOpenMrsProviders(display);
+      const hit = hits[0];
+      if (hit) {
+        return {
+          providerUuid: hit.uuid,
+          providerDisplay: hit.display,
+          providerNationalId: hit.nationalId ?? '',
+        };
+      }
+    }
+  } catch {
+    // soft-fail
+  }
+  return display || textNatId
+    ? { providerNationalId: /^\d{5,}$/.test(textNatId) ? textNatId : '', providerDisplay: display, providerUuid: '' }
+    : null;
+}
+
+async function enrichDiagnosisIcd11(dx: EncounterPrefillDiagnosis): Promise<EncounterPrefillDiagnosis> {
+  if (dx.icd11Code || !dx.conceptUuid) return dx;
+  try {
+    const res = await openmrsFetch(
+      `${restBaseUrl}/concept/${dx.conceptUuid}?v=${encodeURIComponent(CONCEPT_ICD_REP)}`,
+    );
+    const c = res?.data as { uuid?: string; display?: string; mappings?: ConceptMappingLike[] } | undefined;
+    if (!c) return dx;
+    const icd11Code = extractIcd11CodeFromConcept(c);
+    return {
+      ...dx,
+      display: dx.display || String(c.display ?? dx.conceptUuid),
+      icd11Code: icd11Code || dx.icd11Code,
+    };
+  } catch {
+    return dx;
+  }
+}
+
+function mapEncounterDiagnoses(enc: Record<string, unknown>): EncounterPrefillDiagnosis[] {
+  const diagnoses: EncounterPrefillDiagnosis[] = [];
+  const dxList = (Array.isArray(enc.diagnoses) ? enc.diagnoses : []) as Array<Record<string, unknown>>;
+  for (const dx of dxList) {
+    const diagnosis = (dx.diagnosis ?? {}) as Record<string, unknown>;
+    const coded = diagnosis.coded as { uuid?: string; display?: string } | string | undefined;
+    const conceptUuidDx =
+      typeof coded === 'object' ? String(coded?.uuid ?? '').trim() : String(coded ?? '').trim();
+    const display =
+      (typeof coded === 'object' ? String(coded?.display ?? '').trim() : '') ||
+      String(dx.display ?? '').trim() ||
+      conceptUuidDx;
+    if (!conceptUuidDx) continue;
+    diagnoses.push({
+      key: `enc-dx-${conceptUuidDx}`,
+      conceptUuid: conceptUuidDx,
+      display,
+      icd11Code: '',
+      rank: typeof dx.rank === 'number' ? dx.rank : Number(dx.rank) || 1,
+    });
+  }
+  diagnoses.sort((a, b) => a.rank - b.rank);
+  return diagnoses;
+}
+
+function prefillHasUsableData(model: {
+  formValues: PreauthFormValues;
+  diagnoses: EncounterPrefillDiagnosis[];
+  providerNationalId: string;
+}): boolean {
+  return (
+    model.diagnoses.length > 0 ||
+    model.formValues.found.size > 0 ||
+    Boolean(model.providerNationalId.trim()) ||
+    Boolean(model.formValues.clinicalIndications.trim())
+  );
+}
+
+/**
+ * Load Raise prefill from a single encounter (elective-shaped): diagnoses[], formValues, provider.
+ */
+export async function loadEncounterPrefill(
+  patientUuid: string,
+  encounterUuid: string,
+  source: EncounterPrefillModel['source'] = 'explicit',
+): Promise<EncounterPrefillModel | null> {
+  const encUuid = (encounterUuid ?? '').trim();
+  const patient = (patientUuid ?? '').trim();
+  if (!encUuid || !patient) return null;
+
+  let enc: Record<string, unknown> | null = null;
+  try {
+    const res = await openmrsFetch(`${restBaseUrl}/encounter/${encUuid}?v=${encodeURIComponent(ENCOUNTER_PREFILL_REP)}`);
+    if (res?.data && typeof res.data === 'object') {
+      enc = res.data as Record<string, unknown>;
+    }
+  } catch {
+    enc = null;
+  }
+  if (!enc?.uuid) {
+    try {
+      const full = await openmrsFetch(`${restBaseUrl}/encounter/${encUuid}?v=full`);
+      if (full?.data && typeof full.data === 'object') {
+        enc = full.data as Record<string, unknown>;
+      }
+    } catch {
+      return null;
+    }
+  }
+  if (!enc?.uuid) return null;
+
+  const formValues = await fetchPreauthFormValues(patient, encUuid, {
+    // Explicit elective hold: only that encounter. Otherwise allow latest obs per concept
+    // when the resolved Preauth/Clinical encounter has no form fields (common for Clinical).
+    allowConceptFallback: source !== 'explicit',
+  });
+  let diagnoses = mapEncounterDiagnoses(enc);
+  diagnoses = await Promise.all(diagnoses.map(enrichDiagnosisIcd11));
+
+  let provider = providerFromEncounter(enc);
+  if (!provider.providerNationalId) {
+    const obs = flattenObs(Array.isArray(enc.obs) ? enc.obs : []);
+    const fromDoctor = await resolveDoctorObsToProvider(obs);
+    if (fromDoctor) {
+      provider = {
+        providerNationalId: fromDoctor.providerNationalId || provider.providerNationalId,
+        providerDisplay: fromDoctor.providerDisplay || provider.providerDisplay,
+        providerUuid: fromDoctor.providerUuid || provider.providerUuid,
+      };
+    }
+  }
+
+  return {
+    encounterUuid: String(enc.uuid),
+    source,
+    formValues,
+    diagnoses,
+    providerNationalId: provider.providerNationalId,
+    providerDisplay: provider.providerDisplay,
+    providerUuid: provider.providerUuid,
+  };
+}
+
+/**
+ * Resolve which encounter to use for Raise prefill, then load it.
+ * - explicit encounterUuid → that encounter only (elective hold)
+ * - else latest Preauth, else Clinical (prefer Preauth when specialtyNeedsForm)
+ */
+export async function resolveAndLoadRaisePrefill(opts: {
+  patientUuid: string;
+  encounterUuid?: string;
+  specialtyNeedsForm?: boolean;
+}): Promise<EncounterPrefillModel | null> {
+  const patientUuid = (opts.patientUuid ?? '').trim();
+  if (!patientUuid) return null;
+
+  const explicit = (opts.encounterUuid ?? '').trim();
+  if (explicit) {
+    return loadEncounterPrefill(patientUuid, explicit, 'explicit');
+  }
+
+  const [preauthEnc, clinicalEnc] = await Promise.all([
+    fetchLatestEncounterByType(patientUuid, PREAUTH_ENCOUNTER_TYPE_UUID),
+    fetchLatestEncounterByType(patientUuid, CLINICAL_ENCOUNTER_TYPE_UUID),
+  ]);
+
+  const tryLoad = async (
+    enc: Record<string, unknown> | null,
+    source: 'preauth' | 'clinical',
+  ): Promise<EncounterPrefillModel | null> => {
+    const id = String(enc?.uuid ?? '').trim();
+    if (!id) return null;
+    return loadEncounterPrefill(patientUuid, id, source);
+  };
+
+  const preauthModel = await tryLoad(preauthEnc, 'preauth');
+  if (preauthModel && (opts.specialtyNeedsForm || prefillHasUsableData(preauthModel))) {
+    return preauthModel;
+  }
+
+  const clinicalModel = await tryLoad(clinicalEnc, 'clinical');
+  if (clinicalModel && prefillHasUsableData(clinicalModel)) {
+    return clinicalModel;
+  }
+
+  return preauthModel ?? clinicalModel;
+}
+
+/**
+ * Concatenate today's OPD Triage vital signs for surgical vital_signs.
+ * Example: `Temp 36.8 C; Pulse 72; BP 120/80; RR 14; SpO2 98%`
+ */
+export async function fetchTodaysTriageVitalsConcat(
+  patientUuid: string,
+  locationUuid?: string,
+): Promise<string> {
+  const uuid = (patientUuid ?? '').trim();
+  if (!uuid) return '';
+
+  const fromDatetime = dayjs().startOf('day').toISOString();
+  const enc = await fetchLatestEncounterByType(uuid, OPD_TRIAGE_ENCOUNTER_TYPE_UUID, {
+    fromDatetime,
+    locationUuid: (locationUuid ?? '').trim() || undefined,
+  });
+  if (!enc) return '';
+
+  const obsList = flattenObs(Array.isArray(enc.obs) ? enc.obs : []);
+  const byConcept = latestObsByConcept(obsList);
+  const C = TRIAGE_VITALS_CONCEPTS;
+
+  const temp = obsNumericOrText(byConcept.get(C.temperature));
+  const pulse = obsNumericOrText(byConcept.get(C.pulse));
+  const sys = obsNumericOrText(byConcept.get(C.systolicBp));
+  const dia = obsNumericOrText(byConcept.get(C.diastolicBp));
+  const rr = obsNumericOrText(byConcept.get(C.respiratoryRate));
+  const spo2 = obsNumericOrText(byConcept.get(C.oxygenSaturation));
+
+  const parts: string[] = [];
+  if (temp) parts.push(`Temp ${temp} C`);
+  if (pulse) parts.push(`Pulse ${pulse}`);
+  if (sys || dia) {
+    parts.push(`BP ${sys || '—'}/${dia || '—'}`);
+  }
+  if (rr) parts.push(`RR ${rr}`);
+  if (spo2) parts.push(`SpO2 ${spo2}%`);
+  return parts.join('; ');
 }
 
 export type PreauthBillableService = {

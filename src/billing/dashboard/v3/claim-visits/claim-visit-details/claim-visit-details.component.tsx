@@ -278,6 +278,7 @@ const ClaimVisitDetails: React.FC<claimVisitDetailsProps> = ({
               {claimsVisit.interventions && (
                 <ClaimInterventionDetails
                   patientBillDetails={patientBillDetails}
+                  memberNumber={claimsVisit.member_number}
                   claimInterventions={claimsVisit.interventions}
                   consentToken={claimsVisit.authorization_code}
                   visitUuid={activeVisit?.uuid}
