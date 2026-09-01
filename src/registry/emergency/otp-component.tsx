@@ -14,14 +14,14 @@ const formatCountdown = (secs: number) => `0:${String(Math.max(0, secs)).padStar
 interface EmergencyOtpComponentProps {
   client?: HieClient;
   interventionCode: string;
-  onOtpVerified?: (otp: string) => void;
+  onOtpChange?: (otp: string) => void;
   onOtpVerificationStatusChange?: (verified: boolean) => void;
 }
 
 const EmergencyOtpComponent: React.FC<EmergencyOtpComponentProps> = ({
   client,
   interventionCode,
-  onOtpVerified,
+  onOtpChange,
   onOtpVerificationStatusChange,
 }) => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -145,6 +145,10 @@ const EmergencyOtpComponent: React.FC<EmergencyOtpComponentProps> = ({
     const newOtp = [...otp];
     newOtp[index] = value;
     setOtp(newOtp);
+    onOtpChange?.(newOtp.join(''));
+
+    onOtpVerificationStatusChange?.(false);
+
     if (value && index < 5) {
       focusOtp(index + 1);
     }
@@ -168,12 +172,15 @@ const EmergencyOtpComponent: React.FC<EmergencyOtpComponentProps> = ({
     const newOtp = ['', '', '', '', '', ''];
     for (let i = 0; i < digits.length; i++) newOtp[i] = digits[i];
     setOtp(newOtp);
+    onOtpChange?.(newOtp.join(''));
+    onOtpVerificationStatusChange?.(false);
+
     focusOtp(Math.min(digits.length, 5));
   };
 
   const handleVerifyClaimsOtp = async () => {
     setOtpBusy('verify');
-    onOtpVerified?.(otp.join(''));
+    onOtpChange?.(otp.join(''));
     onOtpVerificationStatusChange?.(true);
     setConsentGiven(true);
     setOtpBusy(null);

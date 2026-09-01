@@ -83,11 +83,11 @@ export interface BenefitUtilization {
   computationalDetail: ComputationalDetail;
 }
 
-export type ServiceType = "CAPITATION" | "OUTPATIENT" | "INPATIENT" | "EMERGENCY" | "PER_DIEM";
+export type ServiceType = 'CAPITATION' | 'OUTPATIENT' | 'INPATIENT' | 'EMERGENCY' | 'PER_DIEM';
 
-export type PreauthType = "NORMAL" | "SURGICAL" | "ONCOLOGY" | "RENAL" | "IMAGING" | "OPTICAL";
+export type PreauthType = 'NORMAL' | 'SURGICAL' | 'ONCOLOGY' | 'RENAL' | 'IMAGING' | 'OPTICAL';
 
-export type VisitType = "INPATIENT" | "OUTPATIENT";
+export type VisitType = 'INPATIENT' | 'OUTPATIENT' | 'EMERGENCY';
 
 // Claim visit
 export interface ClaimIntervention {

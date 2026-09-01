@@ -13,6 +13,7 @@ export interface EmergencyFormData {
   identificationType?: string;
   licensingBody?: string;
   notes: string;
+  otp: string;
 }
 
 export function generateReferenceNumber(): string {
@@ -22,11 +23,18 @@ export function generateReferenceNumber(): string {
   return `REF/${timestamp}/${random}`;
 }
 
-export function getAbbreviation(value: string): string {
+export function getAbbreviation(value?: string): string {
+  if (!value) return '';
+
+  const trimmedValue = value.trim();
+
+  if (/^[A-Z0-9]+$/.test(trimmedValue)) {
+    return trimmedValue;
+  }
+
   const ignoredWords = new Set(['and', 'of', 'the', 'for']);
 
-  return value
-    ?.trim()
+  return trimmedValue
     .split(/\s+/)
     .filter((word) => !ignoredWords.has(word.toLowerCase()))
     .map((word) => word.charAt(0))

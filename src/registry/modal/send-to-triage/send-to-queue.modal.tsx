@@ -142,7 +142,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
     outPatientCareSettingUuid,
     orderEncounterTypeUuid,
     registrationServicequeues,
-    shaVariantPaymentModeUuids
+    shaVariantPaymentModeUuids,
   } = useConfig<ConfigObject>();
 
   const facilityCashPoints = useMemo(() => getfacilityCashpoints(), [cashPoints, locationUuid]);
@@ -155,15 +155,18 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
       if (visitTypeUuid === VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID) {
         return 'INPATIENT';
       }
+      if (visitTypeUuid === VisitTypeUuids.EMERGENCY_VISIT_TYPE_UUID) {
+        return 'EMERGENCY';
+      }
     }
   }, [visitTypeUuid, VisitTypeUuids]);
 
   const isPerdiem = useMemo(() => {
     if (intervention) {
-      return ["PER DIEM", "PER_DIEM"].includes(intervention?.paymentMechanism.trim().toUpperCase());
+      return ['PER DIEM', 'PER_DIEM'].includes(intervention?.paymentMechanism.trim().toUpperCase());
     }
     return false;
-  }, [intervention])
+  }, [intervention]);
 
   const showBillableServices = useMemo(() => {
     if (preExistingInterventions && preExistingInterventions.length) {
@@ -931,7 +934,7 @@ const SendToQueueModal: React.FC<SendToQueueModalProps> = ({
                     authGuid,
                     visitType,
                     order,
-                    onSelectChange: () => { },
+                    onSelectChange: () => {},
                     onClaimsVisitStart,
                     onInterventionChange,
                     onError,

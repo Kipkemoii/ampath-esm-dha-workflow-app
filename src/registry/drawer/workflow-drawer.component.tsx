@@ -50,7 +50,7 @@ import { fetchServiceQueuesByLocationUuid } from '../../resources/queue.resource
 import { fetchCashPoints, fetchPaymentModes } from '../../shared/services/billing.resource';
 import { getReadableErrorMessage } from '../utils/error-handler';
 import { fetchPomsfBalance } from '../../claims/claims.resource';
-import { type PomsfBalance } from '../../claims';
+import { ClaimResult, type PomsfBalance } from '../../claims';
 import { formatKes, getAllPomsfBenefitBalances, getPomsfDisplayBalance, isPomsfActive } from './pomsf-balance.util';
 import EmergencySlotComponent from '../emergency/emergency-extension.component';
 import { generateReferenceNumber, type EmergencyFormData } from '../emergency/type';
@@ -205,6 +205,7 @@ interface WorkflowDrawerProps {
     visitType: string;
     method?: Method;
     insurance?: string;
+    emergencyResponse?: ClaimResult;
   }) => void;
 }
 
@@ -712,6 +713,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     if (!room || !visitType || (!isCccPatient && usingInsurance && !insurance)) {
       return;
     }
+    let emergencyResponse: ClaimResult = {} as ClaimResult;
     if (visitType === 'Emergency') {
       const res = await sendEmergencyClaimIdentified(
         emergencyForm?.modeOfArrival,
@@ -724,17 +726,19 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
         emergencyForm?.identificationType,
         emergencyForm?.licensingBody,
         emergencyForm?.notes,
+        emergencyForm?.otp,
       );
 
-      if (!res.ok) {
+      if (res && 'error' in res && 'message' in res) {
+        const message = res.message ?? '';
         showSnackbar({
           kind: 'error',
           title: 'An error occured while starting the visit',
-          subtitle: res.message,
+          subtitle: message,
         });
+        return;
       }
-
-      return;
+      emergencyResponse = res;
     }
 
     onStartVisit({
@@ -743,6 +747,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       roomUuid: triageQueueByRoom[room] ?? '',
       visitType,
       ...(isCccPatient ? {} : { method, insurance: usingInsurance ? insurance : undefined }),
+      emergencyResponse,
     });
   };
 

@@ -28,6 +28,7 @@ export async function sendEmergencyClaimIdentified(
   identificationType: string,
   regulationBody: string,
   notes: string,
+  otp: string,
 ): Promise<any> {
   const hieBaseUrl = await getHieBaseUrl();
 
@@ -42,6 +43,7 @@ export async function sendEmergencyClaimIdentified(
     regulationBody: regulationBody,
     notes: notes,
     locationUuid: locationUuid,
+    otp: otp,
   };
   const url = `${hieBaseUrl}/emergency/claim/identified`;
   const response = await openmrsFetch(url, {

@@ -55,6 +55,7 @@ import { usePatient } from '../context/patient-context';
 import FacilityAndWorkerSlot from '../shared/ui/facility-worker-slot/facility-worker.component-slot.component';
 import RegistrationList from './registration-list/registration-list.component';
 import { type ConfigObject } from '../config-schema';
+import { ClaimResult } from 'src/claims';
 
 interface RegistryComponentProps {}
 const RegistryComponent: React.FC<RegistryComponentProps> = () => {
@@ -366,18 +367,38 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
   // Create the AMRS visit for the verified client once the workflow drawer is submitted,
   // add them to the selected triage queue, and raise the consultation clearance so they
   // wait "Awaiting clearance" until Accounting settles the fee (exempt patients auto-clear).
-  const getVisitAttributes = (paymentMethod: 'cash' | 'insurance', insurance: string) => {
+  const getVisitAttributes = (
+    paymentMethod: 'cash' | 'insurance',
+    insurance: string,
+    emergencyResponse?: ClaimResult,
+  ) => {
     const attributes: VisitAttribute[] = [];
     if (paymentMethod) {
       attributes.push({
         attributeType: '8553afa0-bdb9-4d3c-8a98-05fa9350aa85',
-        value: paymentMethod === "cash"
-          ? cashPaymentModeUuid
-          : shaPaymentModeUuid // /sha|shif/i.test(insurance) ? shaPaymentModeUuid : "",
+        value: paymentMethod === 'cash' ? cashPaymentModeUuid : shaPaymentModeUuid, // /sha|shif/i.test(insurance) ? shaPaymentModeUuid : "",
+      });
+    }
+    if (emergencyResponse) {
+      attributes.push({
+        attributeType: '4962a633-c4f8-474c-857c-5c68c72fbbe3',
+        value: emergencyResponse.authorization_code,
+      });
+
+      // scheme code
+      attributes.push({
+        attributeType: '79072572-80c0-4a38-9da0-afe207e3ef2d',
+        value: emergencyResponse.scheme_code,
+      });
+
+      // service type
+      attributes.push({
+        attributeType: '97d892fe-38a4-4cfb-bdf7-2a03dff6e7cf',
+        value: emergencyResponse.service_type,
       });
     }
     return attributes;
-  }
+  };
   const startVisitForClient = async (details: {
     patientCategory: string;
     room: string;
@@ -385,6 +406,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     visitType: string;
     method?: 'cash' | 'insurance';
     insurance?: string;
+    emergencyResponse?: ClaimResult;
   }) => {
     // Ensure the client exists in AMRS before starting a visit.
     let amrsPatient = amrsPatients[0];
@@ -400,9 +422,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       return;
     }
     const visitType =
-      details.visitType === 'Inpatient'
-        ? VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID
-        : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
+      details.visitType === 'Inpatient' ? VisitTypeUuids.INPATIENT_VISIT_TYPE_UUID : VisitTypeUuids.OPD_VISIT_TYPE_UUID;
     const visitDto: CreateVisitDto = {
       visitType,
       location: locationUuid ?? '',
@@ -410,7 +430,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
       stopDatetime: null,
       patient: amrsPatient.uuid,
     };
-    const visitAttributes = getVisitAttributes(details.method, details.insurance);
+    const visitAttributes = getVisitAttributes(details.method, details.insurance, details.emergencyResponse);
     if (visitAttributes.length > 0) {
       visitDto['attributes'] = visitAttributes;
     }
@@ -462,7 +482,6 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
         }
       }
       */
-    
 
       showAlert('success', 'Patient sent to the triage queue, awaiting clearance', '');
       // Land on the accounting Pending clearance section so the new patient can be cleared.
@@ -500,7 +519,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
     <>
       <div className={styles.registryLayout}>
         <div className={styles.headerSection}>
-            <FacilityAndWorkerSlot />
+          <FacilityAndWorkerSlot />
         </div>
         <div className={styles.mainContent}>
           <div className={styles.registryHeader}>
@@ -513,9 +532,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                 <Identification size={20} className={styles.sectionIcon} />
                 <h5 className={styles.sectionTitle}>Search client</h5>
               </div>
-              <p className={styles.formIntro}>
-                Search the national Client Registry by identification number to begin.
-              </p>
+              <p className={styles.formIntro}>Search the national Client Registry by identification number to begin.</p>
               <div className={styles.formGrid}>
                 <Dropdown
                   id="identifier-type-dropdown"
@@ -675,7 +692,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         <div className={styles.optionBody}>
                           <div className={styles.optionTopline}>
                             <span className={styles.optionName}>
-                              {maskExceptFirstAndLast(principal.first_name)} {maskExceptFirstAndLast(principal.middle_name)}{' '}
+                              {maskExceptFirstAndLast(principal.first_name)}{' '}
+                              {maskExceptFirstAndLast(principal.middle_name)}{' '}
                               {maskExceptFirstAndLast(principal.last_name)}
                             </span>
                             <Tag type="blue" size="sm">
@@ -709,7 +727,8 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                               <div className={styles.optionBody}>
                                 <div className={styles.optionTopline}>
                                   <span className={styles.optionName}>
-                                    {maskExceptFirstAndLast(dependant.first_name)} {maskExceptFirstAndLast(dependant.middle_name)}{' '}
+                                    {maskExceptFirstAndLast(dependant.first_name)}{' '}
+                                    {maskExceptFirstAndLast(dependant.middle_name)}{' '}
                                     {maskExceptFirstAndLast(dependant.last_name)}
                                   </span>
                                   <Tag type="teal" size="sm">
@@ -770,7 +789,7 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
             )}
           </div>
           <div className={styles.registeredPatientsSection}>
-             <RegistrationList />
+            <RegistrationList />
           </div>
         </div>
       </div>

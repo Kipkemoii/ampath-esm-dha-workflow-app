@@ -31,6 +31,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
   const MODE_OF_ARRIVAL = ['AMBULANCE', 'WALK-IN', 'OTHER'];
   const BROUGHT_BY = ['RELATIVE', 'UNKNOWN', 'SAMARITAN', 'PARAMEDICS'];
   const [otpVerified, setOtpVerified] = useState(false);
+  const [otp, setOtp] = useState('');
   const [errors, setErrors] = useState({
     modeOfArrival: false,
     broughtBy: false,
@@ -55,7 +56,8 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       selectedIntervention?.code &&
       selectedProvider?.provider_national_id &&
       notes.trim() &&
-      otpVerified,
+      otpVerified &&
+      otp.length === 6,
     );
 
     onValidationChange(isValid);
@@ -68,6 +70,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       identificationType: 'National ID',
       licensingBody: getAbbreviation(selectedProvider?.licensing_body),
       notes,
+      otp,
     });
   }, [
     modeOfArrival,
@@ -78,6 +81,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
     onFormChange,
     onValidationChange,
     otpVerified,
+    otp,
   ]);
 
   const getInterventions = async () => {
@@ -132,6 +136,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
         'National ID',
         getAbbreviation(selectedProvider?.licensing_body),
         notes.trim(),
+        otp,
       );
     } catch (error) {
       console.error('Error initiating emergency claim:', error);
@@ -281,6 +286,7 @@ const EmergencySlotComponent: React.FC<EmergencySlotComponentProps> = ({
       />
       <EmergencyOtpComponent
         client={client}
+        onOtpChange={setOtp}
         interventionCode={selectedIntervention?.code}
         onOtpVerificationStatusChange={setOtpVerified}
       />
