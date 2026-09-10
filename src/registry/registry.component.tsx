@@ -869,9 +869,9 @@ const RegistryComponent: React.FC<RegistryComponentProps> = () => {
                         setDisplayDrawer(false);
                         setAmrsChecked(false);
                       }}
-                      onStartVisit={(details) => {
+                      onStartVisit={async (details) => {
+                        await startVisitForClient(details);
                         setDisplayDrawer(false);
-                        startVisitForClient(details);
                       }}
                     />
                   </div>

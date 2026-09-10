@@ -205,7 +205,7 @@ interface WorkflowDrawerProps {
     emergencyCashPointUuid?: string;
     emergencyServicePriceUuid?: string;
     emergencyIntervention?: Intervention;
-  }) => void;
+  }) => Promise<void>;
 }
 
 const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
@@ -267,6 +267,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
   });
   const [emergencyForm, setEmergencyForm] = useState<EmergencyFormData>();
   const [emergencyFormValid, setEmergencyFormValid] = useState(false);
+  const [startingVisit, setStartingVisit] = useState(false);
   const markTouched = (field: RequiredField) => () =>
     setTouched((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
 
@@ -297,6 +298,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
       setHasCashMode(null);
       setEligibilityChecked(false);
       setTouched({ visitType: false, room: false, insurance: false });
+      setStartingVisit(false);
     }
   }, [open]);
 
@@ -714,46 +716,51 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
     if (!room || !visitType || (usingInsurance && !insurance)) {
       return;
     }
-    let emergencyResponse: ClaimResult = {} as ClaimResult;
-    if (visitType === 'Emergency') {
-      const res = await sendEmergencyClaimIdentified(
-        emergencyForm?.modeOfArrival,
-        emergencyForm?.broughtBy,
-        locationUuid,
-        emergencyForm?.interventionCode,
-        generateReferenceNumber(),
-        client?.id,
-        emergencyForm?.providerNationalId,
-        emergencyForm?.identificationType,
-        emergencyForm?.licensingBody,
-        emergencyForm?.notes,
-        emergencyForm?.otp,
-      );
+    setStartingVisit(true);
+    try {
+      let emergencyResponse: ClaimResult = {} as ClaimResult;
+      if (visitType === 'Emergency') {
+        const res = await sendEmergencyClaimIdentified(
+          emergencyForm?.modeOfArrival,
+          emergencyForm?.broughtBy,
+          locationUuid,
+          emergencyForm?.interventionCode,
+          generateReferenceNumber(),
+          client?.id,
+          emergencyForm?.providerNationalId,
+          emergencyForm?.identificationType,
+          emergencyForm?.licensingBody,
+          emergencyForm?.notes,
+          emergencyForm?.otp,
+        );
 
-      if (res && 'error' in res && 'message' in res) {
-        const message = res.message ?? '';
-        showSnackbar({
-          kind: 'error',
-          title: 'An error occured while starting the visit',
-          subtitle: message,
-        });
-        return;
+        if (res && 'error' in res && 'message' in res) {
+          const message = res.message ?? '';
+          showSnackbar({
+            kind: 'error',
+            title: 'An error occured while starting the visit',
+            subtitle: message,
+          });
+          return;
+        }
+        emergencyResponse = res;
       }
-      emergencyResponse = res;
-    }
 
-    onStartVisit({
-      patientCategory,
-      room,
-      roomUuid: triageQueueByRoom[room] ?? '',
-      visitType,
-      method,
-      insurance: usingInsurance ? insurance : undefined,
-      emergencyResponse,
-      emergencyCashPointUuid: visitType === 'Emergency' ? emergencyForm?.cashpointUuid : undefined,
-      emergencyServicePriceUuid: visitType === 'Emergency' ? emergencyForm?.servicePriceUuid : undefined,
-      emergencyIntervention: visitType === 'Emergency' ? emergencyForm?.intervention : undefined,
-    });
+      await onStartVisit({
+        patientCategory,
+        room,
+        roomUuid: triageQueueByRoom[room] ?? '',
+        visitType,
+        method,
+        insurance: usingInsurance ? insurance : undefined,
+        emergencyResponse,
+        emergencyCashPointUuid: visitType === 'Emergency' ? emergencyForm?.cashpointUuid : undefined,
+        emergencyServicePriceUuid: visitType === 'Emergency' ? emergencyForm?.servicePriceUuid : undefined,
+        emergencyIntervention: visitType === 'Emergency' ? emergencyForm?.intervention : undefined,
+      });
+    } finally {
+      setStartingVisit(false);
+    }
   };
 
   // Required-field validation. A field flags only once the user has been in it and
@@ -1476,7 +1483,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
             <div />
           )}
           <div className={styles.footerRight}>
-            <Button kind="secondary" size="sm" onClick={onClose}>
+            <Button kind="secondary" size="sm" onClick={onClose} disabled={startingVisit}>
               Cancel
             </Button>
             {phase === 'consent' ? (
@@ -1499,6 +1506,7 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                 size="sm"
                 renderIcon={ArrowRight}
                 disabled={
+                  startingVisit ||
                   !room ||
                   !visitType ||
                   hasCashPoint === false ||
@@ -1508,7 +1516,11 @@ const WorkflowDrawer: React.FC<WorkflowDrawerProps> = ({
                 }
                 onClick={handleStartVisit}
               >
-                Start visit &amp; send to {patientCategory === 'Walk-in' ? 'walk-in' : 'triage'}
+                {startingVisit ? (
+                  <InlineLoading description="Starting visit and sending to triage..." />
+                ) : (
+                  `Start visit & send to ${patientCategory === 'Walk-in' ? 'walk-in' : 'triage'}`
+                )}
               </Button>
             ) : (
               <></>
